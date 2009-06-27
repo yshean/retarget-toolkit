@@ -4,12 +4,14 @@ function bd_summary(img_folder)
 %
 eval('config_file');
 
-img_files = dir([img_folder,'/*',img_ext]);
+img_files = dir([data_folder,img_folder,'/*',img_ext]);
+img_names = cell(length(img_files),1);
 origins = cell(length(img_files),1);
 sources = cell(length(img_files),1);
 source_patches = cell(length(img_files),1);
 for i = 1 : length(img_files)
-    img = imread([img_folder,'/',img_files(i).name]);
+    img_names{i} = img_files(i).name;
+    img = imread([data_folder,img_folder,'/',img_files(i).name]);
     origins{i} = img;
     sources{i} = imresize(img,[size(img,1)*scaling_factor,size(img,2)*scaling_factor]);
     fprintf('Starting patch extraction ... ');
@@ -45,7 +47,7 @@ while (resize_gap>resize_target)
         sources_match_array = cell(length(img_files),1);
         targets_match_array = cell(length(img_files),1);
         for i = 1 : length(img_files)
-            [s_matchId,t_matchId] = NN_match(source_patches{i},target_patches{i});
+            [s_matchId,t_matchId] = nn_match(source_patches{i},target_patches{i});
             sources_match_array{i} = [sources_match_array{i};s_matchId];
             targets_match_array{i} = [targets_match_array{i};t_matchId];
         end
@@ -81,7 +83,7 @@ while (resize_gap>resize_target)
     
     % save result;
     for i = 1 : length(img_files)
-        retargeted_name = [img_folder,'_retargeted/',num2str(i),'_retarget_',num2str(resize_gap),'.jpg'];
+        retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
         imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
     end
     
@@ -118,7 +120,7 @@ while (scaling_factor<=1)
         sources_match_array = cell(length(img_files),1);
         targets_match_array = cell(length(img_files),1);
         for i = 1 : length(img_files)
-            [s_matchId,t_matchId] = NN_match(source_patches{i},target_patches{i});
+            [s_matchId,t_matchId] = nn_match(source_patches{i},target_patches{i});
             sources_match_array{i} = [sources_match_array{i};s_matchId];
             targets_match_array{i} = [targets_match_array{i};t_matchId];
         end
@@ -154,6 +156,6 @@ end
 
 % save result;
 for i = 1 : length(img_files)
-    retargeted_name = [img_folder,'_retargeted/',num2str(i),'_retarget_',num2str(resize_gap),'.jpg'];
+    retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
     imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
 end
