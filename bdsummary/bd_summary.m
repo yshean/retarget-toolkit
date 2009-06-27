@@ -117,10 +117,18 @@ while (scaling_factor<=1)
             target_patches{i} = extract_patches(targets{i},patch_size);
         end
 
+        if (old_diff > 0)
+            old_sources_match_array{i} = sources_match_array{i};
+            old_targets_match_array{i} = targets_match_array{i};
+        end
         sources_match_array = cell(length(img_files),1);
         targets_match_array = cell(length(img_files),1);
         for i = 1 : length(img_files)
-            [s_matchId,t_matchId] = nn_match(source_patches{i},target_patches{i});
+            if (~exist('old_sources_match_array') || ~exist('old_targets_match_array'))
+                [s_matchId,t_matchId] = nn_match(source_patches{i},target_patches{i});
+            else
+                [s_matchId,t_matchId] = nn_match(source_patches{i},target_patches{i},old_sources_match_array{i},old_targets_match_array{i});
+            end
             sources_match_array{i} = [sources_match_array{i};s_matchId];
             targets_match_array{i} = [targets_match_array{i};t_matchId];
         end
@@ -151,7 +159,9 @@ while (scaling_factor<=1)
         for i = 1 : length(img_files)
             subplot(1,length(img_files),i), imshow(Lab2RGB(targets{i}));
         end
-    end    
+    end % end while
+    
+    clear old_sources_match_array old_targets_match_array
 end
 
 % save result;

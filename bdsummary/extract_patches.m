@@ -1,5 +1,8 @@
 function patches=extract_patches(img,patch_size)
 
+% load config file
+eval('config_file');
+
 % patches.centers = [];
 % patches.features = [];
 % for i = (patch_size(1)-1)/2+1 : size(img,1)-(patch_size(1)-1)/2
@@ -21,6 +24,18 @@ y_range = [(patch_size(2)-1)/2+1 : size(img,2)-(patch_size(2)-1)/2];
 x = x(:);
 y = y(:);
 patches.centers=[x,y];
+
+% calculate NN
+patches.nn = cell(size(patches.centers,1),1);
+for i = 1 : size(patches.centers,1)
+    center = patches.centers(i,:);
+    nn_x_range = [max((patch_size(1)-1)/2+1,center(1)-R):min(size(img,1)-(patch_size(1)-1)/2,center(1)+R)];
+    nn_y_range = [max((patch_size(2)-1)/2+1,center(2)-R):min(size(img,2)-(patch_size(2)-1)/2,center(2)+R)];
+    [nn_X,nn_Y]=meshgrid(nn_x_range,nn_y_range);
+    nn_points = [nn_X(:),nn_Y(:)];
+    patches.nn{i} = (nn_points(:,1)-x_range(1)).*length(y_range)+nn_points(:,2)-y_range(1)+1;
+end
+
 Lfeatures = []; Afeatures = []; Bfeatures = [];
 for j = -(patch_size(1)-1)/2 : (patch_size(1)-1)/2
     for i = -(patch_size(1)-1)/2 : (patch_size(1)-1)/2    
