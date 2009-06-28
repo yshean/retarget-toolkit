@@ -103,7 +103,7 @@ while (resize_gap>resize_target)
 end
 
 resize_gap = resize_gap/resize_increase_factor;
-while (scaling_factor<=1)
+while (scaling_factor<1)
     scaling_factor = scaling_factor*upsample_factor;
     fprintf('Upsampling the image to %f of its original size ... \n',scaling_factor);
     old_t_sizes = zeros(length(img_files),2);
