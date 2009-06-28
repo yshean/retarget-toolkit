@@ -2,6 +2,7 @@ function bd_summary(img_folder)
 % Main entry of bidirectional summary algorithm
 %
 %
+tic
 eval('config_file');
 
 img_files = dir([data_folder,img_folder,'/*',img_ext]);
@@ -87,40 +88,65 @@ while (resize_gap>resize_target)
         imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
     end
     
-    resize_gap = resize_gap*0.95;
+    resize_gap = resize_gap*resize_increase_factor;
     %         scaling_factor = scaling_factor*2;
 %     for i = 1 : length(img_files)
 %         sources{i} = imresize(origins{i},[size(targets{i},1)/resize_gap,size(targets{i},2)/resize_gap]);
 %         source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
 %     end
     
-    for i = 1 : length(img_files)
-        targets{i} = RGB2Lab(imresize(Lab2RGB(targets{i}),[size(sources{i},1)*resize_gap,size(sources{i},2)*resize_gap]));       
+    if (resize_gap>resize_target)
+        for i = 1 : length(img_files)
+            targets{i} = RGB2Lab(imresize(Lab2RGB(targets{i}),[size(sources{i},1)*resize_gap,size(sources{i},2)*resize_gap]));       
+        end
     end
 end
 
+resize_gap = resize_gap/resize_increase_factor;
 while (scaling_factor<=1)
     scaling_factor = scaling_factor*upsample_factor;
+    fprintf('Upsampling the image to %f of its original size ... \n',scaling_factor);
+    old_t_sizes = zeros(length(img_files),2);
     for i = 1 : length(img_files)
+        old_t_sizes(i,:) = [size(targets{i},1),size(targets{i},2)];
         targets{i} = RGB2Lab(imresize(Lab2RGB(targets{i}),[size(targets{i},1)*upsample_factor,size(targets{i},2)*upsample_factor]));
     end
     
+    old_source_patches = source_patches;
+    old_s_sizes = zeros(length(img_files),2);
     for i = 1 : length(img_files)
+        old_s_sizes(i,:) = [size(sources{i},1),size(sources{i},2)];
         sources{i} = imresize(origins{i},[size(origins{i},1)*scaling_factor,size(origins{i},2)*scaling_factor]);
         source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
     end 
     
     diff = 100; old_diff = 0;
-    while (abs(diff-old_diff)>converge_thresh)    
+    while (abs(diff-old_diff)>converge_thresh)
+        old_target_patches = target_patches;        
         target_patches = cell(length(img_files),1);
         for i = 1 : length(img_files)
             target_patches{i} = extract_patches(targets{i},patch_size);
         end
-
-        if (old_diff > 0)
-            old_sources_match_array{i} = sources_match_array{i};
-            old_targets_match_array{i} = targets_match_array{i};
+        
+        for i = 1 : length(img_files)
+            if (old_diff==0)
+                % old_sources_match_array{i} = interpolate_matches(sources_match_array{i},old_source_patches{i},source_patches{i},old_target_patches{i},target_patches{i},upsample_factor);
+                % old_targets_match_array{i} = interpolate_matches(targets_match_array{i},old_target_patches{i},target_patches{i},old_source_patches{i},source_patches{i},upsample_factor);
+                
+                % interpolate the match id
+                new_s_size = [size(sources{i},1),size(sources{i},2)];
+                new_t_size = [size(targets{i},1),size(targets{i},2)];
+                
+                old_sources_match_array{i} = interpolate_matches2(sources_match_array{i},source_patches{i},old_target_patches{i},...
+                    old_s_sizes(i,:),new_t_size,upsample_factor);
+                old_targets_match_array{i} = interpolate_matches2(targets_match_array{i},target_patches{i},old_source_patches{i},...
+                    old_t_sizes(i,:),new_s_size,upsample_factor);
+            else
+                old_sources_match_array{i} = sources_match_array{i};
+                old_targets_match_array{i} = targets_match_array{i};
+            end
         end
+
         sources_match_array = cell(length(img_files),1);
         targets_match_array = cell(length(img_files),1);
         for i = 1 : length(img_files)
@@ -169,3 +195,5 @@ for i = 1 : length(img_files)
     retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
     imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
 end
+consumed_t=toc;
+fprintf('%f seconds \n',consumed_t);
