@@ -5,7 +5,8 @@ patch_size = [7,7];
 
 scaling_factor = 1/4;
 resize_gap = 0.95;
-resize_target = 0.8;
+resize_increase_factor = 0.95;
+resize_target = 0.9;
 
 converge_thresh = 0;
 upsample_factor = 2^(0.25);
