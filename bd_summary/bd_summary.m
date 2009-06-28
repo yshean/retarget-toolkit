@@ -103,7 +103,7 @@ while (resize_gap>resize_target)
 end
 
 resize_gap = resize_gap/resize_increase_factor;
-while (scaling_factor<1)
+while (scaling_factor*upsample_factor<1)
     scaling_factor = scaling_factor*upsample_factor;
     fprintf('Upsampling the image to %f of its original size ... \n',scaling_factor);
     old_t_sizes = zeros(length(img_files),2);
@@ -130,17 +130,17 @@ while (scaling_factor<1)
         
         for i = 1 : length(img_files)
             if (old_diff==0)
-                % old_sources_match_array{i} = interpolate_matches(sources_match_array{i},old_source_patches{i},source_patches{i},old_target_patches{i},target_patches{i},upsample_factor);
-                % old_targets_match_array{i} = interpolate_matches(targets_match_array{i},old_target_patches{i},target_patches{i},old_source_patches{i},source_patches{i},upsample_factor);
+%                 old_sources_match_array{i} = interpolate_matches(sources_match_array{i},old_source_patches{i},source_patches{i},old_target_patches{i},target_patches{i},upsample_factor);
+%                 old_targets_match_array{i} = interpolate_matches(targets_match_array{i},old_target_patches{i},target_patches{i},old_source_patches{i},source_patches{i},upsample_factor);
                 
                 % interpolate the match id
-                new_s_size = [size(sources{i},1),size(sources{i},2)];
-                new_t_size = [size(targets{i},1),size(targets{i},2)];
-                
-                old_sources_match_array{i} = interpolate_matches2(sources_match_array{i},source_patches{i},old_target_patches{i},...
-                    old_s_sizes(i,:),new_t_size,upsample_factor);
-                old_targets_match_array{i} = interpolate_matches2(targets_match_array{i},target_patches{i},old_source_patches{i},...
-                    old_t_sizes(i,:),new_s_size,upsample_factor);
+%                 new_s_size = [size(sources{i},1),size(sources{i},2)];
+%                 new_t_size = [size(targets{i},1),size(targets{i},2)];
+%                 
+%                 old_sources_match_array{i} = interpolate_matches2(sources_match_array{i},source_patches{i},old_target_patches{i},...
+%                     old_s_sizes(i,:),new_t_size,upsample_factor);
+%                 old_targets_match_array{i} = interpolate_matches2(targets_match_array{i},target_patches{i},old_source_patches{i},...
+%                     old_t_sizes(i,:),new_s_size,upsample_factor);
             else
                 old_sources_match_array{i} = sources_match_array{i};
                 old_targets_match_array{i} = targets_match_array{i};
