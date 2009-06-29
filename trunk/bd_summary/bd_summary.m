@@ -24,11 +24,15 @@ for i = 1 : length(img_files)
 end
 
 targets = cell(length(img_files),1);
-target_patches = cell(length(img_files),1);
+if (resize_gap(1)>resize_target(1))
+    resize_gap(1) = resize_gap(1)*resize_increase_factor;
+end
+if (resize_gap(2)>resize_target(2))
+    resize_gap(2) = resize_gap(2)*resize_increase_factor;
+end
 for i = 1 : length(img_files)
-    img = imresize(sources{i},[size(sources{i},1)*resize_gap,size(sources{i},2)*resize_gap]);    
+    img = imresize(sources{i},[size(sources{i},1)*resize_gap(1),size(sources{i},2)*resize_gap(2)]);    
     targets{i} = RGB2Lab(img);
-    target_patches{i} = extract_patches(targets{i},patch_size);
 end
 
 figure(1);
@@ -36,8 +40,8 @@ for i = 1 : length(img_files)
     subplot(1,length(img_files),i), imshow(Lab2RGB(targets{i}));
 end
 
-while (resize_gap>resize_target)    
-    fprintf('Processing %f of original image and resize it to %f of size \n',scaling_factor,resize_gap);
+while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))    
+    fprintf('Processing %f of original image and resize it to [%f,%f] of size \n',scaling_factor,resize_gap(1),resize_gap(2));
     diff = 100; old_diff = 0;    
     while (abs(diff-old_diff)>converge_thresh)    
         target_patches = cell(length(img_files),1);
@@ -83,26 +87,26 @@ while (resize_gap>resize_target)
     end
     
     % save result;
-    for i = 1 : length(img_files)
-        retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
-        imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
-    end
+%     for i = 1 : length(img_files)
+%         retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
+%         imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
+%     end
     
-    resize_gap = resize_gap*resize_increase_factor;
+    resize_gap = resize_gap.*resize_increase_factor;
     %         scaling_factor = scaling_factor*2;
 %     for i = 1 : length(img_files)
 %         sources{i} = imresize(origins{i},[size(targets{i},1)/resize_gap,size(targets{i},2)/resize_gap]);
 %         source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
 %     end
     
-    if (resize_gap>resize_target)
+    if (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
         for i = 1 : length(img_files)
-            targets{i} = RGB2Lab(imresize(Lab2RGB(targets{i}),[size(sources{i},1)*resize_gap,size(sources{i},2)*resize_gap]));       
+            targets{i} = RGB2Lab(imresize(Lab2RGB(targets{i}),[size(sources{i},1)*resize_gap(1),size(sources{i},2)*resize_gap(2)]));       
         end
     end
 end
 
-resize_gap = resize_gap/resize_increase_factor;
+resize_gap = resize_gap./resize_increase_factor;
 while (scaling_factor*upsample_factor<1)
     scaling_factor = scaling_factor*upsample_factor;
     fprintf('Upsampling the image to %f of its original size ... \n',scaling_factor);
