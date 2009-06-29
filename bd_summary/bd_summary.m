@@ -86,13 +86,19 @@ while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
         
     end
     
-    % save result;
+    %% save result;
 %     for i = 1 : length(img_files)
 %         retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
 %         imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
 %     end
     
-    resize_gap = resize_gap.*resize_increase_factor;
+    if (resize_gap(1)>resize_target(1))
+        resize_gap(1) = resize_gap(1)*resize_increase_factor;
+    end
+    if (resize_gap(2)>resize_target(2))
+        resize_gap(2) = resize_gap(2)*resize_increase_factor;
+    end
+    
     %         scaling_factor = scaling_factor*2;
 %     for i = 1 : length(img_files)
 %         sources{i} = imresize(origins{i},[size(targets{i},1)/resize_gap,size(targets{i},2)/resize_gap]);
