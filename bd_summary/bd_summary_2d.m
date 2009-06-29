@@ -1,4 +1,4 @@
-function bd_summary(img_folder)
+function bd_summary_2d(img_folder)
 % Main entry of bidirectional summary algorithm
 %
 %
