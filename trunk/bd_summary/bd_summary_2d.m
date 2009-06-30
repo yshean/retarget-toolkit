@@ -66,7 +66,7 @@ while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
         for i = 1 : length(img_files)
             new_targets{i} = zeros(size(targets{i}));
             target = zeros(size(targets{i}));
-            new_targets{i} = bidirect_update_image(target,source_patches{i},source_patches_weights{i},sources_match_array{i},target_patches{i},targets_match_array{i});
+            new_targets{i} = bidirect_update_2d(target,source_patches{i},source_patches_weights{i},sources_match_array{i},target_patches{i},targets_match_array{i});
         end
         
         old_diff = diff;

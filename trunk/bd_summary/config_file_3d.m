@@ -1,12 +1,12 @@
 %% Config File
 % Store all parameters
-img_ext = '.jpg';
-patch_size = [7,7];
+img_ext = '.bmp';
+patch_size = [7,7,5];
 
-scaling_factor = 1/4;
-resize_gap = [1,1];
+scaling_factor = 1/16;
+resize_gap = [1,1,1];
 resize_increase_factor = 0.95;
-resize_target = [0.5,0.5];
+resize_target = [1,1,0.8];
 
 converge_thresh = 0;
 upsample_factor = 2^(0.25);
