@@ -1,4 +1,4 @@
-function img = bidirect_update_image(img,s_patches,s_patch_weights,s_matchId,t_patches,t_matchId)
+function img = bidirect_update_2d(img,s_patches,s_patch_weights,s_matchId,t_patches,t_matchId)
 
 eval('config_file');
 
