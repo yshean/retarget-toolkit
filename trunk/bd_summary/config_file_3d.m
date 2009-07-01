@@ -8,7 +8,7 @@ resize_gap = [1,1,1];
 resize_increase_factor = 0.95;
 resize_target = [1,1,0.8];
 
-converge_thresh = 0;
+converge_thresh = 20;
 upsample_factor = 2^(0.25);
 complete_weight = 1;
 cohere_weight = 1;

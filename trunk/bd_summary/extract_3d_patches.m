@@ -1,7 +1,4 @@
-function patches=extract_3d_patches(frames,patch_size)
-
-% load config file
-eval('config_file');
+function patches=extract_3d_patches(frames,patch_size,R)
 
 Limg = frames{1};
 Aimg = frames{2};
