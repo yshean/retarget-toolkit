@@ -22,9 +22,9 @@ y1 = zeros(size(x1,2),length(nS));
 y2 = zeros(size(x1,2),length(nS));
 y3 = zeros(size(x1,2),length(nS));
 for j=1:size(x1,2)
-    y1(j,:)=interp1(ns,x1(:,j),nS);
-    y2(j,:)=interp1(ns,x2(:,j),nS);
-    y3(j,:)=interp1(ns,x3(:,j),nS);
+    y1(j,:)=interp1(ns,x1(:,j),nS,'cubic');
+    y2(j,:)=interp1(ns,x2(:,j),nS,'cubic');
+    y3(j,:)=interp1(ns,x3(:,j),nS,'cubic');
 end
 
 targets = cell(3,1);

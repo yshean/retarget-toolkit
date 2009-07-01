@@ -11,8 +11,8 @@ x_range = [(patch_size(1)-1)/2+1 : size(Limg,1)-(patch_size(1)-1)/2];
 y_range = [(patch_size(2)-1)/2+1 : size(Limg,2)-(patch_size(2)-1)/2];
 t_range = [(patch_size(3)-1)/2+1 : size(Limg,3)-(patch_size(3)-1)/2];
 
-[x,y,z] = meshgrid(x_range,y_range,t_range);
-% [y,x,z] = meshgrid(y_range,x_range,t_range);
+% [x,y,z] = meshgrid(x_range,y_range,t_range);
+[y,x,z] = meshgrid(y_range,x_range,t_range);
 x = x(:);
 y = y(:);
 z = z(:);
@@ -27,10 +27,10 @@ for i = 1 : size(patches.centers,1)
     nn_t_range = [max((patch_size(3)-1)/2+1,center(3)-R):min(size(Limg,3)-(patch_size(3)-1)/2,center(3)+R)];
     [nn_Y,nn_X,nn_T]=meshgrid(nn_y_range,nn_x_range,nn_t_range);
     nn_points = [nn_X(:),nn_Y(:),nn_T(:)];
-    patches.nn{i} = (nn_points(:,1)-x_range(1)).*(length(y_range)*length(t_range))+...
-                    (nn_points(:,2)-y_range(1)).*length(t_range)+nn_points(:,3)-t_range(1)+1;
-%     patches.nn{i} = (nn_points(:,3)-t_range(1)).*(length(x_range)*length(y_range))+...
-%                     (nn_points(:,2)-y_range(1)).*length(x_range)+nn_points(:,1)-x_range(1)+1;
+%     patches.nn{i} = (nn_points(:,1)-x_range(1)).*(length(y_range)*length(t_range))+...
+%                     (nn_points(:,2)-y_range(1)).*length(t_range)+nn_points(:,3)-t_range(1)+1;
+    patches.nn{i} = (nn_points(:,3)-t_range(1)).*(length(x_range)*length(y_range))+...
+                    (nn_points(:,2)-y_range(1)).*length(x_range)+nn_points(:,1)-x_range(1)+1;
 end
 
 Lfeatures = []; Afeatures = []; Bfeatures = [];
