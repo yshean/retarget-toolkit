@@ -1,9 +1,9 @@
-function bd_summary_2d(img_folder)
+function bd_summary_2d(img_folder,config_file)
 % Main entry of bidirectional summary algorithm
 %
 %
 tic
-eval('config_file');
+eval(config_file);
 
 img_files = dir([data_folder,img_folder,'/*',img_ext]);
 img_names = cell(length(img_files),1);
@@ -17,7 +17,7 @@ for i = 1 : length(img_files)
     sources{i} = imresize(img,[size(img,1)*scaling_factor,size(img,2)*scaling_factor]);
     fprintf('Starting patch extraction ... ');
     tic
-    source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
+    source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size,R);
     t = toc;
     fprintf('%f seconds\n',t);
     clear img;
@@ -43,10 +43,10 @@ end
 while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))    
     fprintf('Processing %f of original image and resize it to [%f,%f] of size \n',scaling_factor,resize_gap(1),resize_gap(2));
     diff = 100; old_diff = 0;    
-    while (abs(diff-old_diff)>converge_thresh)    
+    while (diff>converge_thresh)    
         target_patches = cell(length(img_files),1);
         for i = 1 : length(img_files)
-            target_patches{i} = extract_patches(targets{i},patch_size);
+            target_patches{i} = extract_patches(targets{i},patch_size,R);
         end
         
         sources_match_array = cell(length(img_files),1);
@@ -66,7 +66,8 @@ while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
         for i = 1 : length(img_files)
             new_targets{i} = zeros(size(targets{i}));
             target = zeros(size(targets{i}));
-            new_targets{i} = bidirect_update_2d(target,source_patches{i},source_patches_weights{i},sources_match_array{i},target_patches{i},targets_match_array{i});
+            new_targets{i} = bidirect_update_2d(target,patch_size,complete_weight,cohere_weight,source_patches_weights{i},...
+                                                source_patches{i},sources_match_array{i},target_patches{i},targets_match_array{i});
         end
         
         old_diff = diff;
@@ -84,13 +85,7 @@ while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
             subplot(1,length(img_files),i), imshow(Lab2RGB(targets{i}));
         end
         
-    end
-    
-    %% save result;
-%     for i = 1 : length(img_files)
-%         retargeted_name = [result_folder,img_folder,'_retargeted/',img_names{i},'_retarget_',num2str(resize_gap),'.jpg'];
-%         imwrite(Lab2RGB(targets{i}),retargeted_name,'jpg');
-%     end
+    end    
     
     if (resize_gap(1)>resize_target(1))
         resize_gap(1) = resize_gap(1)*resize_increase_factor;
@@ -98,14 +93,8 @@ while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
     if (resize_gap(2)>resize_target(2))
         resize_gap(2) = resize_gap(2)*resize_increase_factor;
     end
-    
-    %         scaling_factor = scaling_factor*2;
-%     for i = 1 : length(img_files)
-%         sources{i} = imresize(origins{i},[size(targets{i},1)/resize_gap,size(targets{i},2)/resize_gap]);
-%         source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
-%     end
-    
-    if (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2))
+        
+    if (resize_gap(1)>resize_target(1) || resize_gap(2)>resize_target(2))
         for i = 1 : length(img_files)
             targets{i} = RGB2Lab(imresize(Lab2RGB(targets{i}),[size(sources{i},1)*resize_gap(1),size(sources{i},2)*resize_gap(2)]));       
         end
@@ -127,15 +116,15 @@ while (scaling_factor*upsample_factor<1)
     for i = 1 : length(img_files)
         old_s_sizes(i,:) = [size(sources{i},1),size(sources{i},2)];
         sources{i} = imresize(origins{i},[size(origins{i},1)*scaling_factor,size(origins{i},2)*scaling_factor]);
-        source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
+        source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size,R);
     end 
     
     diff = 100; old_diff = 0;
-    while (abs(diff-old_diff)>converge_thresh)
+    while (diff>converge_thresh)
         old_target_patches = target_patches;        
         target_patches = cell(length(img_files),1);
         for i = 1 : length(img_files)
-            target_patches{i} = extract_patches(targets{i},patch_size);
+            target_patches{i} = extract_patches(targets{i},patch_size,R);
         end
         
         for i = 1 : length(img_files)
@@ -178,7 +167,8 @@ while (scaling_factor*upsample_factor<1)
         for i = 1 : length(img_files)
             new_targets{i} = zeros(size(targets{i}));
             target = zeros(size(targets{i}));
-            new_targets{i} = bidirect_update_2d(target,source_patches{i},source_patches_weights{i},sources_match_array{i},target_patches{i},targets_match_array{i});
+            new_targets{i} = bidirect_update_2d(target,patch_size,complete_weight,cohere_weight,source_patches_weights{i},...
+                                                source_patches{i},sources_match_array{i},target_patches{i},targets_match_array{i});
         end
         
         old_diff = diff;

@@ -1,6 +1,4 @@
-function img = bidirect_update_2d(img,s_patches,s_patch_weights,s_matchId,t_patches,t_matchId)
-
-eval('config_file');
+function img = bidirect_update_2d(img,patch_size,complete_weight,cohere_weight,s_patch_weights,s_patches,s_matchId,t_patches,t_matchId)
 
 weight_img = zeros(size(img,1),size(img,2));
 for i = 1 : size(s_patches.features,1)
