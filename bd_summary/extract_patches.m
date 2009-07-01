@@ -48,7 +48,8 @@ x_pixel = repmat(x(:),[1,length(offset_x)])+repmat(offset_x,[length(x),1]);
 y_pixel = repmat(y(:),[1,length(offset_y)])+repmat(offset_y,[length(y),1]);
 
 ind = sub2ind(size(Limg),x_pixel(:),y_pixel(:));
-Lfeatures = Limg(ind); 
-Afeatures = Aimg(ind); 
-Bfeatures = Bimg(ind);
+Lfeatures = reshape(Limg(ind),[size(patches.centers,1),length(offset_x)]); 
+Afeatures = reshape(Aimg(ind),[size(patches.centers,1),length(offset_x)]); 
+Bfeatures = reshape(Bimg(ind),[size(patches.centers,1),length(offset_x)]); 
+
 patches.features = [Lfeatures,Afeatures,Bfeatures];
