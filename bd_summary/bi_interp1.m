@@ -16,6 +16,7 @@ for i=1:S
 end
 nS=S/(S-dt):S/(S-dt):(S-dt)*S/(S-dt);
 nS(nS<1)=1;
+nS = round(nS);
 ns=1:S;
 y1 = zeros(size(x1,2),length(nS));
 y2 = zeros(size(x1,2),length(nS));
