@@ -1,6 +1,4 @@
-function frames = bidirect_update_3d(frames,s_patches,s_patch_weights,s_matchId,t_patches,t_matchId)
-
-eval('config_file');
+function frames = bidirect_update_3d(frames,patch_size,complete_weight,cohere_weight,s_patch_weights,s_patches,s_matchId,t_patches,t_matchId)
 
 weight_frames = zeros(size(frames{1}));
 for i = 1 : size(s_patches.features,1)

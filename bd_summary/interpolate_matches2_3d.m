@@ -1,7 +1,4 @@
-function new_matches = interpolate_matches2_3d(matches,new_s_patches,old_t_patches,old_s_size,new_t_size,upsample_factor)
-
-% load config file
-eval('config_file');
+function new_matches = interpolate_matches2_3d(matches,patch_size,new_s_patches,old_t_patches,old_s_size,new_t_size,upsample_factor)
 
 x_range = [(patch_size(1)-1)/2+1 : new_t_size(1)-(patch_size(1)-1)/2];
 y_range = [(patch_size(2)-1)/2+1 : new_t_size(2)-(patch_size(2)-1)/2];
