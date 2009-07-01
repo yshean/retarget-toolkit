@@ -20,8 +20,8 @@ Bimg = img(:,:,3);
 x_range = [(patch_size(1)-1)/2+1 : size(img,1)-(patch_size(1)-1)/2];
 y_range = [(patch_size(2)-1)/2+1 : size(img,2)-(patch_size(2)-1)/2];
 
-[x,y] = meshgrid(x_range,y_range);
-% [y,x] = meshgrid(y_range,x_range);
+% [x,y] = meshgrid(x_range,y_range);
+[y,x] = meshgrid(y_range,x_range);
 x = x(:);
 y = y(:);
 patches.centers=[x,y];
@@ -34,32 +34,21 @@ for i = 1 : size(patches.centers,1)
     nn_y_range = [max((patch_size(2)-1)/2+1,center(2)-R):min(size(img,2)-(patch_size(2)-1)/2,center(2)+R)];
     [nn_Y,nn_X]=meshgrid(nn_y_range,nn_x_range);
     nn_points = [nn_X(:),nn_Y(:)];
-    patches.nn{i} = (nn_points(:,1)-x_range(1)).*length(y_range)+nn_points(:,2)-y_range(1)+1;
-    % patches.nn{i} = (nn_points(:,2)-y_range(1)).*length(x_range)+nn_points(:,1)-x_range(1)+1;
+    % patches.nn{i} = (nn_points(:,1)-x_range(1)).*length(y_range)+nn_points(:,2)-y_range(1)+1;
+    patches.nn{i} = (nn_points(:,2)-y_range(1)).*length(x_range)+nn_points(:,1)-x_range(1)+1;
 end
 
-Lfeatures = []; Afeatures = []; Bfeatures = [];
-for j = -(patch_size(2)-1)/2 : (patch_size(2)-1)/2
-    for i = -(patch_size(1)-1)/2 : (patch_size(1)-1)/2    
-        x_pixel = x(:)+i;
-        y_pixel = y(:)+j;
-        ind = sub2ind([size(img,1),size(img,2)],x_pixel,y_pixel);
-        
-        Lfeatures = [Lfeatures,Limg(ind)];
-        Afeatures = [Afeatures,Aimg(ind)];
-        Bfeatures = [Bfeatures,Bimg(ind)];
-    end
-end
+offset_x_range = [-(patch_size(1)-1)/2 : (patch_size(1)-1)/2];
+offset_y_range = [-(patch_size(2)-1)/2 : (patch_size(2)-1)/2];
+[offset_y,offset_x] = meshgrid(offset_y_range,offset_x_range);
+offset_x = offset_x(:)';
+offset_y = offset_y(:)';
+
+x_pixel = repmat(x(:),[1,length(offset_x)])+repmat(offset_x,[length(x),1]);
+y_pixel = repmat(y(:),[1,length(offset_y)])+repmat(offset_y,[length(y),1]);
+
+ind = sub2ind(size(Limg),x_pixel(:),y_pixel(:));
+Lfeatures = Limg(ind); 
+Afeatures = Aimg(ind); 
+Bfeatures = Bimg(ind);
 patches.features = [Lfeatures,Afeatures,Bfeatures];
-
-% x_lbound = x(:)-(patch_size(1)-1)/2;
-% x_ubound = x(:)+(patch_size(1)-1)/2;
-% y_lbound = y(:)-(patch_size(1)-1)/2;
-% y_ubound = y(:)+(patch_size(1)-1)/2;
-% 
-% patches.centers = [];
-% patches.features = [];
-% for i = 1 : length(x_lbound)
-%     patches.centers = [patches.centers;[x(i),y(i)]];
-%     patches.features = [patches.features;reshape(img(x_lbound(i):x_ubound(i),y_lbound(i):y_ubound(i),:),[1,patch_size(1)*patch_size(2)*3])];
-% end

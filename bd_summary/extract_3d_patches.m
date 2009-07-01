@@ -33,19 +33,21 @@ for i = 1 : size(patches.centers,1)
                     (nn_points(:,2)-y_range(1)).*length(x_range)+nn_points(:,1)-x_range(1)+1;
 end
 
-Lfeatures = []; Afeatures = []; Bfeatures = [];
-for t = -(patch_size(3)-1)/2 : (patch_size(3)-1)/2
-    for j = -(patch_size(2)-1)/2 : (patch_size(2)-1)/2
-        for i = -(patch_size(1)-1)/2 : (patch_size(1)-1)/2                     
-            x_pixel = x(:)+i;
-            y_pixel = y(:)+j;
-            t_pixel = z(:)+t;
-            ind = sub2ind(size(Limg),x_pixel,y_pixel,t_pixel);
-        
-            Lfeatures = [Lfeatures,Limg(ind)];
-            Afeatures = [Afeatures,Aimg(ind)];
-            Bfeatures = [Bfeatures,Bimg(ind)];
-        end
-    end
-end
+offset_x_range = [-(patch_size(1)-1)/2 : (patch_size(1)-1)/2];
+offset_y_range = [-(patch_size(2)-1)/2 : (patch_size(2)-1)/2];
+offset_t_range = [-(patch_size(3)-1)/2 : (patch_size(3)-1)/2];
+[offset_y,offset_x,offset_z] = meshgrid(offset_y_range,offset_x_range,offset_t_range);
+offset_x = offset_x(:)';
+offset_y = offset_y(:)';
+offset_z = offset_z(:)';
+
+x_pixel = repmat(x(:),[1,length(offset_x)])+repmat(offset_x,[length(x),1]);
+y_pixel = repmat(y(:),[1,length(offset_y)])+repmat(offset_y,[length(y),1]);
+t_pixel = repmat(z(:),[1,length(offset_z)])+repmat(offset_z,[length(z),1]);
+
+ind = sub2ind(size(Limg),x_pixel(:),y_pixel(:),t_pixel(:));
+Lfeatures = Limg(ind); 
+Afeatures = Aimg(ind); 
+Bfeatures = Bimg(ind);
+
 patches.features = [Lfeatures,Afeatures,Bfeatures];
