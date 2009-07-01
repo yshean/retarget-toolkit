@@ -107,8 +107,8 @@ while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2) | resize_
 %         source_patches{i} = extract_patches(RGB2Lab(sources{i}),patch_size);
 %     end
     
-    if (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2) | resize_gap(3)>resize_target(3))
-        targets = resize_3d(targets,resize_gap);
+    if (resize_gap(1)>resize_target(1) || resize_gap(2)>resize_target(2) || resize_gap(3)>resize_target(3))
+        targets = resize_3d(targets,[resize_gap(1),resize_gap(2),resize_increase_factor]);
     end
 end
 
