@@ -3,7 +3,7 @@
 img_ext = '.bmp';
 patch_size = [7,7,5];
 
-scaling_factor = 1/16;
+scaling_factor = [1/16,1/16,1/8];
 resize_gap = [1,1,1];
 resize_increase_factor = 0.95;
 resize_target = [1,1,0.8];

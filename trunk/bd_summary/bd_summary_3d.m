@@ -13,14 +13,14 @@ for i = 1 : length(img_files)
     img_names{i} = img_files(i).name;
     img = imread([data_folder,img_folder,'/',img_files(i).name]);
     origins{i} = img;
-    scaling_img = RGB2Lab(imresize(img,[size(img,1)*scaling_factor,size(img,2)*scaling_factor]));
+    scaling_img = RGB2Lab(imresize(img,[size(img,1)*scaling_factor(1),size(img,2)*scaling_factor(2)]));
     sources{1}(:,:,i) = scaling_img(:,:,1);
     sources{2}(:,:,i) = scaling_img(:,:,2);
     sources{3}(:,:,i) = scaling_img(:,:,3);
 end
 
 %% extract spatial-temporal patches
-sources = bi_interp1(sources,length(img_files)*(1-scaling_factor));
+sources = bi_interp1(sources,length(img_files)*(1-scaling_factor(3)));
 for i = 1 : size(sources{1},3)
     sources_name = [result_folder,img_folder,'/',img_names{i}];
     sources_frame = zeros(size(sources{1},1),size(sources{1},2),3);
@@ -52,7 +52,8 @@ for i = 1 : size(targets{1},3)
 end
 
 while (resize_gap(1)>resize_target(1) | resize_gap(2)>resize_target(2) | resize_gap(3)>resize_target(3))    
-    fprintf('Processing %f of original video and resize it to [%f,%f,%f] of its size \n',scaling_factor,resize_gap(1),resize_gap(2),resize_gap(3));
+    fprintf('Processing [%f,%f,%f] of original video and resize it to [%f,%f,%f] of its size \n',...
+            scaling_factor(1),scaling_factor(2),scaling_factor(3),resize_gap(1),resize_gap(2),resize_gap(3));
     diff = 100; old_diff = 0;    
     while (abs(diff-old_diff)>converge_thresh)
         target_patches = extract_3d_patches(targets,patch_size);      
@@ -122,7 +123,7 @@ if (resize_gap(3)<=resize_target(3))
 end
 while (scaling_factor*upsample_factor<1)
     scaling_factor = scaling_factor*upsample_factor;
-    fprintf('Upsampling the image to %f of its original size ... \n',scaling_factor);
+    fprintf('Upsampling the image to [%f,%f,%f] of its original size ... \n',scaling_factor(1),scaling_factor(2),scaling_factor(3));
     old_t_sizes = size(targets{1});
     targets = resize_3d(targets,upsample_factor.*ones(1,3));
     
@@ -136,7 +137,15 @@ while (scaling_factor*upsample_factor<1)
         old_target_patches = target_patches;        
         target_patches = extract_3d_patches(targets,patch_size);
         
-        if (old_diff>0)
+        if (old_diff==0)
+            new_s_size = [size(sources{1},1),size(sources{1},2),size(sources{1},3)];
+            new_t_size = [size(targets{1},1),size(targets{1},2),size(targets{1},3)];
+            
+            old_source_matches = interpolate_matches2_3d(source_matches,source_patches,old_target_patches,...
+                                                         old_s_sizes,new_t_size,upsample_factor);
+            old_target_matches = interpolate_matches2_3d(target_matches,target_patches,old_source_patches,...
+                                                         old_t_sizes,new_s_size,upsample_factor);
+        else
             old_source_matches = source_matches;
             old_target_matches = target_matches;
         end
