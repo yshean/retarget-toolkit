@@ -124,7 +124,7 @@ while (scaling_factor*upsample_factor<1)
     diff = 100; old_diff = 0;
     while (diff>converge_thresh)
         old_target_patches = target_patches;        
-        target_patches = extract_3d_patches(targets,patch_size,R);
+        target_patches = extract_3d_patches(targets,patch_size,R);        
         
         if (old_diff==0)
             new_s_size = [size(sources{1},1),size(sources{1},2),size(sources{1},3)];
@@ -139,7 +139,6 @@ while (scaling_factor*upsample_factor<1)
             old_target_matches = target_matches;
         end
  
-
         if (~exist('old_source_matches') || ~exist('old_target_matches'))
             [source_matches,target_matches] = nn_match(source_patches,target_patches);
         else
@@ -150,7 +149,7 @@ while (scaling_factor*upsample_factor<1)
         new_targets{1} = zeros(size(targets{1}));
         new_targets{2} = zeros(size(targets{2}));
         new_targets{3} = zeros(size(targets{3}));
-        new_targets = bidirect_update_3d(new_targets,patch_size,complete_weight,cohere_weight,ones(size(source_patches.features,1)),...
+        new_targets = bidirect_update_3d(new_targets,patch_size,complete_weight,cohere_weight,ones(size(source_patches.features,1),1),...
                                          source_patches,source_matches,target_patches,target_matches);
         
         old_diff = diff;
