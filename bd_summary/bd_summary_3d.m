@@ -63,7 +63,7 @@ while (resize_gap(1)>resize_target(1) || resize_gap(2)>resize_target(2) || resiz
         new_targets{1} = zeros(size(targets{1}));
         new_targets{2} = zeros(size(targets{2}));
         new_targets{3} = zeros(size(targets{3}));
-        new_targets = bidirect_update_3d(new_targets,patch_size,complete_weight,cohere_weight,ones(size(source_patches.features,1)),...
+        new_targets = bidirect_update_3d(new_targets,patch_size,complete_weight,cohere_weight,ones(size(source_patches.features,1),1),...
                                          source_patches,source_matches,target_patches,target_matches);
         
         old_diff = diff;
