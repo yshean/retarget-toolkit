@@ -33,7 +33,7 @@
 
 using namespace std;
 
-#define MAX_COST_VALUE 100000
+#define MAX_COST_VALUE 10000
 
 struct ForDataFn
 {
@@ -131,38 +131,49 @@ int smoothFn(int p1, int p2, int l1, int l2, void *data)
 	}
 
 	//printf("smoothFn: computing cost between (%d,%d) and (%d,%d) with labels %d and %d : %d\n",y1,x1,y2,x2,l1,l2,cost);
-	if (cost<0)
-		printf("error\n");
 	return cost;
 }
 
-int CalcPixelCost(Picture *src, int pixel, int label, int width, int height)
+int CalcPixelCost(Picture *src, int pixel, int label, 
+				  int width, int height, int assignment)
 {
 	int cost = MAX_COST_VALUE;
 	int col = pixel % width;
 	int row = (pixel-col)/width;
 
-	// pixel rearrangement: 
-	// keep the leftmost/rightmost columns
-	if (col==0 && label==0)
-		cost = 0;
-	if (col==width-1 && label==src->GetWidth()-width)
-		cost = 0;
+	if (assignment<0)
+	{
+		// pixel rearrangement: 
+		// keep the leftmost/rightmost columns
+		if (col==0 && label==0)
+			cost = 0;
+		if (col==width-1 && label==src->GetWidth()-width)
+			cost = 0;
+	} else
+	{
+		if (abs(label-assignment)<=1)
+			cost = 0;
+	}
 
 	//printf("CalcPixelCost: (%d,%d,%d) cost=%d\n",row,col,label,cost);
 	return cost;
 }
 
-int *CalcDataCost(Picture *src, int width, int height, int num_labels)
+int *CalcDataCost(Picture *src, int width, int height, int num_labels, int *assignments)
 {
 	int num_pixels = width*height;
 	// first set up the array for data costs
 	int *data = new int[num_pixels*num_labels];
 	for ( int i = 0; i < num_pixels; i++ )
 	{
+		int y1 = floor((double)(i % width)/2);
+		int x1 = floor((double)((i-y1)/width)/2);
+
+		int assign_idx = y1+x1*floor((double)width/2);
+
 		for (int l = 0; l < num_labels; l++ )
 		{
-			data[i*num_labels+l] = CalcPixelCost(src,i,l,width,height);
+			data[i*num_labels+l] = CalcPixelCost(src,i,l,width,height,ceil((double)assignments[assign_idx]*2));
 		}
 	}
 
@@ -180,6 +191,7 @@ void SaveRetargetPicture(GCoptimizationGridGraph *gc, Picture *src,int width, in
 	{
 		x = i % width;
 		y = i/width;
+		//printf("SaveRetargetPicture: GetPixel(%d,%d)\n",x+gc->whatLabel(i),y);
 		pixel.r = src->GetPixel(x+gc->whatLabel(i),y).r;
 		pixel.g = src->GetPixel(x+gc->whatLabel(i),y).g;
 		pixel.b = src->GetPixel(x+gc->whatLabel(i),y).b;
@@ -193,7 +205,7 @@ void SaveRetargetPicture(GCoptimizationGridGraph *gc, Picture *src,int width, in
 // in this version, set data and smoothness terms using arrays
 // grid neighborhood structure is assumed
 //
-void GridGraph_GraphCut(Picture *src, int *data, int width,int height,
+int *GridGraph_GraphCut(Picture *src, int *data, int width,int height,
 						int num_labels, float alpha, float beta, char *target_name)
 {
 	int num_pixels = width*height;
@@ -226,7 +238,7 @@ void GridGraph_GraphCut(Picture *src, int *data, int width,int height,
 
 		for ( int  i = 0; i < num_pixels; i++ )
 		{
-			printf("The optimal label for pixel %d is %d\n",i,gc->whatLabel(i));
+			//printf("The optimal label for pixel %d is %d\n",i,gc->whatLabel(i));
 			result[i] = gc->whatLabel(i);
 		}
 
@@ -239,7 +251,7 @@ void GridGraph_GraphCut(Picture *src, int *data, int width,int height,
 		e.Report();
 	}
 
-	delete [] result;
+	return result;
 
 }
 
@@ -249,7 +261,7 @@ int main(int argc, char **argv)
 	pyramidType *gpyramid = NULL;
 	int width, height;
 	int num_pixels, num_labels;
-	int *data;
+	int *data, *assignments;
 
 	if (argc<6)
 	{
@@ -263,26 +275,49 @@ int main(int argc, char **argv)
 	input = new Picture(argv[1]);
 	gpyramid = GaussianPyramid(input);
 
-	for (int i = gpyramid->Levels-1; i >= 0; i--)
+	int start_level = 1; // gpyramid->Levels-1
+	for (int i = start_level; i >= 0; i--)
 	{
-		if (i+1==gpyramid->Levels)
+		if (i==start_level)
 		{
-			width = gpyramid->Images[1].GetWidth();
-			height = gpyramid->Images[1].GetHeight();
+			width = gpyramid->Images[i].GetWidth();
+			height = gpyramid->Images[i].GetHeight();
 			num_pixels = ceil(width*atof(argv[4]))*height;
+			
+			assignments = new int[num_pixels];
+			for (int j = 0; j < num_pixels; j++)
+				assignments[j] = -1;
+
 			num_labels = width-ceil(width*atof(argv[4]))+1;
 			width = ceil(width*atof(argv[4]));
-			data = CalcDataCost(&(gpyramid->Images[1]),width,height,num_labels);	
+			data = CalcDataCost(&(gpyramid->Images[i]),width,height,
+								num_labels,assignments);	
 
 			// smoothness and data costs are set up using functions
-			GridGraph_GraphCut(&(gpyramid->Images[1]),data,width,height,
-								num_labels,atof(argv[2]),atof(argv[3]),argv[5]);
+			delete [] assignments;
+			assignments = GridGraph_GraphCut(&(gpyramid->Images[i]),data,width,height,
+											num_labels,atof(argv[2]),atof(argv[3]),argv[5]);
 		} else
 		{
+			width = gpyramid->Images[i].GetWidth();
+			height = gpyramid->Images[i].GetHeight();
+			num_pixels = ceil(width*atof(argv[4]))*height;
+
+			num_labels = width-ceil(width*atof(argv[4]))+1;
+			width = ceil(width*atof(argv[4]));
+			data = CalcDataCost(&(gpyramid->Images[i]),width,height,
+								num_labels,assignments);
+
+			// refinement of initial assignment
+			if (assignments)
+				delete [] assignments;
+			assignments = GridGraph_GraphCut(&(gpyramid->Images[i]),data,width,height,
+											num_labels,atof(argv[2]),atof(argv[3]),argv[5]);
 
 		}
 	}
 
+	delete [] assignments;
 	delete data;
 	delete input;
 	delete gpyramid;

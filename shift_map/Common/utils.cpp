@@ -88,7 +88,7 @@ Matrix *Gradient(Picture *src)
 			edge_y = Convolve_Pixel(src,i,j,Prewitt_Kernel_Y);
 
 			//add their weights up
-			edge_value = 0.01*(abs(edge_x) + abs(edge_y));
+			edge_value = (abs(edge_x) + abs(edge_y));
 			result->Set(i+1,j+1,edge_value);
 		}
 	}
