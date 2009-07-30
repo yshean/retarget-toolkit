@@ -174,7 +174,10 @@ GCoptimization::EnergyType GCoptimization::giveDataEnergy()
 GCoptimization::EnergyType GCoptimization::compute_energy()
 {
 	if (readyToOptimise())
+	{
+		printf("%f, %f\n",(this->*m_giveDataEnergyInternal)(),(this->*m_giveSmoothEnergyInternal)());
 		return( (this->*m_giveDataEnergyInternal)()+ (this->*m_giveSmoothEnergyInternal)());
+	}
 	else{ 
 		handleError("Not ready to optimize yet. Set up data and smooth costs first");
 		return(0);
@@ -652,6 +655,183 @@ void GCoptimizationGridGraph::computeNeighborWeights(EnergyTermType *vCosts,Ener
 	}
 
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions for the GCoptimization3DGridGraph, derived from GCoptimization
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+GCoptimization3DGridGraph::GCoptimization3DGridGraph(SiteID width, SiteID height,SiteID time, LabelID num_labels)
+						:GCoptimization(width*height*time,num_labels)
+{
+	
+	printf("Create 3D Grid Graph\n");
+	assert( (width > 1) && (height > 1) && (time>1) && (num_labels > 1 ));
+
+	m_weightedGraph = 0;
+
+	for (int  i = 0; i < 6; i ++ )	m_unityWeights[i] = 1;
+
+	m_width  = width;
+	m_height = height;
+	m_time = time;
+
+	m_numNeighbors = new SiteID[m_num_sites];
+	m_neighbors = new SiteID[6*m_num_sites];
+
+	SiteID indexes[6] = {-1,1,-m_width,m_width,-m_width*m_height,m_width*m_height};
+
+	SiteID indexesL[5] = {1,-m_width,m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesR[5] = {-1,-m_width,m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesU[5] = {-1,1,m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesD[5] = {-1,1,-m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesF[5] = {-1,1,-m_width,m_width,m_width*m_height};
+	SiteID indexesE[5] = {-1,1,-m_width,m_width,-m_width*m_height};
+
+	SiteID indexesUL[4] = {1,m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesUR[4] = {-1,m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesUF[4] = {-1,1,m_width,m_width*m_height};
+	SiteID indexesUE[4] = {-1,1,m_width,-m_width*m_height};
+	SiteID indexesDL[4] = {1,-m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesDR[4] = {-1,-m_width,-m_width*m_height,m_width*m_height};
+	SiteID indexesDF[4] = {-1,1,-m_width,m_width*m_height};
+	SiteID indexesDE[4] = {-1,1,-m_width,-m_width*m_height};
+	SiteID indexesLF[4] = {1,-m_width,m_width,m_width*m_height};
+	SiteID indexesRF[4] = {-1,-m_width,m_width,m_width*m_height};	
+	SiteID indexesLE[4] = {1,-m_width,m_width,-m_width*m_height};
+	SiteID indexesRE[4] = {-1,-m_width,m_width,-m_width*m_height};
+	
+	SiteID indexesLUF[3] = {1,m_width,m_width*m_height};
+	SiteID indexesLUE[3] = {1,m_width,-m_width*m_height};
+	SiteID indexesLDF[3] = {1,-m_width,m_width*m_height};
+	SiteID indexesLDE[3] = {1,-m_width,-m_width*m_height};
+	SiteID indexesRUF[3] = {-1,m_width,m_width*m_height};
+	SiteID indexesRUE[3] = {-1,m_width,-m_width*m_height};
+	SiteID indexesRDF[3] = {-1,-m_width,m_width*m_height};
+	SiteID indexesRDE[3] = {-1,-m_width,-m_width*m_height};
+			
+    
+	setupNeighbData(1,m_height-1,1,m_width-1,1,m_time-1,6,indexes);
+
+	setupNeighbData(1,m_height-1,0,1,1,m_time-1,5,indexesL);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,1,m_time-1,5,indexesR);
+	setupNeighbData(0,1,1,m_width-1,1,m_time-1,5,indexesU);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,1,m_time-1,5,indexesD);
+	setupNeighbData(1,m_height-1,1,m_width-1,0,1,5,indexesF);
+	setupNeighbData(1,m_height-1,1,m_width-1,m_time-1,m_time,5,indexesE);
+
+	setupNeighbData(0,1,0,1,1,m_time-1,4,indexesUL);
+	setupNeighbData(0,1,m_width-1,m_width,1,m_time-1,4,indexesUR);
+	setupNeighbData(0,1,1,m_width-1,0,1,4,indexesUF);
+	setupNeighbData(0,1,1,m_width-1,m_time-1,m_time,4,indexesUE);
+	setupNeighbData(m_height-1,m_height,0,1,1,m_time-1,4,indexesDL);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,1,m_time-1,4,indexesDR);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,0,1,4,indexesDF);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,m_time-1,m_time,4,indexesDE);
+	setupNeighbData(1,m_height-1,0,1,0,1,4,indexesLF);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,0,1,4,indexesRF);
+	setupNeighbData(1,m_height-1,0,1,m_time-1,m_time,4,indexesLE);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,m_time-1,m_time,4,indexesRE);
+
+	setupNeighbData(0,1,0,1,0,1,3,indexesLUF);
+	setupNeighbData(0,1,0,1,m_time-1,m_time,3,indexesLUE);
+	setupNeighbData(m_height-1,m_height,0,1,0,1,3,indexesLDF);
+	setupNeighbData(m_height-1,m_height,0,1,m_time-1,m_time,3,indexesLDE);
+	setupNeighbData(0,1,m_width-1,m_width,0,1,3,indexesRUF);
+	setupNeighbData(0,1,m_width-1,m_width,m_time-1,m_time,3,indexesRUE);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,0,1,3,indexesRDF);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,m_time-1,m_time,3,indexesRDE);
+}
+
+//-------------------------------------------------------------------
+
+GCoptimization3DGridGraph::~GCoptimization3DGridGraph()
+{
+	delete [] m_numNeighbors;
+	delete [] m_neighbors;
+	if (m_weightedGraph) delete [] m_neighborsWeights;
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimization3DGridGraph::setupNeighbData(SiteID startY,SiteID endY,SiteID startX,
+											  SiteID endX,SiteID startT, SiteID endT, 
+											  SiteID maxInd,SiteID *indexes)
+{
+	SiteID x,y,t,pix;
+	SiteID n;
+
+	for ( y = startY; y < endY; y++ )
+		for ( x = startX; x < endX; x++ )
+			for ( t = startT; t < endT; t++ )
+			{
+				pix = x+y*m_width+t*m_width*m_height;
+				m_numNeighbors[pix] = maxInd;
+
+				for (n = 0; n < maxInd; n++ )
+					m_neighbors[pix*6+n] = pix+indexes[n];
+			}
+}
+
+//-------------------------------------------------------------------
+
+bool GCoptimization3DGridGraph::readyToOptimise()
+{
+	GCoptimization::readyToOptimise();
+	return(true);
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimization3DGridGraph::giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights)
+{
+	//printf("Setup the links between site %d and its neighbors...\n",site);
+	*numSites  = m_numNeighbors[site];
+	*neighbors = &m_neighbors[site*6];
+	
+	if (m_weightedGraph) *weights  = &m_neighborsWeights[site*6];
+	else *weights = m_unityWeights;
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimization3DGridGraph::setSmoothCostVHT(EnergyTermType *smoothArray, 
+												EnergyTermType *vCosts, EnergyTermType *hCosts, EnergyTermType *tCosts)
+{
+	setSmoothCost(smoothArray);
+	m_weightedGraph = 1;
+	computeNeighborWeights(vCosts,hCosts,tCosts);
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimization3DGridGraph::computeNeighborWeights(EnergyTermType *vCosts,EnergyTermType *hCosts, EnergyTermType *tCosts)
+{
+	SiteID i,n,nSite;
+	GCoptimization::EnergyTermType weight;
+
+	
+	m_neighborsWeights = new EnergyTermType[m_num_sites*6];
+
+	for ( i = 0; i < m_num_sites; i++ )
+	{
+		for ( n = 0; n < m_numNeighbors[i]; n++ )
+		{
+			nSite = m_neighbors[6*i+n];
+			if ( i-nSite == 1 )            weight = hCosts[nSite];
+			else if (i-nSite == -1 )       weight = hCosts[i];
+			else if ( i-nSite == m_width ) weight = vCosts[nSite];
+			else if (i-nSite == -m_width ) weight = vCosts[i];
+			else if (i-nSite == m_width*m_height) weight = tCosts[nSite];
+			else if (i-nSite == -m_width*m_height) weight = tCosts[1];
+	
+			m_neighborsWeights[i*6+n] = weight;
+		}
+	}
+
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions for the GCoptimizationGeneralGraph, derived from GCoptimization
 ////////////////////////////////////////////////////////////////////////////////////////////////////
