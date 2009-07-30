@@ -1,38 +1,7 @@
 /* graph.h */
 /*
-	This software library implements the maxflow algorithm
-	described in
-
-		An Experimental Comparison of Min-Cut/Max-Flow Algorithms
-		for Energy Minimization in Vision.
-		Yuri Boykov and Vladimir Kolmogorov.
-		In IEEE Transactions on Pattern Analysis and Machine Intelligence (PAMI), 
-		September 2004
-
-	This algorithm was developed by Yuri Boykov and Vladimir Kolmogorov
-	at Siemens Corporate Research. To make it available for public use,
-	it was later reimplemented by Vladimir Kolmogorov based on open publications.
-
-	If you use this software for research purposes, you should cite
-	the aforementioned paper in any resulting publication.
-*/
-
-/*
-	Copyright 2001 Vladimir Kolmogorov (vnk@cs.cornell.edu), Yuri Boykov (yuri@csd.uwo.ca).
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+MaxFlow software (version 2.2) by Vladimir Kolmogorov and Yuri Boykov, © University College London
+For the license and the required citations please see README.TXT.
 */
 
 
@@ -66,10 +35,10 @@ public:
 
 	/* Type of edge weights.
 	   Can be changed to char, int, float, double, ... */
-	typedef int captype;
+	typedef double captype;
 	/* Type of total flow */
+	typedef double flowtype;
 
-	typedef int flowtype;
 	typedef void * node_id;
 
 	/* interface functions */
@@ -102,7 +71,7 @@ public:
 
 	/* After the maxflow is computed, this function returns to which
 	   segment the node 'i' belongs (Graph::SOURCE or Graph::SINK) */
-	termtype what_segment(node_id i);
+	termtype what_segment(node_id i, termtype defaultTerm = SOURCE); //Modified by Victor Lempitsky to include the second argument
 
 	/* Computes the maxflow. Can be called only once. */
 	flowtype maxflow();
@@ -114,44 +83,16 @@ public:
 private:
 	/* internal variables and functions */
 
-	struct arc_forward_st;
-	struct arc_reverse_st;
-
-#define IS_ODD(a) ((int)(a) & 1)
-#define MAKE_ODD(a)  ((arc_forward *) ((int)(a) | 1))
-#define MAKE_EVEN(a) ((arc_forward *) ((int)(a) & (~1)))
-#define MAKE_ODD_REV(a)  ((arc_reverse *) ((int)(a) | 1))
-#define MAKE_EVEN_REV(a) ((arc_reverse *) ((int)(a) & (~1)))
+	struct arc_st;
 
 	/* node structure */
 	typedef struct node_st
 	{
-		/*
-			Usually i->first_out is the first outgoing
-			arc, and (i+1)->first_out-1 is the last outgoing arc.
-			However, it is not always possible, since
-			arcs are allocated in blocks, so arcs corresponding
-			to two consecutive nodes may be in different blocks.
+		arc_st			*first;		/* first outcoming arc */
 
-			If outgoing arcs for i are last in the arc block,
-			then a different mechanism is used. i->first_out
-			is odd in this case; the first outgoing arc
-			is (a+1), and the last outgoing arc is
-			((arc_forward *)(a->shift))-1, where
-			a = (arc_forward *) (((char *)(i->first_out)) + 1);
-
-			Similar mechanism is used for incoming arcs.
-		*/
-		arc_forward_st	*first_out;	/* first outcoming arc */
-		arc_reverse_st	*first_in;	/* first incoming arc */
-
-		arc_forward_st	*parent;	/* describes node's parent
-									   if IS_ODD(parent) then MAKE_EVEN(parent) points to 'arc_reverse',
-									   otherwise parent points to 'arc_forward' */
-
+		arc_st			*parent;	/* node's parent */
 		node_st			*next;		/* pointer to the next active node
 									   (or to itself if it is the last node in the list) */
-
 		int				TS;			/* timestamp showing when DIST was computed */
 		int				DIST;		/* distance to the terminal */
 		short			is_sink;	/* flag showing whether the node is in the source or in the sink tree */
@@ -160,20 +101,15 @@ private:
 									   otherwise         -tr_cap is residual capacity of the arc node->SINK */
 	} node;
 
-	/* arc structures */
-#define NEIGHBOR_NODE(i, shift) ((node *) ((char *)(i) + (shift)))
-#define NEIGHBOR_NODE_REV(i, shift) ((node *) ((char *)(i) - (shift)))
-	typedef struct arc_forward_st
+	/* arc structure */
+	typedef struct arc_st
 	{
-		int				shift;		/* node_to = NEIGHBOR_NODE(node_from, shift) */
-		captype			r_cap;		/* residual capacity */
-		captype			r_rev_cap;	/* residual capacity of the reverse arc*/
-	} arc_forward;
+		node_st			*head;		/* node the arc points to */
+		arc_st			*next;		/* next arc with the same originating node */
+		arc_st			*sister;	/* reverse arc */
 
-	typedef struct arc_reverse_st
-	{
-		arc_forward		*sister;	/* reverse arc */
-	} arc_reverse;
+		captype			r_cap;		/* residual capacity */
+	} arc;
 
 	/* 'pointer to node' structure */
 	typedef struct nodeptr_st
@@ -182,48 +118,8 @@ private:
 		nodeptr_st		*next;
 	} nodeptr;
 
-	typedef struct node_block_st
-	{
-		node					*current;
-		struct node_block_st	*next;
-		node					nodes[NODE_BLOCK_SIZE];
-	} node_block;
-
-#define last_node LAST_NODE.LAST_NODE
-
-	typedef struct arc_for_block_st
-	{
-		char					*start;		/* the actual start address of this block.
-											   May be different from 'this' since 'this'
-											   must be at an even address. */
-		arc_forward				*current;
-		struct arc_for_block_st	*next;
-		arc_forward				arcs_for[ARC_BLOCK_SIZE]; /* all arcs must be at even addresses */
-		union
-		{
-			arc_forward			dummy;
-			node				*LAST_NODE;	/* used in graph consruction */
-		}						LAST_NODE;
-	} arc_for_block;
-
-	typedef struct arc_rev_block_st
-	{
-		char					*start;		/* the actual start address of this block.
-											   May be different from 'this' since 'this'
-											   must be at an even address. */
-		arc_reverse				*current;
-		struct arc_rev_block_st	*next;
-		arc_reverse				arcs_rev[ARC_BLOCK_SIZE]; /* all arcs must be at even addresses */
-		union
-		{
-			arc_reverse			dummy;
-			node				*LAST_NODE;	/* used in graph consruction */
-		}						LAST_NODE;
-	} arc_rev_block;
-
-	node_block			*node_block_first;
-	arc_for_block		*arc_for_block_first;
-	arc_rev_block		*arc_rev_block_first;
+	Block<node>			*node_block;
+	Block<arc>			*arc_block;
 	DBlock<nodeptr>		*nodeptr_block;
 
 	void	(*error_function)(char *);	/* this function is called if a error occurs,
@@ -244,9 +140,8 @@ private:
 	void set_active(node *i);
 	node *next_active();
 
-	void prepare_graph();
 	void maxflow_init();
-	void augment(node *s_start, node *t_start, captype *cap_middle, captype *rev_cap_middle);
+	void augment(arc *middle_arc);
 	void process_source_orphan(node *i);
 	void process_sink_orphan(node *i);
 };

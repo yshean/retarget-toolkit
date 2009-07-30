@@ -34,13 +34,13 @@ struct ForDataFn{
 };
 
 
-int smoothFn(int p1, int p2, int l1, int l2)
+double smoothFn(int p1, int p2, int l1, int l2)
 {
 	if ( (l1-l2)*(l1-l2) <= 4 ) return((l1-l2)*(l1-l2));
 	else return(4);
 }
 
-int dataFn(int p, int l, void *data)
+double dataFn(int p, int l, void *data)
 {
 	ForDataFn *myData = (ForDataFn *) data;
 	int numLab = myData->numLab;
@@ -109,7 +109,7 @@ void GridGraph_DArraySArray(int width,int height,int num_pixels,int num_labels)
 	int *result = new int[num_pixels];   // stores result of optimization
 
 	// first set up the array for data costs
-	int *data = new int[num_pixels*num_labels];
+	double *data = new double[num_pixels*num_labels];
 	for ( int i = 0; i < num_pixels; i++ )
 		for (int l = 0; l < num_labels; l++ )
 			if (i < 25 ){
@@ -121,7 +121,7 @@ void GridGraph_DArraySArray(int width,int height,int num_pixels,int num_labels)
 				else data[i*num_labels+l] = 10;
 			}
 	// next set up the array for smooth costs
-	int *smooth = new int[num_labels*num_labels];
+	double *smooth = new double[num_labels*num_labels];
 	for ( int l1 = 0; l1 < num_labels; l1++ )
 		for (int l2 = 0; l2 < num_labels; l2++ )
 			smooth[l1+l2*num_labels] = (l1-l2)*(l1-l2) <= 4  ? (l1-l2)*(l1-l2):4;
@@ -211,7 +211,7 @@ void GridGraph_DArraySArraySpatVarying(int width,int height,int num_pixels,int n
 	int *result = new int[num_pixels];   // stores result of optimization
 
 	// first set up the array for data costs
-	int *data = new int[num_pixels*num_labels];
+	double *data = new double[num_pixels*num_labels];
 	for ( int i = 0; i < num_pixels; i++ )
 		for (int l = 0; l < num_labels; l++ )
 			if (i < 25 ){
@@ -223,15 +223,15 @@ void GridGraph_DArraySArraySpatVarying(int width,int height,int num_pixels,int n
 				else data[i*num_labels+l] = 10;
 			}
 	// next set up the array for smooth costs
-	int *smooth = new int[num_labels*num_labels];
+	double *smooth = new double[num_labels*num_labels];
 	for ( int l1 = 0; l1 < num_labels; l1++ )
 		for (int l2 = 0; l2 < num_labels; l2++ )
 			smooth[l1+l2*num_labels] = (l1-l2)*(l1-l2) <= 4  ? (l1-l2)*(l1-l2):4;
 
 	// next set up spatially varying arrays V and H
 
-	int *V = new int[num_pixels];
-	int *H = new int[num_pixels];
+	double *V = new double[num_pixels];
+	double *H = new double[num_pixels];
 
 	
 	for ( int i = 0; i < num_pixels; i++ ){
@@ -274,7 +274,7 @@ void GeneralGraph_DArraySArray(int width,int height,int num_pixels,int num_label
 	int *result = new int[num_pixels];   // stores result of optimization
 
 	// first set up the array for data costs
-	int *data = new int[num_pixels*num_labels];
+	double *data = new double[num_pixels*num_labels];
 	for ( int i = 0; i < num_pixels; i++ )
 		for (int l = 0; l < num_labels; l++ )
 			if (i < 25 ){
@@ -286,7 +286,7 @@ void GeneralGraph_DArraySArray(int width,int height,int num_pixels,int num_label
 				else data[i*num_labels+l] = 10;
 			}
 	// next set up the array for smooth costs
-	int *smooth = new int[num_labels*num_labels];
+	double *smooth = new double[num_labels*num_labels];
 	for ( int l1 = 0; l1 < num_labels; l1++ )
 		for (int l2 = 0; l2 < num_labels; l2++ )
 			smooth[l1+l2*num_labels] = (l1-l2)*(l1-l2) <= 4  ? (l1-l2)*(l1-l2):4;
@@ -337,7 +337,7 @@ void GeneralGraph_DArraySArraySpatVarying(int width,int height,int num_pixels,in
 	int *result = new int[num_pixels];   // stores result of optimization
 
 	// first set up the array for data costs
-	int *data = new int[num_pixels*num_labels];
+	double *data = new double[num_pixels*num_labels];
 	for ( int i = 0; i < num_pixels; i++ )
 		for (int l = 0; l < num_labels; l++ )
 			if (i < 25 ){
@@ -349,7 +349,7 @@ void GeneralGraph_DArraySArraySpatVarying(int width,int height,int num_pixels,in
 				else data[i*num_labels+l] = 10;
 			}
 	// next set up the array for smooth costs
-	int *smooth = new int[num_labels*num_labels];
+	double *smooth = new double[num_labels*num_labels];
 	for ( int l1 = 0; l1 < num_labels; l1++ )
 		for (int l2 = 0; l2 < num_labels; l2++ )
 			smooth[l1+l2*num_labels] = (l1-l2)*(l1-l2) <= 4  ? (l1-l2)*(l1-l2):4;

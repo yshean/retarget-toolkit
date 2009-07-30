@@ -375,6 +375,37 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// Use this derived class for spatial temporal grid graphs
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+class GCoptimization3DGridGraph: public GCoptimization
+{
+public:
+  GCoptimization3DGridGraph(SiteID width,SiteID height,SiteID time, LabelID num_labels);
+  virtual ~GCoptimization3DGridGraph();
+
+  void setSmoothCostVHT(EnergyTermType *smoothArray, EnergyTermType *vCosts, EnergyTermType *hCosts, EnergyTermType *tCosts);
+  virtual bool readyToOptimise();  
+
+protected:
+	virtual void giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights);
+	EnergyTermType m_unityWeights[6];
+	int m_weightedGraph;  // true if spatially varying w_pq's are present. False otherwise.
+
+private:
+	SiteID m_width;
+	SiteID m_height;
+	SiteID m_time;
+	SiteID *m_numNeighbors;              // holds num of neighbors
+	SiteID *m_neighbors;                 // holds neighbor indexes
+	EnergyTermType *m_neighborsWeights;    // holds neighbor weights
+	
+	void setupNeighbData(SiteID startY, SiteID endY, SiteID startX, SiteID endX,
+						 SiteID startT, SiteID endT, SiteID maxInd, SiteID *indexes);
+	void computeNeighborWeights(EnergyTermType *vCosts,EnergyTermType *hCosts, EnergyTermType *tCosts);
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
 class GCoptimizationGeneralGraph:public GCoptimization
 {
