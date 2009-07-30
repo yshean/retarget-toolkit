@@ -38,6 +38,7 @@ class Matrix {
     int Rows, Cols;
 
   public:
+    Matrix();
     Matrix(const int rows, const int cols);
     Matrix(const Matrix &src);
     ~Matrix();

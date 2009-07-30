@@ -21,7 +21,15 @@ Picture::Picture()
 #ifdef USE_TRACEBACK
   Trace->Add(__FILE__, __LINE__);
 #endif
-  Picture::Picture(0,0);
+  Image = NULL;
+  OriginalImage = NULL;
+  Intensity = NULL;
+
+  OriginalWidth = Width = 0;
+  OriginalHeight = Height = 0;
+  AllowSave = true;
+  MaxVal = 255;
+  ClearAll();
 }
 
 /*  constructor - takes a width and a height 
@@ -485,6 +493,7 @@ Picture &Picture::operator =(Picture &src)
 #ifdef USE_TRACEBACK
   Trace->Add(__FILE__, __LINE__);
 #endif
+  ClearAll();
   OriginalWidth = src.OriginalWidth;
   OriginalHeight = src.OriginalHeight;
   Width = src.Width;
@@ -493,12 +502,12 @@ Picture &Picture::operator =(Picture &src)
   strncpy(Name, src.Name, 512);
   AllowSave = src.AllowSave;
 
-  /*if (this->OriginalImage)
+  if (this->OriginalImage)
     delete this->OriginalImage;
   if (this->Image)
     delete this->Image;
   if (this->Intensity)
-    delete this->Intensity;*/
+    delete this->Intensity;
 
   OriginalImage = new pixelType[OriginalWidth * OriginalHeight];
   Image = new pixelType[Width * Height];
@@ -542,6 +551,36 @@ Picture &Picture::operator +(Picture &src)
 
   return *result;
 }
+
+/* overloading of the addition operator */
+Picture &Picture::operator -(Picture &src)
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+  if ((this->Height != src.Height) ||
+      (this->Width != src.Width))
+    throw IncompatibleDimensionsException("Picture", "operator -");
+
+  Picture *result = new Picture(Width, Height);
+
+  for (int i = 0; i < src.Width * src.Height; i++) {
+    result->OriginalImage[i].r = min(OriginalImage[i].r - src.OriginalImage[i].r, 255);
+    result->OriginalImage[i].g = min(OriginalImage[i].g - src.OriginalImage[i].g, 255);
+    result->OriginalImage[i].b = min(OriginalImage[i].b - src.OriginalImage[i].b, 255);
+
+    result->Image[i].r = min(Image[i].r - src.Image[i].r, 255);
+    result->Image[i].g = min(Image[i].g - src.Image[i].g, 255);
+    result->Image[i].b = min(Image[i].b - src.Image[i].b, 255);
+
+    result->Intensity[i].r = Intensity[i].r - src.Intensity[i].r;
+    result->Intensity[i].g = Intensity[i].g - src.Intensity[i].g;
+    result->Intensity[i].b = Intensity[i].b - src.Intensity[i].b;
+  }
+
+  return *result;
+}
+
 
 /* overloading of the division operator */
 Picture &Picture::operator /=(int factor)

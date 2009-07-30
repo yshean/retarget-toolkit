@@ -116,6 +116,9 @@ class Picture {
 
     /* throws IncompatibleDimensionsException */
     Picture &operator +(Picture &src);
+
+	/* throws IncompatibleDimensionsException */
+	Picture &operator -(Picture &src);
 };
 
 #endif

@@ -8,6 +8,17 @@
 
 #include "matrix.h"
 
+Matrix::Matrix()
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+	//Matrix(0,0);
+  Rows = 0;
+  Cols = 0;
+  Row = NULL;
+}
+
 Matrix::Matrix(const int rows, const int cols)
 {
 #ifdef USE_TRACEBACK
@@ -218,9 +229,12 @@ Matrix& Matrix::operator =(const Matrix &src)
 #ifdef USE_TRACEBACK
   Trace->Add(__FILE__, __LINE__);
 #endif
-  for (int i = 0; i < Rows; i++)
-    delete Row[i].Col;
-  delete Row;
+  if (Cols>0)
+  {
+	for (int i = 0; i < Rows; i++)
+		delete [] Row[i].Col;
+	delete [] Row;
+  }
 
   Rows = src.Rows;
   Cols = src.Cols;
@@ -259,10 +273,15 @@ Matrix& Matrix::operator +=(const Matrix &src)
 #endif
   if ((src.Rows != Rows) ||
       (src.Cols != Cols))
-    throw IncompatibleMatricesException("Matrix", "+");
+    throw IncompatibleMatricesException("Matrix", "+=");
 
-  *this = *this + src;
-  return *this;
+  Matrix *result = new Matrix(Rows, Cols);
+
+  for (int i = 0; i < Rows; i++)
+    for (int j = 0; j < Cols; j++)
+      result->Row[i].Col[j] = Row[i].Col[j] + src.Row[i].Col[j];
+
+  return *result;
 }
 
 Matrix& Matrix::operator -(const Matrix &src)

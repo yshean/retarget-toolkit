@@ -6,7 +6,11 @@
  *
  */
 
+#include <vector>
+#include <windows.h>
 #include "utils.h"
+
+using namespace std;
 
 inline double round( double d )
 {
@@ -90,6 +94,54 @@ Matrix *Gradient(Picture *src)
 			//add their weights up
 			edge_value = (abs(edge_x) + abs(edge_y));
 			result->Set(i+1,j+1,edge_value);
+		}
+	}
+
+	return result;
+}
+
+/* Calculate the spatial temporal gradient magnitude of 
+ * the source image using Prewitt Method
+ */
+Matrix *Gradient_3D(Video *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Matrix *results = new Matrix[src->GetTime()];
+	for (int t=0; t<src->GetTime(); t++)
+	{
+		//results[t] = *(new Matrix(0,0));
+		results[t] = *(Gradient(src->GetFrame(t)));
+		if (t>0 && t<src->GetTime()-1)
+		{			
+			results[t] += *(FrameDifference(src->GetFrame(t-1),src->GetFrame(t+1)));
+		}
+		else
+		{
+			int lower_t = max(t-1,0);
+			int upper_t = min(t+1,src->GetTime()-1);
+			results[t] += *(FrameDifference(src->GetFrame(lower_t),src->GetFrame(upper_t)));
+		}
+	}
+
+	return results;
+}
+
+Matrix *FrameDifference(Picture *left, Picture *right)
+{
+	if ((left->GetHeight() != right->GetHeight()) ||
+		(right->GetWidth() != right->GetWidth()))
+		throw IncompatibleDimensionsException("Utils", "FrameDifference");
+
+	Matrix *result = new Matrix(left->GetHeight(),left->GetWidth());
+
+	for (int x=0; x<left->GetWidth(); x++)
+	{
+		for (int y=0; y<left->GetHeight(); y++)
+		{
+			result->Set(y+1,x+1,
+					abs(left->GetPixelIntensity(x,y).r-right->GetPixelIntensity(x,y).r));
 		}
 	}
 
@@ -581,38 +633,38 @@ Picture *Reduce(Picture *src)
   intensityType g0, g1;
 
   for (int j = 0; j < Height; j++)
-    for (int i = 0; i < Width; i++) {
-      memset((void *) &g1, 0, sizeof(intensityType));
+	for (int i = 0; i < Width; i++) {
+	  memset((void *) &g1, 0, sizeof(intensityType));
 
-      for (int m = -2; m < 3; m++)
-        for (int n = -2; n < 3; n++) {
-          int x = (2 * i) + m;
-          int y = (2 * j) + n;
+	  for (int m = -2; m < 3; m++)
+		for (int n = -2; n < 3; n++) {
+		  int x = (2 * i) + m;
+		  int y = (2 * j) + n;
 
-          /* for boundary conditions, use a reflection across the edge node */
-          if (x >= src->GetWidth())
-            x = x - abs(Width - (x + 1));
-          if (y >= src->GetHeight())
-            y = y - abs(src->GetHeight() - (y + 1));
-          if (x < 0)
-            x = abs(x);
-          if (y < 0)
-            y = abs(y);
+		  /* for boundary conditions, use a reflection across the edge node */
+		  if (x >= src->GetWidth())
+			x = x - abs(Width - (x + 1));
+		  if (y >= src->GetHeight())
+			y = y - abs(src->GetHeight() - (y + 1));
+		  if (x < 0)
+			x = abs(x);
+		  if (y < 0)
+			y = abs(y);
 
-          int mp = m + 2;
-          int np = n + 2;
-          if (src->Inside(x, y)) {
-            try {
-              g0 = src->GetPixelIntensity(x, y);
-              g1.r = (int) round((weight[mp] * weight[np] * g0.r) + g1.r);
-              g1.g = (int) round((weight[mp] * weight[np] * g0.g) + g1.g);
-              g1.b = (int) round((weight[mp] * weight[np] * g0.b) + g1.b);
-            }
-            catch (IndexOutOfBoundsException ex) {}
-          }
-        }
-      result->SetPixelIntensity(i, j, g1);
-    }
+		  int mp = m + 2;
+		  int np = n + 2;
+		  if (src->Inside(x, y)) {
+			try {
+			  g0 = src->GetPixelIntensity(x, y);
+			  g1.r = (int) round((weight[mp] * weight[np] * g0.r) + g1.r);
+			  g1.g = (int) round((weight[mp] * weight[np] * g0.g) + g1.g);
+			  g1.b = (int) round((weight[mp] * weight[np] * g0.b) + g1.b);
+			}
+			catch (IndexOutOfBoundsException ex) {}
+		  }
+		}
+	  result->SetPixelIntensity(i, j, g1);
+	}
 
   return result;
 }
@@ -940,4 +992,201 @@ Picture *Combine(Picture *I1, Picture *I2,
   }
 
   return Collapse(LS);
+}
+
+vector<string> Get_FrameNames(const char *foldername, const char *frame_ext)
+{
+	vector<string> frameNames;
+	WIN32_FIND_DATAA fileData;
+
+	string folderpath = (string)foldername + "*";
+	HANDLE hFind = FindFirstFile(folderpath.c_str(), &fileData);
+	bool bFinished = (hFind == INVALID_HANDLE_VALUE);
+	int bRepeat = 1;	
+
+	while (bRepeat && !bFinished) {
+		bool bProcess = true;
+		// If the current file is a directory, ignore
+		if( (fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+			bProcess = false;
+		}
+		// If the current file is "." or "..", ignore
+		if(strcmp(fileData.cFileName, ".") == 0 || 
+			strcmp(fileData.cFileName, "..") == 0 ) {
+			bProcess = false;	
+		}
+		// Obtain the file name
+		// string filename fileData.cFileName;
+		string cfilename = (string)fileData.cFileName;
+		size_t dotidx = cfilename.find_last_of(".");
+		string ext = cfilename.substr(dotidx+1,cfilename.length());
+		if (ext != (string)frame_ext)
+			bProcess = false;
+		
+		if (bProcess)
+		{
+			frameNames.push_back(cfilename);
+		}
+
+		bRepeat = FindNextFile(hFind, &fileData);
+	} // end while
+
+	return frameNames;
+}
+
+videoPyramidType *VideoPyramid(Video *src)
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+  videoPyramidType *result = new videoPyramidType;
+
+  cout << "Computing Gaussian Pyramid\n";
+  double level = (double)(min(src->GetWidth(), src->GetHeight(), src->GetTime()));
+  result->Videos = new Video[(int) ceil(log(level)) + 2];
+  result->Videos[0] = *src;
+  result->Levels = 1;
+
+  result->Videos[result->Levels] = *ReduceVideo(src);
+  while ((result->Videos[result->Levels].GetWidth() > 8) &&
+         (result->Videos[result->Levels].GetHeight() > 8) &&
+		 (result->Videos[result->Levels].GetTime() > 8)) {
+    result->Levels++;
+    result->Videos[result->Levels] = *ReduceVideo(&result->Videos[result->Levels - 1]);
+  }
+  result->Levels++;
+
+  return result;
+}
+
+Video *ReduceVideo(Video *src)
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+  Picture *frames = new Picture[src->GetTime()];
+
+  for (int t = 0; t < src->GetTime(); t++)
+  {
+	  frames[t] = *(Reduce(src->GetFrame(t)));
+  }
+
+  Video *sresult = new Video(frames[0].GetWidth(),
+							frames[0].GetHeight(),
+							src->GetTime());
+  sresult->SetFrames(frames,src->GetTime());
+
+  return TemporalReduce(sresult);
+}
+
+Video *TemporalReduce(Video *src)
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+	int Time = (src->GetTime() / 2);
+
+	cout << "Reducing video to " << src->GetWidth() << "x" 
+			<< src->GetHeight() << endl;
+	Video *result = new Video(src->GetWidth(), src->GetHeight(), Time);
+	Picture *frames = new Picture[Time];
+	for (int t = 0; t < Time; t++)
+	{
+		frames[t] = *(new Picture(src->GetWidth(),src->GetHeight()));
+	}
+	result->SetFrames(frames, Time);
+
+	/* weights as suggested in the Burt-Adelson's paper */
+	double weight[5] = { 0.05, 0.25, 0.4, 0.25, 0.05 };
+
+	intensityType g0, g1;
+	//pixelType p0, p1;
+
+	for (int t = 0; t < Time; t++)
+		for (int x = 0; x < src->GetWidth(); x++)
+			for (int y = 0; y < src->GetHeight(); y++)
+			{
+				memset((void *) &g1, 0, sizeof(intensityType));
+				//memset((void *) &p1, 0, sizeof(pixelType));
+
+				for (int m = -2; m < 3; m++)
+				{
+					int tt = (2 * t) + m;
+
+					/* for boundary conditions, use a reflection across 
+					 the edge node */
+					if (tt >= src->GetTime())
+						tt = tt - abs(Time - (tt + 1));
+					if (tt < 0)
+						tt = abs(tt);
+
+					int mp = m + 2;
+					if (t<src->GetTime()) {
+						try 
+						{
+							// intensity type
+							g0 = src->GetPixelIntensity(x, y, tt);
+							g1.r = (int) round((weight[mp] * g0.r) + g1.r);
+							g1.g = (int) round((weight[mp] * g0.g) + g1.g);
+							g1.b = (int) round((weight[mp] * g0.b) + g1.b);
+
+							// pixel type
+							//p0 = src->GetPixel(x, y, tt);
+							//p1.r = (int) round((weight[mp] * p0.r) + p1.r);
+							//p1.g = (int) round((weight[mp] * p0.g) + p1.g);
+							//p1.b = (int) round((weight[mp] * p0.b) + p1.b);
+						}
+						catch (IndexOutOfBoundsException ex) {}
+					}// end if
+				}// end for m
+
+				result->SetPixelIntensity(x,y,t,g1);
+				//result->SetPixel(x,y,t,p1);
+			}
+
+	return result;
+}
+
+int DownsamplingIndex(int p, imageSize &target_size, imageSize &previous_size, double ratio)
+{
+	int x = floor((double)(p % target_size.width)/ratio);
+	if (x==previous_size.width)
+		x--;
+	int y = floor((double)(p / target_size.width)/ratio);
+	if (y==previous_size.height)
+		y--;
+
+	int idx = y*previous_size.width+x;
+	if (idx<0)
+		idx++;
+	if (idx==previous_size.width*
+			 previous_size.height)
+		idx--;
+
+	return idx;
+}
+
+int Downsampling3DIndex(int p, videoSize &target_size, videoSize &previous_size, double ratio)
+{
+	int s = floor((double)(p % (target_size.width*target_size.height)));
+	int t = floor((double)(p / (target_size.width*target_size.height))/ratio);
+	if (t==previous_size.time)
+		t--;
+	int x = floor((double)(s % target_size.width)/ratio);
+	if (x==previous_size.width)
+		x--;
+	int y = floor((double)(s / target_size.width)/ratio);
+	if (y==previous_size.height)
+		y--;
+
+	int idx = t*(previous_size.width*previous_size.height)
+				+y*previous_size.width+x;
+	if (idx<0)
+		idx++;
+	if (idx==previous_size.width*
+			 previous_size.height*
+			 previous_size.time)
+		idx--;
+
+	return idx;
 }

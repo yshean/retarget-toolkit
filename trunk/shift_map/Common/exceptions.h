@@ -95,6 +95,27 @@ class FileNotFoundException {
 
 #endif
 
+#ifndef _FOLDER_NOT_FOUND_EXCEPTION_CLASS_
+#define _FOLDER_NOT_FOUND_EXCEPTION_CLASS_
+  
+class FolderNotFoundException {
+  public:
+    FolderNotFoundException(const char *cls, const char *func, const char *file)
+      : message(string("Exception in class ") +
+                string(cls) +
+                string("::") +
+                string(func) +
+                string("(): ") +
+                string(file) +
+                string(" not found")) { cerr << message << endl; }
+    friend ostream& operator <<(ostream& out, FolderNotFoundException ex)
+      { out << ex.message << endl; }
+
+  private:
+    string message;
+};
+
+#endif
 
 #ifndef _INCOMPATIBLE_MATRICES_EXCEPTION_CLASS_
 #define _INCOMPATIBLE_MATRICES_EXCEPTION_CLASS_
