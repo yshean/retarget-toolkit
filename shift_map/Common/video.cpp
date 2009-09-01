@@ -6,6 +6,7 @@
  *
  */
 
+#include <assert.h>
 #include <string>
 #include <vector>
 #include "utils.h"
@@ -22,13 +23,13 @@ Video::Video()
 #ifdef USE_TRACEBACK
   Trace->Add(__FILE__, __LINE__);
 #endif
-  Frames = NULL;
-   Width = 0;
-   Height = 0;
-   Time = 0;
-   AllowSave = true;
-   MaxVal = 255;
-   ClearAll();
+	Frames = NULL;
+	Width = 0;
+	Height = 0;
+	Time = 0;
+	AllowSave = true;
+	MaxVal = 255;
+	ClearAll();
 }
 
 /*  constructor - takes a width, a height 
@@ -55,84 +56,114 @@ Video::Video(int width, int height, int time)
 Video::Video(const char *foldername)
 {
 #ifdef USE_TRACEBACK
-  Trace->Add(__FILE__, __LINE__);
+	Trace->Add(__FILE__, __LINE__);
 #endif
-  Frames = NULL;
-  AllowSave = false;
-  try { LoadVideo(foldername); }
-  catch (FolderNotFoundException ex) { throw FolderNotFoundException("Video", "Video", foldername); }
+	Frames = NULL;
+	SetName(foldername);
+	AllowSave = false;
+	try { 	  
+		LoadVideo(foldername); 
+	}
+	catch (FolderNotFoundException ex) 
+	{ 
+		throw FolderNotFoundException("Video", "Video", foldername); 
+	} //end try
+}
+
+Video::Video(const char *foldername, int t_begin, int t_end)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Frames = NULL;
+	SetName(foldername);
+	AllowSave = false;
+	try { 
+		LoadVideo(foldername,t_begin,t_end); 
+	}
+	catch (FolderNotFoundException ex) 
+	{ 
+		throw FolderNotFoundException("Video", "Video", foldername); 
+	} // end try
 }
 
 /* copy constructor */
 Video::Video(const Video &src)
 {
 #ifdef USE_TRACEBACK
-  Trace->Add(__FILE__, __LINE__);
+	Trace->Add(__FILE__, __LINE__);
 #endif
-  Width = src.Width;
-  Height = src.Height;
-  AllowSave = src.AllowSave;
-  MaxVal = src.MaxVal;
-  ClearAll();
-  SetName(src.Name);
+	Width = src.Width;
+	Height = src.Height;
+	AllowSave = src.AllowSave;
+	MaxVal = src.MaxVal;
+	ClearAll();
+	SetName(src.Name);
 
-  Frames = new Picture[src.Time];
-  for (int i=0; i<src.Time; i++)
-  {
-	  Frames[i] = src.Frames[i];
-  }
+	Frames = new Picture[src.Time];
+	for (int i=0; i<src.Time; i++)
+	{
+		Frames[i] = src.Frames[i];
+	}
 }
 
 Video::~Video()
 {
 #ifdef USE_TRACEBACK
-  Trace->Add(__FILE__, __LINE__);
+	Trace->Add(__FILE__, __LINE__);
 #endif
-  delete [] Frames;
+	delete [] Frames;
 }
 
 void Video::Resize(int width, int height, int time)
 {
 #ifdef USE_TRACEBACK
-  Trace->Add(__FILE__, __LINE__);
+	Trace->Add(__FILE__, __LINE__);
 #endif
 
 }
 
 /* loads an image from a file */
-void Video::LoadVideo(const char *foldername)
+void Video::LoadVideo(const char *foldername, int t_begin, int t_end)
 {
 #ifdef USE_TRACEBACK
-  Trace->Add(__FILE__, __LINE__);
+	Trace->Add(__FILE__, __LINE__);
 #endif
-  AllowSave = false;
-  SetName(foldername);
-  if (Frames) {
-    delete Frames;
-    Frames = NULL;
-  }
+	if (Frames) {
+		delete [] Frames;
+		Frames = NULL;
+	}
 
-  vector<string> framenames = Get_FrameNames(foldername, 
-											 VIDEO_FRAME_EXT);
-  if (framenames.empty())
-    throw FolderNotFoundException("Video", "LoadVideo", foldername);
 
-  Frames = new Picture[framenames.size()];
-  for (int i = 0; i < framenames.size(); i++)
-  {
-	  printf("%d %s\n",i,framenames.at(i).c_str());
-	  string framefile = foldername+framenames.at(i);
-	  //printf("%s\n",framefile.c_str());
-	  Frames[i] = *(new Picture(framefile.c_str()));
-	  Frames[i].SetName(framenames.at(i).c_str());
-	  Frames[i].AllowedToSave(true);
-  }
+	vector<string> framenames = Get_FrameNames(foldername, 
+											   VIDEO_FRAME_EXT);
+		
+	if (framenames.empty())
+		throw FolderNotFoundException("Video", "LoadVideo", foldername);
 
-  Width = Frames[0].GetWidth();
-  Height = Frames[0].GetHeight();
-  Time = framenames.size();
-  AllowSave = true;
-  MaxVal = 255;
+	// handle default values for t_begin and t_end
+	t_begin = (t_begin>=0) ? t_begin : 0;
+	t_end = (t_end>=0) ? t_end : framenames.size()-1;
+
+	// ensure the begin and end frames are valid
+	assert((t_begin<=t_end) && (t_end<framenames.size()));
+
+	Frames = new Picture[t_end-t_begin+1];
+	for (int i = t_begin; i <= t_end; i++)
+	{
+		printf("%d %s\n",i,framenames.at(i).c_str());
+		string framefile = foldername+framenames.at(i);
+		//printf("%s\n",framefile.c_str());
+		Frames[i-t_begin].LoadPicture(framefile.c_str());
+		Frames[i-t_begin].SetName(framenames.at(i).c_str());
+		Frames[i-t_begin].AllowedToSave(true);
+	}
+
+	Width = Frames[0].GetWidth();
+	Height = Frames[0].GetHeight();
+	Time = t_end-t_begin+1;
+	AllowSave = true;
+	MaxVal = 255;
 
 }
 
@@ -174,7 +205,7 @@ void Video::SetPixelIntensity(int x, int y, int t, intensityType c)
 #endif
   if ((x >= Width) || (x < 0) ||
       (y >= Height) || (y < 0) ||
-	  (t >= Height) || (t < 0))
+	  (t >= Time) || (t < 0))
     throw IndexOutOfBoundsException("Video", "SetPixelIntensity");
   else
 	Frames[t].SetPixelIntensity(x,y,c);

@@ -22,17 +22,18 @@
 
 
 class Video {
-  private:
-    int Width, Height, Time;
-    char Name[512];
-	byte MaxVal;
-    bool AllowSave;
-	Picture *Frames;
+	private:
+		int Width, Height, Time;
+		char Name[512];
+		byte MaxVal;
+		bool AllowSave;
+		Picture *Frames;
 
-  public:
-	Video();
-    Video(int width, int height, int time);
-    Video(const char *foldername);
+	public:
+		Video();
+		Video(int width, int height, int time);
+		Video(const char *foldername);
+		Video(const char *foldername, int t_begin, int t_end);
 
     /* throw FileNotFoundException */
     Video(const Video &src);
@@ -42,7 +43,7 @@ class Video {
     void ClearAll();
 
     /* throws FileNotFoundException */
-    void LoadVideo(const char *foldername);
+    void LoadVideo(const char *foldername, int t_begin=-1, int t_end=-1);
 
     /* throws IndexOutOfBoundsException */
     void SetPixel(int x, int y, int t, pixelType c);

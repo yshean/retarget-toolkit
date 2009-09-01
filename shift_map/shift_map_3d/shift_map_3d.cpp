@@ -19,6 +19,8 @@ using namespace std;
 struct ForDataFn
 {
 	Video *src;
+	Matrix *contrast;
+	gradient3D *gradient;
 	int *assignments;
 	videoSize previous_size;
 	videoSize target_size;
@@ -27,7 +29,7 @@ struct ForDataFn
 struct ForSmoothFn
 {
 	Video *src;
-	Matrix *gradient;
+	gradient3D *gradient;
 	int *assignments;
 	videoSize previous_size;
 	videoSize target_size;
@@ -35,10 +37,57 @@ struct ForSmoothFn
 	float beta;
 };
 
+double ColorContrast(Video *src, int x, int y, int t, int l)
+{
+	int width = src->GetFrame(t)->GetWidth();
+	int height = src->GetFrame(t)->GetHeight(); 
+	int time = src->GetTime();	
+
+	double contrast = 0.0;
+	for (int t_offset=-1; t_offset<=1; t_offset++)
+		for (int y_offset=-1; y_offset<=1; y_offset++)
+			for (int x_offset=-1; x_offset<=1; x_offset++)
+				if (t+l+t_offset>=0 && t+l+t_offset<time &&
+					y+y_offset>=0 && y+y_offset<height &&
+					x+x_offset>=0 && x+x_offset<width)
+				{
+					contrast += pow((double)(src->GetFrame(t+l)->GetPixel(x,y).r-
+											 src->GetFrame(t+l+t_offset)->GetPixel(x+x_offset,y+y_offset).r),2);
+					contrast += pow((double)(src->GetFrame(t+l)->GetPixel(x,y).g-
+											 src->GetFrame(t+l+t_offset)->GetPixel(x+x_offset,y+y_offset).g),2);
+					contrast += pow((double)(src->GetFrame(t+l)->GetPixel(x,y).b-
+											 src->GetFrame(t+l+t_offset)->GetPixel(x+x_offset,y+y_offset).b),2);
+				}
+
+	return contrast;
+}
+
+double GradientContrast(gradient3D *gradient, int time, int x, int y, int t, int l)
+{
+	int width = gradient->dx[t].NumOfCols();
+	int height = gradient->dx[t].NumOfRows();
+
+	double contrast = 0.0;
+	for (int t_offset=-1; t_offset<=1; t_offset++)
+		for (int y_offset=-1; y_offset<=1; y_offset++)
+			for (int x_offset=-1; x_offset<=1; x_offset++)
+				if (t+l+t_offset>=0 && t+l+t_offset<time &&
+					y+y_offset>0 && y+y_offset<=height &&
+					x+x_offset>0 && x+x_offset<=width)
+				{
+					contrast += pow((double)(gradient->dx[t+l].Get(y,x)-
+											 gradient->dx[t+l+t_offset].Get(y+y_offset,x+x_offset)),2);
+					contrast += pow((double)(gradient->dy[t+l].Get(y,x)-
+											 gradient->dy[t+l+t_offset].Get(y+y_offset,x+x_offset)),2);
+					contrast += pow((double)(gradient->dt[t+l].Get(y,x)-
+											 gradient->dt[t+l+t_offset].Get(y+y_offset,x+x_offset)),2);
+				}
+
+	return contrast;
+}
+
 double dataFn(int p, int l, void *data)
 {
-	/*if (p==18065)
-		printf("error\n");*/
 	ForDataFn *myData = (ForDataFn *) data;
 
 	int s = p % (myData->target_size.width*myData->target_size.height);
@@ -53,24 +102,36 @@ double dataFn(int p, int l, void *data)
 	double cost = 0.0;
 	if (myData->assignments[0]<0)
 	{
-		// pixel rearrangement: 
+		// ----------- pixel rearrangement: -----------
 		// keep the leftmost/rightmost columns
+		/*
 		if (t==0 && l!=0)
 			cost = MAX_COST_VALUE;
 		if (t==myData->target_size.time-1 && 
 			l!=myData->src->GetTime()-myData->target_size.time)
 			cost = MAX_COST_VALUE;
+		*/
+		// --------------------------------------------
+
+
+		/*
+		cost += ColorContrast(myData->src,x,y,t,l);
+		cost += GradientContrast(myData->gradient,myData->src->GetTime(),
+								 x+1,y+1,t,l);
+		*/
+		cost = myData->contrast[t].Get(y+1,x+1);
 	}
 	else
 	{
-		//printf("Calculating data term for pixel (%d,%d,%d) with label %d\n",x,y,t,l);
 		if (t+assignment+l-1<0 || t+assignment+l-1>=myData->src->GetTime())
 		//if (abs(l-assignment)<=1)
-			cost = MAX_COST_VALUE;
+			cost = 100000000*MAX_COST_VALUE;
 	}
-
 	
-	return cost;
+	/*if (cost>0)
+		printf("Calculating data term for pixel (%d,%d,%d) with label %d: %f\n",x,y,t,l,cost);*/
+	//return cost;
+	return 100000/(0.01+cost);
 }
 
 double ColorDiff(Video *src, int x1, int y1, int t1, 
@@ -87,16 +148,31 @@ double ColorDiff(Video *src, int x1, int y1, int t1,
 	//printf("ColorDiff: pixels: (%d,%d) and (%d,%d) labels: %d and %d\n",x2,y2+l2,x1+x_offset,y1+l1+y_offset,l2,l1);
 	if (t2+l2>=0 && t2+l2<time && t1+l1+t_offset>=0 && t1+l1+t_offset<time)
 	{
-		//printf("(%d,%d) color components: %d,%d,%d\n",src->GetPixel(y2+l2,x2).r,src->GetPixel(y2+l2,x2).g,src->GetPixel(y2+l2,x2).b);
-		diff += pow((double)src->GetFrame(t2+l2)->GetPixel(x2,y2).r
-					-src->GetFrame(t1+l1+t_offset)->GetPixel(x1+x_offset,y1+y_offset).r,2);
-		diff += pow((double)src->GetFrame(t2+l2)->GetPixel(x2,y2).g
-					-src->GetFrame(t1+l1+t_offset)->GetPixel(x1+x_offset,y1+y_offset).g,2);
-		diff += pow((double)src->GetFrame(t2+l2)->GetPixel(x2,y2).b
-					-src->GetFrame(t1+l1+t_offset)->GetPixel(x1+x_offset,y1+y_offset).b,2);
+		int nn_t_offset = 0;
+		int nn_y_offset = 0;
+		int nn_x_offset = 0;
+		/*
+		for (int nn_t_offset=-1; nn_t_offset<=1; nn_t_offset++)
+			for (int nn_y_offset=-1; nn_y_offset<=1; nn_y_offset++)
+				for (int nn_x_offset=-1; nn_x_offset<=1; nn_x_offset++)
+				{
+					if (t2+l2+nn_t_offset>=0 && t2+l2+nn_t_offset<time &&
+						y2+nn_y_offset>=0 && y2+nn_y_offset<height &&
+						x2+nn_x_offset>=0 && x2+nn_x_offset<width &&
+						t1+l1+t_offset+nn_t_offset>=0 && t1+l1+t_offset+nn_t_offset<time)
+					{	*/
+						//printf("(%d,%d) color components: %d,%d,%d\n",src->GetPixel(y2+l2,x2).r,src->GetPixel(y2+l2,x2).g,src->GetPixel(y2+l2,x2).b);
+						diff += pow((double)src->GetFrame(t2+l2+nn_t_offset)->GetPixel(x2+nn_x_offset,y2+nn_y_offset).r-
+											src->GetFrame(t1+l1+t_offset+nn_t_offset)->GetPixel(x2+nn_x_offset,y2+nn_y_offset).r,2);
+						diff += pow((double)src->GetFrame(t2+l2+nn_t_offset)->GetPixel(x2+nn_x_offset,y2+nn_y_offset).g-
+											src->GetFrame(t1+l1+t_offset+nn_t_offset)->GetPixel(x2+nn_x_offset,y2+nn_y_offset).g,2);
+						diff += pow((double)src->GetFrame(t2+l2+nn_t_offset)->GetPixel(x2+nn_x_offset,y2+nn_y_offset).b-
+											src->GetFrame(t1+l1+t_offset+nn_t_offset)->GetPixel(x2+nn_x_offset,y2+nn_y_offset).b,2);
+					//}
+				//}
 	} else
 	{
-		diff += MAX_COST_VALUE;
+		diff += 10000*MAX_COST_VALUE;
 	}	
 	//printf("ColorDiff: finished\n");
 
@@ -104,22 +180,43 @@ double ColorDiff(Video *src, int x1, int y1, int t1,
 	return diff;
 }
 
-double GradientDiff(Matrix *gradient, int time, int x1, int y1, int t1, 
+double GradientDiff(gradient3D *gradient, int time, int x1, int y1, int t1, 
 					int x2, int y2, int t2, int l1, int l2)
 {
 	double diff = 0.0;	
-	int width = gradient[t1].NumOfCols();
-	int height = gradient[t1].NumOfRows();
+	int width = gradient->dx[t1].NumOfCols();
+	int height = gradient->dx[t1].NumOfRows();
 	int x_offset = x2-x1;
 	int y_offset = y2-y1;
 	int t_offset = t2-t1;
 
 	if (t2+l2>=0 && t2+l2<time && t1+l1+t_offset>=0 && t1+l1+t_offset<time)
 	{
-		diff += pow((gradient[t2+l2].Get(y2,x2)-gradient[t1+l1+t_offset].Get(y1+y_offset,x1+x_offset)),2);
+		int nn_t_offset = 0;
+		int nn_y_offset = 0;
+		int nn_x_offset = 0;
+
+		/*
+		for (int nn_t_offset=-1; nn_t_offset<=1; nn_t_offset++)
+			for (int nn_y_offset=-1; nn_y_offset<=1; nn_y_offset++)
+				for (int nn_x_offset=-1; nn_x_offset<=1; nn_x_offset++)
+				{
+					if (t2+l2+nn_t_offset>=0 && t2+l2+nn_t_offset<time &&
+						y2+nn_y_offset>0 && y2+nn_y_offset<=height &&
+						x2+nn_x_offset>0 && x2+nn_x_offset<=width &&
+						t1+l1+t_offset+nn_t_offset>=0 && t1+l1+t_offset+nn_t_offset<time)
+					{*/
+						diff += pow((gradient->dx[t2+l2+nn_t_offset].Get(y2+nn_y_offset,x2+nn_x_offset)-
+									gradient->dx[t1+l1+t_offset+nn_t_offset].Get(y2+nn_y_offset,x2+nn_x_offset)),2);
+						diff += pow((gradient->dy[t2+l2+nn_t_offset].Get(y2+nn_y_offset,x2+nn_x_offset)-
+									gradient->dy[t1+l1+t_offset+nn_t_offset].Get(y2+nn_y_offset,x2+nn_x_offset)),2);
+						diff += pow((gradient->dt[t2+l2+nn_t_offset].Get(y2+nn_y_offset,x2+nn_x_offset)-
+									gradient->dt[t1+l1+t_offset+nn_t_offset].Get(y2+nn_y_offset,x2+nn_x_offset)),2);
+					//}
+				//}
 	} else
 	{	
-		diff += MAX_COST_VALUE;
+		diff += 10000*MAX_COST_VALUE;
 	}
 
 	return diff;
@@ -175,7 +272,8 @@ double smoothFn(int p1, int p2, int l1, int l2, void *data)
 		cost = MAX_COST_VALUE;
 	}
 
-	//printf("smoothFn: computing cost between (%d,%d) and (%d,%d) with labels %d and %d : %d\n",y1,x1,y2,x2,l1,l2,cost);
+	/*if (cost>0)
+		printf("smoothFn: computing cost between (%d,%d,%d) and (%d,%d,%d) with labels %d and %d : %d\n",x1,y1,t1,x2,y2,t2,l1,l2,cost);*/
 	return cost;
 }
 
@@ -228,8 +326,13 @@ int *VideoGridGraph_GraphCut(Video *src, int *assignments, videoSize &target_siz
 																	  target_size.time,num_labels);
 
 		// set up the needed data to pass to function for the data costs
+		gradient3D *gradient = Gradient_3D(src);
+		Matrix *contrast = Contrast_3D(src,gradient);
+
 		ForDataFn toDataFn;
 		toDataFn.src = src;
+		toDataFn.gradient = gradient;
+		toDataFn.contrast = contrast;
 		toDataFn.assignments = assignments;
 		toDataFn.previous_size = previous_size;
 		toDataFn.target_size = target_size;
@@ -237,8 +340,7 @@ int *VideoGridGraph_GraphCut(Video *src, int *assignments, videoSize &target_siz
 
 		// smoothness comes from function pointer
 		ForSmoothFn toSmoothFn;
-		toSmoothFn.src = src;
-		Matrix *gradient = Gradient_3D(src);
+		toSmoothFn.src = src;		
 		toSmoothFn.gradient = gradient;
 		toSmoothFn.assignments = assignments;
 		toSmoothFn.previous_size = previous_size;
@@ -248,7 +350,7 @@ int *VideoGridGraph_GraphCut(Video *src, int *assignments, videoSize &target_siz
 		gc->setSmoothCost(&smoothFn, &toSmoothFn);
 
 		printf("Before optimization energy is %f\n",gc->compute_energy());
-		gc->expansion(1);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		gc->expansion();// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
 		printf("After optimization energy is %f\n",gc->compute_energy());
 		
 		int s, x, y, t;
@@ -264,7 +366,7 @@ int *VideoGridGraph_GraphCut(Video *src, int *assignments, videoSize &target_siz
 			
 			if (assignment>=0)
 			{
-				result[i] = max(assignment+gc->whatLabel(i)-1,0);
+				result[i] = min(max(assignment+gc->whatLabel(i)-1,0),src->GetTime()-1);
 			}
 			else
 			{
@@ -276,7 +378,12 @@ int *VideoGridGraph_GraphCut(Video *src, int *assignments, videoSize &target_siz
 						  target_size.height,target_size.time,target_name);
 		
 
-		delete [] gradient;
+		//delete [] gradient;
+		delete [] gradient->dx;
+		delete [] gradient->dy;
+		delete [] gradient->dt;
+		delete gradient;
+		delete [] contrast;
 		delete gc;
 	}
 	catch (GCException e){

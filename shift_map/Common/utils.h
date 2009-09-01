@@ -12,6 +12,7 @@
 #include <string>
 #include "picture.h"
 #include "video.h"
+#include "picturelist.h"
 #include "matrix.h"
 
 using namespace std;
@@ -38,14 +39,35 @@ typedef struct {
 } videoSize;
 
 typedef struct {
-  Picture *Images;
-  int Levels;
+	Picture *Images;
+	int Levels;
 } pyramidType;
 
 typedef struct {
-  Video *Videos;
-  int Levels;
+	Video *Videos;
+	int Levels;
 } videoPyramidType;
+
+typedef struct {
+	PictureList *Lists;
+	int Levels;
+} listPyramidType;
+
+typedef struct {
+	Matrix *dx;
+	Matrix *dy;
+	double total_dx;
+	double total_dy;
+} gradient2D;
+
+typedef struct {
+	Matrix *dx;
+	Matrix *dy;
+	Matrix *dt;
+	double *total_dx;
+	double *total_dy;
+	double *total_dt;
+} gradient3D;
 
 #define MAXIMUM_ITERATIONS	100
 #define SMALLEST_ERROR_CHANGE	0.01
@@ -53,19 +75,24 @@ typedef struct {
 #define MAXIMUM_LAMBDA_VALUE	pow((double)(10), (double)(15))
 
 // const for infinity energy cost
-#define MAX_COST_VALUE 1000.0//10000.0
+#define MAX_COST_VALUE 10000.0//10000.0
+#define PICTURE_FRAME_EXT "ppm"
 #define VIDEO_FRAME_EXT "ppm"
 
 double Gaussian(double x, double mean);
 double Intensity(pixelType p);
+double ColorContrast(Video *src, int x, int y, int t);
+double GradientContrast(gradient3D *gradient, int time,int x, int y, int t);
+
 int Convolve_Pixel(Picture *src, int x, int y, int kernel[][3]);
-Matrix *Gradient(Picture *src);
+gradient2D *Gradient(Picture *src);
 Picture *DrawImage(Picture *I1, Picture *I2, Matrix *M, bool UseMultiresolutionSpline);
 Matrix *Register(Picture *I1, Picture *I2, pointType InitialPoints[2][4]);
 Picture *Reduce(Picture *src);
 Picture *Expand(Picture *src);
 Picture *Laplacian(Picture *g1, Picture *g0);
 pyramidType *GaussianPyramid(Picture *src);
+Matrix *LocalScaleMap(pyramidType *pyramid, int level);
 pyramidType *LaplacianPyramid(pyramidType *gaussianPyramid);
 Picture *Collapse(pyramidType *LaplacianPyramid);
 Picture *Combine(Picture *I1, Picture *I2,
@@ -77,11 +104,23 @@ Picture *Combine(Picture *I1, Picture *I2,
 vector<string> Get_FrameNames(const char *foldername, const char *frame_ext);
 videoPyramidType *VideoPyramid(Video *src);
 Video *TemporalReduce(Video *src);
+
+int *CalcMotionComponent(gradient3D *gradient, int source_time, 
+						 int target_time, double &aveMotion);
+Picture *InterpolateFrame(Picture *left, double lweight, Picture *right, double rweight);
 Video *ReduceVideo(Video *src);
-Matrix *FrameDifference(Picture *left, Picture *right);
-Matrix *Gradient_3D(Video *src);
+Matrix *FrameDifference(Picture *left, Picture *right, double &total_dt, double threshold=0);
+gradient3D *Gradient_3D(Video *src, double threshold=0);
+Matrix *Contrast_3D(Video *src, gradient3D *gradient);
+listPyramidType *ListPyramid(PictureList *src, int levels);
+
+
 int DownsamplingIndex(int p, imageSize &target_size, 
 						imageSize &previous_size, double ratio);
 int Downsampling3DIndex(int p, videoSize &target_size, 
 						videoSize &previous_size, double ratio);
 
+/*
+ *
+ */
+int *SimpleUpsamplingMap(int *result, imageSize size, double ratio);

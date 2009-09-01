@@ -36,6 +36,7 @@ using namespace std;
 struct ForDataFn
 {
 	Picture *src;
+	gradient2D *gradient;
 	int *assignments;
 	imageSize previous_size;
 	imageSize target_size;
@@ -44,7 +45,7 @@ struct ForDataFn
 struct ForSmoothFn
 {
 	Picture *src;
-	Matrix *gradient;
+	gradient2D *gradient;
 	int *assignments;
 	imageSize target_size;
 	imageSize previous_size;
@@ -112,18 +113,19 @@ double ColorDiff(Picture *src, int x1, int y1,
 	return diff;
 }
 
-double GradientDiff(Matrix *gradient, int x1, int y1, 
+double GradientDiff(gradient2D *gradient, int x1, int y1, 
 					int x2, int y2, int l1, int l2)
 {
 	double diff = 0.0;
-	int width = gradient->NumOfCols();
-	int height = gradient->NumOfRows();
+	int width = gradient->dx->NumOfCols();
+	int height = gradient->dx->NumOfRows();
 	int x_offset = x2-x1;
 	int y_offset = y2-y1;
 
 	if (x2+l2>0 && x2+l2<=width && x1+l1+x_offset>0 && x1+l1+x_offset<=width)
 	{
-		diff += pow((gradient->Get(y2,x2+l2)-gradient->Get(y1+y_offset,x1+l1+x_offset)),2);
+		diff += pow((gradient->dx->Get(y2,x2+l2)-gradient->dx->Get(y1+y_offset,x1+l1+x_offset)),2)+
+				pow((gradient->dy->Get(y2,x2+l2)-gradient->dy->Get(y1+y_offset,x1+l1+x_offset)),2);
 	} else
 	{	
 		diff += MAX_COST_VALUE;
@@ -195,6 +197,7 @@ void SaveRetargetPicture(int *labels, Picture *src,int width, int height, char *
 	}
 
 	result->Save(result->GetName());
+	delete result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,6 +216,8 @@ int *GridGraph_GraphCut(Picture *src, int *assignments, imageSize &target_size, 
 																  num_labels);
 
 		// set up the needed data to pass to function for the data costs
+		gradient2D *gradient = Gradient(src);
+
 		ForDataFn toDataFn;
 		toDataFn.src = src;
 		toDataFn.assignments = assignments;
@@ -223,7 +228,7 @@ int *GridGraph_GraphCut(Picture *src, int *assignments, imageSize &target_size, 
 		// smoothness comes from function pointer
 		ForSmoothFn toSmoothFn;
 		toSmoothFn.src = src;
-		Matrix *gradient = Gradient(src);
+		
 		toSmoothFn.gradient = gradient;
 		toSmoothFn.assignments = assignments;
 		toSmoothFn.previous_size = previous_size;
@@ -255,6 +260,8 @@ int *GridGraph_GraphCut(Picture *src, int *assignments, imageSize &target_size, 
 		SaveRetargetPicture(result,src,target_size.width,
 							target_size.height,target_name);
 
+		delete gradient->dx;
+		delete gradient->dy;
 		delete gradient;
 		delete gc;
 	}
