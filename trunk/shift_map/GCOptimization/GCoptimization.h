@@ -375,6 +375,35 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+// Use this derived class for multiple grid graphs, which is used for
+// contextual retargeting
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+class GCoptimizationMultiGridGraph: public GCoptimization
+{
+public:
+  GCoptimizationMultiGridGraph(SiteID width,SiteID height,
+							   SiteID layer,LabelID num_labels);
+  virtual ~GCoptimizationMultiGridGraph();
+  virtual bool readyToOptimise();  
+
+protected:
+	virtual void giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights);
+	EnergyTermType *m_unityWeights;
+	int m_weightedGraph;  // true if spatially varying w_pq's are present. False otherwise.
+
+private:
+	SiteID m_width;
+	SiteID m_height;
+	SiteID m_layer;
+	SiteID *m_numNeighbors;              // holds num of neighbors
+	SiteID *m_neighbors;                 // holds neighbor indexes
+	EnergyTermType *m_neighborsWeights;    // holds neighbor weights
+	
+	void setupNeighbData(SiteID startY,SiteID endY,SiteID startX,SiteID endX,SiteID maxInd,SiteID *indexes);
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 // Use this derived class for spatial temporal grid graphs
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -404,6 +433,64 @@ private:
 						 SiteID startT, SiteID endT, SiteID maxInd, SiteID *indexes);
 	void computeNeighborWeights(EnergyTermType *vCosts,EnergyTermType *hCosts, EnergyTermType *tCosts);
 };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Use this derived class for 2D seam graphs
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+class GCoptimization2DSeamGraph: public GCoptimization
+{
+public:
+  GCoptimization2DSeamGraph(SiteID width,SiteID height,LabelID num_labels);
+  virtual ~GCoptimization2DSeamGraph();
+          
+  virtual bool readyToOptimise();  
+
+protected:
+	virtual void giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights);
+	EnergyTermType m_unityWeights[6];
+	int m_weightedGraph;  // true if spatially varying w_pq's are present. False otherwise.
+
+private:
+	SiteID m_width;
+	SiteID m_height;	
+	SiteID *m_numNeighbors;              // holds num of neighbors
+	SiteID *m_neighbors;                 // holds neighbor indexes
+	EnergyTermType *m_neighborsWeights;    // holds neighbor weights
+	
+	void setupNeighbData(SiteID startY,SiteID endY,SiteID startX,SiteID endX,SiteID maxInd,SiteID *indexes);
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Use this derived class for 3D seam graphs
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+class GCoptimization3DSeamGraph: public GCoptimization
+{
+public:
+  GCoptimization3DSeamGraph(SiteID width,SiteID height, SiteID time, LabelID num_labels);
+  virtual ~GCoptimization3DSeamGraph();
+          
+  virtual bool readyToOptimise();  
+
+protected:
+	virtual void giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights);
+	EnergyTermType m_unityWeights[10];
+	int m_weightedGraph;  // true if spatially varying w_pq's are present. False otherwise.
+
+private:
+	SiteID m_width;
+	SiteID m_height;	
+	SiteID m_time;
+	SiteID *m_numNeighbors;              // holds num of neighbors
+	SiteID *m_neighbors;                 // holds neighbor indexes
+	EnergyTermType *m_neighborsWeights;    // holds neighbor weights
+	
+	void setupNeighbData(SiteID startY,SiteID endY,SiteID startX,
+						 SiteID endX,SiteID startT, SiteID endT, 
+						 SiteID maxInd,SiteID *indexes);
+};
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 

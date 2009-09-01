@@ -59,12 +59,15 @@ int Convolve_Pixel(Picture *src, int y, int x, int kernel[][3])
 /* Calculate the gradient magnitude of the source image
  * using Prewitt Method
  */
-Matrix *Gradient(Picture *src)
+gradient2D *Gradient(Picture *src)
 {
 #ifdef USE_TRACEBACK
 	Trace->Add(__FILE__, __LINE__);
 #endif
-	Matrix *result = new Matrix(src->GetHeight(),src->GetWidth());
+	Matrix *dx = new Matrix(src->GetHeight(),src->GetWidth());
+	Matrix *dy = new Matrix(src->GetHeight(),src->GetWidth());
+	double total_dx = 0.0;
+	double total_dy = 0.0;
 
   	//Prewitt's gradient edge detector kernels, first the x direction, then the y
 	int Prewitt_Kernel_X[3][3] = 
@@ -92,43 +95,160 @@ Matrix *Gradient(Picture *src)
 			edge_y = Convolve_Pixel(src,i,j,Prewitt_Kernel_Y);
 
 			//add their weights up
-			edge_value = (abs(edge_x) + abs(edge_y));
-			result->Set(i+1,j+1,edge_value);
+			//edge_value = (abs(edge_x) + abs(edge_y));
+			//result->Set(i+1,j+1,edge_value);
+			dx->Set(i+1,j+1,abs(edge_x));
+			dy->Set(i+1,j+1,abs(edge_y));
+			
+			total_dx += abs(edge_x);
+			total_dy += abs(edge_y);
 		}
 	}
 
+	gradient2D *result = new gradient2D;
+	result->dx = dx;
+	result->dy = dy;
+	result->total_dx = total_dx;
+	result->total_dy = total_dy;
 	return result;
 }
 
 /* Calculate the spatial temporal gradient magnitude of 
  * the source image using Prewitt Method
  */
-Matrix *Gradient_3D(Video *src)
+gradient3D *Gradient_3D(Video *src, double threshold)
 {
 #ifdef USE_TRACEBACK
 	Trace->Add(__FILE__, __LINE__);
 #endif
-	Matrix *results = new Matrix[src->GetTime()];
+	Matrix *dx = new Matrix[src->GetTime()];
+	Matrix *dy = new Matrix[src->GetTime()];
+	Matrix *dt = new Matrix[src->GetTime()];
+	double *total_dx = new double[src->GetTime()];
+	double *total_dy = new double[src->GetTime()];
+	double *total_dt = new double[src->GetTime()];
+
+	gradient2D *frame_gradient = NULL;
 	for (int t=0; t<src->GetTime(); t++)
 	{
 		//results[t] = *(new Matrix(0,0));
-		results[t] = *(Gradient(src->GetFrame(t)));
-		if (t>0 && t<src->GetTime()-1)
+		// results[t] = *(Gradient(src->GetFrame(t)));
+		if (frame_gradient)
+			delete frame_gradient;
+
+		frame_gradient = Gradient(src->GetFrame(t));
+		dx[t] = *(frame_gradient->dx);
+		dy[t] = *(frame_gradient->dy);
+		total_dx[t] = frame_gradient->total_dx;
+		total_dy[t] = frame_gradient->total_dy;
+		
+		double tdt = 0.0;
+		if (t>0 && t<(src->GetTime()-1))
 		{			
-			results[t] += *(FrameDifference(src->GetFrame(t-1),src->GetFrame(t+1)));
+			//results[t] += *(FrameDifference(src->GetFrame(t-1),src->GetFrame(t+1)));
+			dt[t] = *(FrameDifference(src->GetFrame(t-1),src->GetFrame(t+1),tdt,threshold));
+			total_dt[t] = tdt;
 		}
 		else
 		{
 			int lower_t = max(t-1,0);
 			int upper_t = min(t+1,src->GetTime()-1);
-			results[t] += *(FrameDifference(src->GetFrame(lower_t),src->GetFrame(upper_t)));
+			//results[t] += *(FrameDifference(src->GetFrame(lower_t),src->GetFrame(upper_t)));
+			dt[t] = *(FrameDifference(src->GetFrame(lower_t),src->GetFrame(upper_t),tdt,threshold));
+			total_dt[t] = tdt;
 		}
 	}
+
+	gradient3D *results = new gradient3D;
+	results->dx = dx;
+	results->dy = dy;
+	results->dt = dt;
+	results->total_dx = total_dx;
+	results->total_dy = total_dy;
+	results->total_dt = total_dt;
 
 	return results;
 }
 
-Matrix *FrameDifference(Picture *left, Picture *right)
+double ColorContrast(Video *src, int x, int y, int t)
+{
+	int width = src->GetFrame(t)->GetWidth();
+	int height = src->GetFrame(t)->GetHeight(); 
+	int time = src->GetTime();	
+
+	double contrast = 0.0;
+	for (int t_offset=-1; t_offset<=1; t_offset++)
+		for (int y_offset=-1; y_offset<=1; y_offset++)
+			for (int x_offset=-1; x_offset<=1; x_offset++)
+				if (t+t_offset>=0 && t+t_offset<time &&
+					y+y_offset>=0 && y+y_offset<height &&
+					x+x_offset>=0 && x+x_offset<width)
+				{
+					contrast += pow((double)(src->GetFrame(t)->GetPixel(x,y).r-
+											 src->GetFrame(t+t_offset)->GetPixel(x+x_offset,y+y_offset).r),2);
+					contrast += pow((double)(src->GetFrame(t)->GetPixel(x,y).g-
+											 src->GetFrame(t+t_offset)->GetPixel(x+x_offset,y+y_offset).g),2);
+					contrast += pow((double)(src->GetFrame(t)->GetPixel(x,y).b-
+											 src->GetFrame(t+t_offset)->GetPixel(x+x_offset,y+y_offset).b),2);
+				}
+
+	return contrast;
+
+}
+
+double GradientContrast(gradient3D *gradient, int time,int x, int y, int t)
+{
+	int width = gradient->dx[t].NumOfCols();
+	int height = gradient->dx[t].NumOfRows(); 	
+
+	double contrast = 0.0;
+	for (int t_offset=-1; t_offset<=1; t_offset++)
+		for (int y_offset=-1; y_offset<=1; y_offset++)
+			for (int x_offset=-1; x_offset<=1; x_offset++)
+				if (t+t_offset>=0 && t+t_offset<time &&
+					y+y_offset>0 && y+y_offset<=height &&
+					x+x_offset>0 && x+x_offset<=width)
+				{
+					contrast += pow((double)(gradient->dx[t].Get(y,x)-
+											 gradient->dx[t+t_offset].Get(y+y_offset,x+x_offset)),2);
+					contrast += pow((double)(gradient->dy[t].Get(y,x)-
+											 gradient->dy[t+t_offset].Get(y+y_offset,x+x_offset)),2);
+					contrast += pow((double)(gradient->dt[t].Get(y,x)-
+											 gradient->dt[t+t_offset].Get(y+y_offset,x+x_offset)),2);
+				}
+
+	return contrast;
+
+}
+
+/* Calculate the spatial temporal contrast of 
+ * the source video using Prewitt Method
+ */
+Matrix *Contrast_3D(Video *src, gradient3D *gradient)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Matrix *contrast = new Matrix[src->GetTime()];
+	for (int t=0; t<src->GetTime(); t++)
+		contrast[t] = *(new Matrix(src->GetFrame(t)->GetHeight(),
+								   src->GetFrame(t)->GetWidth()));
+
+	for (int t=0; t<src->GetTime(); t++)
+		for (int y=0; y<src->GetFrame(t)->GetHeight(); y++)
+			for (int x=0; x<src->GetFrame(t)->GetWidth(); x++)
+			{
+				double local_contrast = ColorContrast(src,x,y,t);
+				local_contrast += GradientContrast(gradient,src->GetTime(),x+1,y+1,t);
+
+				contrast[t].Set(y+1,x+1,local_contrast);
+			}
+
+	return contrast;
+}
+
+
+Matrix *FrameDifference(Picture *left, Picture *right, double &total_dt, double threshold)
 {
 	if ((left->GetHeight() != right->GetHeight()) ||
 		(right->GetWidth() != right->GetWidth()))
@@ -136,12 +256,18 @@ Matrix *FrameDifference(Picture *left, Picture *right)
 
 	Matrix *result = new Matrix(left->GetHeight(),left->GetWidth());
 
+	total_dt = 0.0;
 	for (int x=0; x<left->GetWidth(); x++)
 	{
 		for (int y=0; y<left->GetHeight(); y++)
 		{
 			result->Set(y+1,x+1,
-					abs(left->GetPixelIntensity(x,y).r-right->GetPixelIntensity(x,y).r));
+					abs(left->GetPixelIntensity(x,y).r-right->GetPixelIntensity(x,y).r)+
+					abs(left->GetPixelIntensity(x,y).g-right->GetPixelIntensity(x,y).g)+
+					abs(left->GetPixelIntensity(x,y).b-right->GetPixelIntensity(x,y).b));
+
+			if (result->Get(y+1,x+1)>threshold)
+				total_dt += result->Get(y+1,x+1);
 		}
 	}
 
@@ -782,6 +908,17 @@ pyramidType *GaussianPyramid(Picture *src)
   return result;
 }
 
+/* construct a scale map corresponding to some level in the 
+ * pyramid, whose element indicates the local scale. This  
+ * local scale is decided by the local maximum.
+ */
+Matrix *LocalScaleMap(pyramidType *pyramid, int level)
+{
+	Matrix *result = new Matrix(pyramid->Images[level].GetHeight(),
+								pyramid->Images[level].GetWidth());	
+	return result;
+}
+
 /*  constructs a Laplacian pyramid, given a Gaussian pyramid
  *  as described in the Burt-Adelson paper
  */
@@ -1147,6 +1284,148 @@ Video *TemporalReduce(Video *src)
 	return result;
 }
 
+int *CalcMotionComponent(gradient3D *gradient, int source_time, 
+						 int target_time, double &aveMotion)
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+	int *keyframes = new int[source_time];
+	for (int i = 0; i < source_time; i++)
+		keyframes[i] = 0;
+
+	int kf_exist = 1;
+	int left_time = target_time;
+	while (kf_exist>0)
+	{
+		aveMotion = 0.0;
+		for (int t = 0; t < source_time; t++)
+		{
+			if (keyframes[t]==0)
+				aveMotion += gradient->total_dt[t];
+		}
+		aveMotion = aveMotion/left_time;
+
+		kf_exist = 0;
+		for (int t = 0; t < source_time; t++)
+		{
+			if (gradient->total_dt[t]>aveMotion &&
+				keyframes[t]==0)
+			{
+				keyframes[t] = 1;			
+				kf_exist++;
+				left_time--;
+			}
+		}
+	}
+
+	return keyframes;
+}
+
+Picture *InterpolateFrame(Picture *left, double lweight, Picture *right, double rweight)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Picture *result = new Picture(left->GetWidth(),left->GetHeight());
+
+	if ((left->GetHeight()!=right->GetHeight()) || 
+		(left->GetWidth()!=right->GetWidth()))
+		throw IncompatibleDimensionsException("Video", "InterpolateFrame");
+	else {		
+		for( int i = 0; i < left->GetHeight(); i++ )
+		{
+			for( int j = 0; j < left->GetWidth(); j++ )
+			{
+				pixelType value;
+				pixelType lvalue = left->GetPixel(j,i);
+				pixelType rvalue = right->GetPixel(j,i);
+				value.r = lweight*lvalue.r+rweight*rvalue.r;
+				value.r = min(floor(value.r+0.5),255);
+				value.g = lweight*lvalue.g+rweight*rvalue.g;
+				value.g = min(floor(value.g+0.5),255);
+				value.b = lweight*lvalue.b+rweight*rvalue.b;
+				value.b = min(floor(value.b+0.5),255);
+				result->SetPixel(j,i,value);
+			}
+		}
+	}
+
+	return result;
+}
+
+
+PictureList *ReduceList(PictureList *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Picture *list = new Picture[src->GetLength()];
+
+	int minWidth = -1; int minHeight = -1;
+	int maxWidth = -1; int maxHeight = -1;
+	for (int l = 0; l < src->GetLength(); l++)
+	{
+		if (src->GetPicture(l)->GetWidth()>8 &&
+			src->GetPicture(l)->GetHeight()>8)
+		{
+			list[l] = *(Reduce(src->GetPicture(l)));
+			minWidth = ((list[l].GetWidth()<minWidth) || 
+						(minWidth==-1)) ? 
+						list[l].GetWidth() : minWidth;
+			maxWidth = ((list[l].GetWidth()>maxWidth) || 
+						(maxWidth==-1)) ? 
+						list[l].GetWidth() : maxWidth;
+			minHeight = ((list[l].GetHeight()<minHeight) ||
+						 (minHeight==-1)) ? 
+						list[l].GetHeight() : minHeight;
+			maxHeight = ((list[l].GetHeight()>maxHeight) ||
+						 (maxHeight==-1)) ? 
+						list[l].GetHeight() : maxHeight;
+		}		
+		else
+		{
+			// throw exception
+		}
+	}
+
+	PictureList *result = new PictureList(minWidth,minHeight,src->GetLength());
+	result->SetList(list,src->GetLength());
+	result->SetMinWidth(minWidth);
+	result->SetMaxWidth(maxWidth);
+	result->SetMinHeight(minHeight);
+	result->SetMaxHeight(maxHeight);
+
+	return result;
+}
+
+listPyramidType *ListPyramid(PictureList *src, int levels)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	listPyramidType *result = new listPyramidType;
+
+	cout << "Computing Gaussian Pyramid for picture list \n";
+	//result->Lists = new PictureList[(int) ceil(log((double)levels)) + 2];
+	result->Lists = new PictureList[levels];
+	result->Lists[0] = *src;
+	result->Levels = 1;
+
+	for (int l = 1; l < levels; l++)
+	{
+		PictureList *list = ReduceList(&result->Lists[result->Levels - 1]);
+		result->Lists[result->Levels] = *list;
+		result->Levels++;
+		delete list;
+	}
+
+  return result;
+}
+
+/*
+ *
+ */
 int DownsamplingIndex(int p, imageSize &target_size, imageSize &previous_size, double ratio)
 {
 	int x = floor((double)(p % target_size.width)/ratio);
@@ -1189,4 +1468,28 @@ int Downsampling3DIndex(int p, videoSize &target_size, videoSize &previous_size,
 		idx--;
 
 	return idx;
+}
+
+/*
+ *
+ */
+int *SimpleUpsamplingMap(int *result, imageSize size, double ratio)
+{
+	imageSize up_size;
+	up_size.width = round(size.width*ratio);
+	up_size.height = round(size.height*ratio);
+	int *up_result = new int[up_size.width*up_size.height];
+
+	for (int y = 0; y < up_size.height; y++)
+	{
+		for (int x = 0; x < up_size.width; x++)
+		{
+			int p = y*up_size.width+x;
+			int idx = DownsamplingIndex(p,up_size,size,ratio);
+			int label = ceil((double)result[idx]*ratio);
+			up_result[p] = label;
+		} // end for x
+	} // end for y
+
+	return up_result;
 }
