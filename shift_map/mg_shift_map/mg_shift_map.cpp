@@ -105,11 +105,12 @@ double dataFn(int p, int l, void *data)
 
 	// motion saliency
 	// TODO: improve motion saliency calculation
-	cost = 0.01/(0.01+10000*myData->saliency->Get(y+1,x+l+1));
-	cost += 0.01/(0.01+10000*myData->gradient->dx->Get(y+1,x+l+1));
-	cost += 0.01/(0.01+10000*myData->gradient->dy->Get(y+1,x+l+1));
-	
-	return cost;
+	cost = 1/(0.01+myData->saliency->Get(y+1,x+l+1));
+	//cost += 0.01/(0.01+1000*myData->gradient->dx->Get(y+1,x+l+1));
+	//cost += 0.01/(0.01+1000*myData->gradient->dy->Get(y+1,x+l+1));
+	//printf("data cost for (%d,%d) is %f\n",x+l,y,myData->saliency->Get(y+1,x+l+1));
+
+	return 0.01*cost;
 }
 
 /*
@@ -127,19 +128,19 @@ double MGDataFn(int p, int l, void *data)
 	// preserve temporal consistency
 	int cur_match = x+l;
 	int pre_match = x+myData->pre_assignments[p];
-	cost += pow(myData->pre->GetPixelIntensity(cur_match,y).r-
-				myData->pre->GetPixelIntensity(pre_match,y).r,2.0);
-	cost += pow(myData->pre->GetPixelIntensity(cur_match,y).g-
-				myData->pre->GetPixelIntensity(pre_match,y).g,2.0);		
-	cost += pow(myData->pre->GetPixelIntensity(cur_match,y).b-
-				myData->pre->GetPixelIntensity(pre_match,y).b,2.0);
+	cost += pow(myData->src->GetPixelIntensity(cur_match,y).r-
+				myData->src->GetPixelIntensity(pre_match,y).r,2.0);
+	cost += pow(myData->src->GetPixelIntensity(cur_match,y).g-
+				myData->src->GetPixelIntensity(pre_match,y).g,2.0);		
+	cost += pow(myData->src->GetPixelIntensity(cur_match,y).b-
+				myData->src->GetPixelIntensity(pre_match,y).b,2.0);
 
 	// TODO: whether integrated with saliency?
-	//cost += 0.01/(0.01+10000*myData->saliency->Get(y+1,x+l+1));
+	//cost += 1/(0.01+myData->saliency->Get(y+1,x+l+1));
 	//cost += 0.01/(0.01+10000*(myData->gradient->dx->Get(y+1,x+l+1)));
 	//cost += 0.01/(0.01+10000*(myData->gradient->dy->Get(y+1,x+l+1)));
 	
-	return cost;
+	return 0.01*cost;
 }
 
 
@@ -257,8 +258,9 @@ void SaveRetargetPicture(int *labels, Picture *src,int width, int height, char *
 /*
  * Function to find the optimal shift-map
  */
-int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignments, imageSize &target_size, 
-						imageSize &previous_size, int num_labels, float alpha, float beta, char *target_name)
+int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignments, 
+						imageSize &target_size, imageSize &previous_size, int num_labels, 
+						float alpha, float beta, char *target_path, Matrix *saliency_map)
 {
 	Picture *cur_frame, *pre_frame;
 	if (t==0)
@@ -268,12 +270,11 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignm
 	}
 	else
 	{
-		pre_frame = src->Lists[level].GetPicture(1);
+		pre_frame = src->Lists[level].GetPicture(0);
 		cur_frame = src->Lists[level].GetPicture(1);
 	}
 	// set up the needed data to pass to function for the data costs
 	double tdt;
-	Matrix *saliency = FrameDifference(cur_frame,pre_frame,tdt,0.0);
 	gradient2D *gradient = Gradient(cur_frame);
 
 
@@ -289,26 +290,23 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignm
 		// TODO: replace the hardcode of gradient threoshold
 		// for shot boundary
 		// data terms comes from function pointer
-		if (t==0 || tdt>10000)
+		if (t==0)
 		{
 			ForDataFn toDataFn;
 			toDataFn.src = cur_frame;
 			toDataFn.gradient = gradient;
-			toDataFn.saliency = saliency;
+			toDataFn.saliency = saliency_map;
 			toDataFn.target_size = target_size;
 			toDataFn.previous_size = previous_size;
 			gc->setDataCost(&dataFn,&toDataFn);
 		}
 		else
 		{
-			Picture *pre_frame = src->Lists[level].GetPicture(0);
-			saliency = FrameDifference(cur_frame,pre_frame,tdt,0.0);
-
 			ForMGDataFn toDataFn;
 			toDataFn.src = cur_frame;
 			toDataFn.pre = pre_frame;
 			toDataFn.gradient = gradient;
-			toDataFn.saliency = saliency;
+			toDataFn.saliency = saliency_map;
 			toDataFn.pre_assignments = pre_assignments;
 			toDataFn.target_size = target_size;
 			toDataFn.previous_size = previous_size;
@@ -328,7 +326,7 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignm
 		gc->setSmoothCost(&smoothFn, &toSmoothFn);
 
 		printf("Before optimization energy is %f\n",gc->compute_energy());
-		gc->expansion(1);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		gc->expansion();// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
 		printf("After optimization energy is %f\n",gc->compute_energy());
 
 		// obtain the labels
@@ -343,9 +341,13 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignm
 		// to high-resolution
 		double ratio = pow(2.0,level);
 		int *up_result = SimpleUpsamplingMap(result,target_size,ratio);
+		delete [] result;
 
 		// generate and save retargeted images
 		// from source and shift-map
+		char target_name[512] = {'\0'};
+		strcat(target_name,target_path);
+		strcat(target_name,cur_frame->GetName());
 		Picture *up_frame;
 		if (t==0)
 			up_frame = src->Lists[0].GetPicture(0);
@@ -371,13 +373,36 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, int t, int *pre_assignm
 }
 
 /*
+ *
+ */
+Matrix *Simple_SaliencyMap(PictureList *frames, int time)
+{
+	double tdt = 0.0;
+	Matrix *result = new Matrix(frames->GetPicture(0)->GetHeight(),frames->GetPicture(0)->GetWidth());
+	result->LoadZero();
+	for (int t = 0; t < time-1; t++)
+	{
+		Matrix *gradient = FrameDifference(frames->GetPicture(t),frames->GetPicture(t+1),tdt,30.0);
+		for (int i = 1; i <= gradient->NumOfRows(); i++)
+			for (int j = 1; j <= gradient->NumOfCols(); j++)
+				result->Set(i,j,result->Get(i,j)+gradient->Get(i,j));
+		delete gradient;
+	}
+
+	return result;
+}
+
+/*
  * main entry of the grogram
  */ 
 int main(int argc, char **argv)
 {
 	PictureList *input = NULL;
-	int width, height, time;
+	PictureList *shot = NULL;
 	listPyramidType *vpyramid = NULL;
+	listPyramidType *spyramid = NULL;
+	int width, height, time;
+	Matrix *saliency_map = NULL;
 	int num_pixels, num_labels;
 	int *assignments = NULL;	// store shift labels of every pixel
 	imageSize target_size, previous_size;
@@ -394,6 +419,14 @@ int main(int argc, char **argv)
 											  PICTURE_FRAME_EXT);
 
 	int level = 2; // gpyramid->Levels-1
+	shot = new PictureList(argv[1]);
+	spyramid = ListPyramid(shot,level+1);
+	saliency_map = Simple_SaliencyMap(&(spyramid->Lists[level]),filenames.size());
+	
+	delete shot;
+	delete [] spyramid->Lists;
+	delete spyramid;
+
 	for (int t = 0; t < filenames.size(); t++)
 	{
 		cout << "Processing " << t << "th frames ..." << endl;
@@ -414,18 +447,9 @@ int main(int argc, char **argv)
 		target_size.height = height;
 		previous_size.width = 0;
 		previous_size.height = 0;	
-
-		// smoothness and data costs are set up using functions
-		char framename[512] = {'\0'};
-		char buf[512] = {'\0'};
-
-		strcat(framename,argv[5]);
-		sprintf(buf,"%04d.ppm",t);
-		strcat(framename,buf);
-		
 		
 		assignments = GridGraph_GraphCut(vpyramid,level,t,assignments,target_size,previous_size,
-										 num_labels,atof(argv[2]),atof(argv[3]),framename);
+										 num_labels,atof(argv[2]),atof(argv[3]),argv[5],saliency_map);
 
 		//delete framename;
 		//delete buf;
@@ -436,6 +460,7 @@ int main(int argc, char **argv)
 
 	
 	delete [] assignments;
+	delete saliency_map;
 
 	return 1;
 
