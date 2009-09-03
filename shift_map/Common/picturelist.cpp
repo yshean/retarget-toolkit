@@ -106,6 +106,7 @@ PictureList::PictureList(const PictureList &src)
   for (int i=0; i<src.Length; i++)
   {
 	  List[i] = src.List[i];
+	  List[i].SetName(src.List[i].GetName());
   }
 }
 
@@ -310,6 +311,7 @@ PictureList &PictureList::operator =(PictureList &src)
 	for (int i=0; i<src.Length; i++)
 	{
 		List[i] = src.List[i];
+		List[i].SetName(src.List[i].GetName());
 	}
 
   return *this;
