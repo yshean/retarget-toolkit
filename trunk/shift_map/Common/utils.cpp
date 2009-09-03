@@ -268,6 +268,8 @@ Matrix *FrameDifference(Picture *left, Picture *right, double &total_dt, double 
 
 			if (result->Get(y+1,x+1)>threshold)
 				total_dt += result->Get(y+1,x+1);
+			else
+				result->Set(y+1,x+1,0.0);
 		}
 	}
 
@@ -1370,6 +1372,7 @@ PictureList *ReduceList(PictureList *src)
 			src->GetPicture(l)->GetHeight()>8)
 		{
 			list[l] = *(Reduce(src->GetPicture(l)));
+			list[l].SetName(src->GetPicture(l)->GetName());
 			minWidth = ((list[l].GetWidth()<minWidth) || 
 						(minWidth==-1)) ? 
 						list[l].GetWidth() : minWidth;
