@@ -1027,7 +1027,100 @@ void GCoptimization2DSeamGraph::giveNeighborInfo(SiteID site, SiteID *numSites, 
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Functions for the GCoptimization3DGridGraph, derived from GCoptimization
+// Functions for the GCoptimizationFwdEn2DSeamGraph, derived from GCoptimization
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+GCoptimizationFwdEn2DSeamGraph::GCoptimizationFwdEn2DSeamGraph(SiteID width, SiteID height,LabelID num_labels)
+						:GCoptimization(width*height,num_labels)
+{
+	printf("Create 2D Forward Energy Seam Graph\n");
+	assert( (width > 1) && (height > 1) && (num_labels > 1 ));
+
+	m_weightedGraph = 0;
+
+	for (int  i = 0; i < 8; i ++ )	m_unityWeights[i] = 1;
+
+	m_width  = width;
+	m_height = height;
+
+	m_numNeighbors = new SiteID[m_num_sites];
+	m_neighbors = new SiteID[8*m_num_sites];
+
+	SiteID indexes[8] = {-1,1,-m_width,m_width,-m_width-1,-m_width+1,m_width-1,m_width+1};
+
+	SiteID indexesL[5] = {1, -m_width, m_width, -m_width+1, m_width+1};
+	SiteID indexesR[5] = {-1, -m_width, m_width, -m_width-1, m_width-1};
+	SiteID indexesU[5] = {-1, 1, m_width, m_width-1, m_width+1};
+	SiteID indexesD[5] = {-1, 1, -m_width-1, -m_width-1, -m_width+1};
+
+	SiteID indexesUL[3] = {1, m_width, m_width+1};
+	SiteID indexesUR[3] = {-1, m_width, m_width-1};
+	SiteID indexesDL[3] = {1, -m_width, -m_width+1};
+	SiteID indexesDR[3] = {-1, -m_width, -m_width-1};
+    
+	setupNeighbData(1,m_height-1,1,m_width-1,8,indexes);
+
+	setupNeighbData(1,m_height-1,0,1,5,indexesL);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,5,indexesR);
+	setupNeighbData(0,1,1,width-1,5,indexesU);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,5,indexesD);
+
+	setupNeighbData(0,1,0,1,3,indexesUL);
+	setupNeighbData(0,1,m_width-1,m_width,3,indexesUR);
+	setupNeighbData(m_height-1,m_height,0,1,3,indexesDL);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,3,indexesDR);
+}
+
+//-------------------------------------------------------------------
+
+GCoptimizationFwdEn2DSeamGraph::~GCoptimizationFwdEn2DSeamGraph()
+{
+	delete [] m_numNeighbors;
+	delete [] m_neighbors;
+	if (m_weightedGraph) delete [] m_neighborsWeights;
+}
+
+
+//-------------------------------------------------------------------
+
+void GCoptimizationFwdEn2DSeamGraph::setupNeighbData(SiteID startY,SiteID endY,SiteID startX,
+											  SiteID endX,SiteID maxInd,SiteID *indexes)
+{
+	SiteID x,y,pix;
+	SiteID n;
+
+	for ( y = startY; y < endY; y++ )
+		for ( x = startX; x < endX; x++ )
+		{
+			pix = x+y*m_width;
+			m_numNeighbors[pix] = maxInd;
+
+			for (n = 0; n < maxInd; n++ )
+				m_neighbors[pix*8+n] = pix+indexes[n];
+		}
+}
+
+//-------------------------------------------------------------------
+
+bool GCoptimizationFwdEn2DSeamGraph::readyToOptimise()
+{
+	GCoptimization::readyToOptimise();
+	return(true);
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimizationFwdEn2DSeamGraph::giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights)
+{
+	*numSites  = m_numNeighbors[site];
+	*neighbors = &m_neighbors[site*8];
+	
+	if (m_weightedGraph) *weights  = &m_neighborsWeights[site*8];
+	else *weights = m_unityWeights;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions for the GCoptimization3DSeamGraph, derived from GCoptimization
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 GCoptimization3DSeamGraph::GCoptimization3DSeamGraph(SiteID width, SiteID height,SiteID time, LabelID num_labels)
@@ -1051,27 +1144,43 @@ GCoptimization3DSeamGraph::GCoptimization3DSeamGraph(SiteID width, SiteID height
 	SiteID indexes[10] = {-1,1,-m_width-1,-m_width+1,m_width-1,m_width+1,
 						  -m_width*m_height-1,-m_width*m_height+1,m_width*m_height-1,m_width*m_height+1};
 
-	SiteID indexesL[5] = {1, -m_width+1, m_width+1, -m_width*m_height+1, m_width*m_height+1}; 
-	SiteID indexesR[5] = {-1, -m_width-1, m_width-1, -m_width*m_height-1, m_width*m_height-1};
-	SiteID indexesU[8] = {-1, 1, m_width-1, m_width+1, -m_width*m_height-1, -m_width*m_height+1, 
-						  m_width*m_height-1, m_width*m_height+1}; 
-	SiteID indexesD[8] = {-1, 1, -m_width-1, -m_width+1, -m_width*m_height-1, -m_width*m_height+1, 
-						  m_width*m_height-1, m_width*m_height+1};
-	SiteID indexesF[8] = {-1,1,-m_width-1,-m_width+1,m_width-1,m_width+1, m_width*m_height-1, m_width*m_height+1};
-	SiteID indexesE[8] = {-1,1,-m_width-1,-m_width+1,m_width-1,m_width+1, -m_width*m_height-1, -m_width*m_height+1};
+	SiteID indexesL[5] = {1, -m_width+1, m_width+1, 
+							-m_width*m_height+1, m_width*m_height+1}; 
+	SiteID indexesR[5] = {-1, -m_width-1, m_width-1, 
+							-m_width*m_height-1, m_width*m_height-1};
+	SiteID indexesU[8] = {-1, 1, m_width-1, m_width+1, 
+							-m_width*m_height-1, -m_width*m_height+1, m_width*m_height-1, m_width*m_height+1}; 
+	SiteID indexesD[8] = {-1, 1, -m_width-1, -m_width+1, 
+							-m_width*m_height-1, -m_width*m_height+1, m_width*m_height-1, m_width*m_height+1};
+	SiteID indexesF[8] = {-1,1,-m_width-1,-m_width+1,m_width-1,m_width+1, 
+							m_width*m_height-1, m_width*m_height+1};
+	SiteID indexesE[8] = {-1,1,-m_width-1,-m_width+1,m_width-1,m_width+1, 
+							-m_width*m_height-1, -m_width*m_height+1};
 
-	SiteID indexesUL[4] = {1,m_width+1,-m_width*m_height+1,m_width*m_height+1};
-	SiteID indexesUR[4] = {-1,m_width-1,-m_width*m_height-1,m_width*m_height-1};
-	SiteID indexesUF[6] = {-1,1,m_width-1,m_width+1,m_width*m_height+1,m_width*m_height-1};
-	SiteID indexesUE[6] = {-1,1,m_width-1,m_width+1,-m_width*m_height+1,-m_width*m_height-1};
-	SiteID indexesDL[4] = {1,-m_width+1,-m_width*m_height+1,m_width*m_height+1};
-	SiteID indexesDR[4] = {-1,-m_width-1,-m_width*m_height-1,m_width*m_height-1};
-	SiteID indexesDF[6] = {-1,1,-m_width-1,-m_width+1,m_width*m_height-1,m_width*m_height+1};
-	SiteID indexesDE[6] = {-1,1,-m_width-1,-m_width+1,-m_width*m_height-1,-m_width*m_height+1};
-	SiteID indexesLF[4] = {1,-m_width+1,m_width+1,m_width*m_height+1};
-	SiteID indexesRF[4] = {-1,-m_width-1,m_width-1,m_width*m_height-1};
-	SiteID indexesLE[4] = {1,-m_width+1,m_width+1,-m_width*m_height+1};
-	SiteID indexesRE[4] = {-1,-m_width-1,m_width-1,-m_width*m_height-1};
+	SiteID indexesUL[4] = {1,m_width+1,
+							-m_width*m_height+1,m_width*m_height+1};
+	SiteID indexesUR[4] = {-1,m_width-1,
+							-m_width*m_height-1,m_width*m_height-1};
+	SiteID indexesUF[6] = {-1,1,m_width-1,m_width+1,
+							m_width*m_height+1,m_width*m_height-1};
+	SiteID indexesUE[6] = {-1,1,m_width-1,m_width+1,
+							-m_width*m_height+1,-m_width*m_height-1};
+	SiteID indexesDL[4] = {1,-m_width+1,
+							-m_width*m_height+1,m_width*m_height+1};
+	SiteID indexesDR[4] = {-1,-m_width-1,
+							-m_width*m_height-1,m_width*m_height-1};
+	SiteID indexesDF[6] = {-1,1,-m_width-1,-m_width+1,
+							m_width*m_height-1,m_width*m_height+1};
+	SiteID indexesDE[6] = {-1,1,-m_width-1,-m_width+1,
+							-m_width*m_height-1,-m_width*m_height+1};
+	SiteID indexesLF[4] = {1,-m_width+1,m_width+1,
+							m_width*m_height+1};
+	SiteID indexesRF[4] = {-1,-m_width-1,m_width-1,
+							m_width*m_height-1};
+	SiteID indexesLE[4] = {1,-m_width+1,m_width+1,
+							-m_width*m_height+1};
+	SiteID indexesRE[4] = {-1,-m_width-1,m_width-1,
+							-m_width*m_height-1};
 	
 	SiteID indexesLUF[3] = {1, m_width+1, m_width*m_height+1}; 
 	SiteID indexesRUF[3] = {-1, m_width-1, m_width*m_height-1}; 
@@ -1165,6 +1274,167 @@ void GCoptimization3DSeamGraph::giveNeighborInfo(SiteID site, SiteID *numSites, 
 	else *weights = m_unityWeights;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions for the GCoptimizationFwdEn3DGridGraph, derived from GCoptimization
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+GCoptimizationFwdEn3DSeamGraph::GCoptimizationFwdEn3DSeamGraph(SiteID width, SiteID height,SiteID time, LabelID num_labels)
+						:GCoptimization(width*height*time,num_labels)
+{
+	
+	printf("Create 3D Forward Energy Seam Graph\n");
+	assert( (width > 1) && (height > 1) && (time>1) && (num_labels > 1 ));
+
+	m_weightedGraph = 0;
+
+	for (int  i = 0; i < 14; i ++ )	m_unityWeights[i] = 1;
+
+	m_width  = width;
+	m_height = height;
+	m_time = time;
+
+	m_numNeighbors = new SiteID[m_num_sites];
+	m_neighbors = new SiteID[14*m_num_sites];
+
+	SiteID indexes[14] = {-1,1,-m_width,m_width,-m_width-1,-m_width+1,m_width-1,m_width+1,
+						  -m_width*m_height,m_width*m_height,-m_width*m_height-1,-m_width*m_height+1,m_width*m_height-1,m_width*m_height+1};
+
+	SiteID indexesL[9] = {1, -m_width, m_width, -m_width+1, m_width+1, 
+							-m_width*m_height, m_width*m_height, -m_width*m_height+1, m_width*m_height+1}; 
+	SiteID indexesR[9] = {-1, -m_width, m_width, -m_width-1, m_width-1, 
+							-m_width*m_height, m_width*m_height, -m_width*m_height-1, m_width*m_height-1};
+	SiteID indexesU[11] = {-1, 1, m_width, m_width-1, m_width+1, 
+							-m_width*m_height, m_width*m_height, -m_width*m_height-1, -m_width*m_height+1, m_width*m_height-1, m_width*m_height+1}; 
+	SiteID indexesD[11] = {-1, 1, -m_width, -m_width-1, -m_width+1, 
+							-m_width*m_height, m_width*m_height, -m_width*m_height-1, -m_width*m_height+1, m_width*m_height-1, m_width*m_height+1};
+	SiteID indexesF[11] = {-1, 1, -m_width, m_width, -m_width-1, -m_width+1, m_width-1, m_width+1, 
+							m_width*m_height, m_width*m_height-1, m_width*m_height+1};
+	SiteID indexesE[11] = {-1, 1, -m_width, m_width, -m_width-1, -m_width+1, m_width-1, m_width+1, 
+							-m_width*m_height, -m_width*m_height-1, -m_width*m_height+1};
+
+	SiteID indexesUL[7] = {1, m_width, m_width+1,
+							-m_width*m_height, m_width*m_height, -m_width*m_height+1, m_width*m_height+1};
+	SiteID indexesUR[7] = {-1, m_width, m_width-1,
+							-m_width*m_height, m_width*m_height, -m_width*m_height-1, m_width*m_height-1};
+	SiteID indexesUF[8] = {-1, 1, m_width, m_width-1, m_width+1, 
+							m_width*m_height, m_width*m_height-1, m_width*m_height+1};
+	SiteID indexesUE[8] = {-1, 1, m_width, m_width-1, m_width+1, 
+							-m_width*m_height, -m_width*m_height-1, -m_width*m_height+1};
+	SiteID indexesDL[7] = {1, -m_width, -m_width+1, 
+							-m_width*m_height, m_width*m_height, -m_width*m_height+1, m_width*m_height+1};
+	SiteID indexesDR[7] = {-1, -m_width, -m_width-1, 
+							-m_width*m_height, m_width*m_height, -m_width*m_height-1, m_width*m_height-1};
+	SiteID indexesDF[8] = {-1, 1, -m_width, -m_width-1, -m_width+1, 
+							m_width*m_height, m_width*m_height-1, m_width*m_height+1};
+	SiteID indexesDE[8] = {-1, 1, -m_width, -m_width-1, -m_width+1, 
+							-m_width*m_height, -m_width*m_height-1, -m_width*m_height+1};
+	SiteID indexesLF[7] = {1, -m_width, m_width, -m_width+1, m_width+1, 
+							m_width*m_height, m_width*m_height+1};
+	SiteID indexesRF[7] = {-1, -m_width, m_width, -m_width-1, m_width-1, 
+							m_width*m_height, m_width*m_height-1};
+	SiteID indexesLE[7] = {1, -m_width, m_width, -m_width+1, m_width+1, 
+							-m_width*m_height, -m_width*m_height+1};
+	SiteID indexesRE[7] = {-1, -m_width, m_width, -m_width-1, m_width-1, 
+							-m_width*m_height, -m_width*m_height-1};
+	
+	SiteID indexesLUF[5] = {1, m_width, m_width+1, 
+							m_width*m_height, m_width*m_height+1}; 
+	SiteID indexesRUF[5] = {-1, m_width, m_width-1, 
+							m_width*m_height, m_width*m_height-1}; 
+	SiteID indexesLDF[5] = {1, -m_width, -m_width+1, 
+							m_width*m_height, m_width*m_height+1}; 
+	SiteID indexesRDF[5] = {-1, -m_width, -m_width-1, 
+							m_width*m_height, m_width*m_height-1};
+	SiteID indexesLUE[5] = {1, m_width, m_width+1, 
+							-m_width*m_height, -m_width*m_height+1}; 
+	SiteID indexesRUE[5] = {-1, m_width, m_width-1, 
+							-m_width*m_height, -m_width*m_height-1}; 
+	SiteID indexesLDE[5] = {1, -m_width, -m_width+1, 
+							-m_width*m_height, -m_width*m_height+1}; 
+	SiteID indexesRDE[5] = {-1, -m_width, -m_width-1, 
+							-m_width*m_height, -m_width*m_height-1};
+			
+	setupNeighbData(1,m_height-1,1,m_width-1,1,m_time-1,14,indexes);
+
+	setupNeighbData(1,m_height-1,0,1,1,m_time-1,9,indexesL);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,1,m_time-1,9,indexesR);
+	setupNeighbData(0,1,1,m_width-1,1,m_time-1,11,indexesU);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,1,m_time-1,11,indexesD);
+	setupNeighbData(1,m_height-1,1,m_width-1,0,1,11,indexesF);
+	setupNeighbData(1,m_height-1,1,m_width-1,m_time-1,m_time,11,indexesE);
+
+	setupNeighbData(0,1,0,1,1,m_time-1,7,indexesUL);
+	setupNeighbData(0,1,m_width-1,m_width,1,m_time-1,7,indexesUR);
+	setupNeighbData(0,1,1,m_width-1,0,1,8,indexesUF);
+	setupNeighbData(0,1,1,m_width-1,m_time-1,m_time,8,indexesUE);
+	setupNeighbData(m_height-1,m_height,0,1,1,m_time-1,7,indexesDL);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,1,m_time-1,7,indexesDR);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,0,1,8,indexesDF);
+	setupNeighbData(m_height-1,m_height,1,m_width-1,m_time-1,m_time,8,indexesDE);
+	setupNeighbData(1,m_height-1,0,1,0,1,7,indexesLF);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,0,1,7,indexesRF);
+	setupNeighbData(1,m_height-1,0,1,m_time-1,m_time,7,indexesLE);
+	setupNeighbData(1,m_height-1,m_width-1,m_width,m_time-1,m_time,7,indexesRE);
+
+	setupNeighbData(0,1,0,1,0,1,5,indexesLUF);
+	setupNeighbData(0,1,0,1,m_time-1,m_time,5,indexesLUE);
+	setupNeighbData(m_height-1,m_height,0,1,0,1,5,indexesLDF);
+	setupNeighbData(m_height-1,m_height,0,1,m_time-1,m_time,5,indexesLDE);
+	setupNeighbData(0,1,m_width-1,m_width,0,1,5,indexesRUF);
+	setupNeighbData(0,1,m_width-1,m_width,m_time-1,m_time,5,indexesRUE);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,0,1,5,indexesRDF);
+	setupNeighbData(m_height-1,m_height,m_width-1,m_width,m_time-1,m_time,5,indexesRDE);
+}
+
+//-------------------------------------------------------------------
+
+GCoptimizationFwdEn3DSeamGraph::~GCoptimizationFwdEn3DSeamGraph()
+{
+	delete [] m_numNeighbors;
+	delete [] m_neighbors;
+	if (m_weightedGraph) delete [] m_neighborsWeights;
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimizationFwdEn3DSeamGraph::setupNeighbData(SiteID startY,SiteID endY,SiteID startX,
+											  SiteID endX,SiteID startT, SiteID endT, 
+											  SiteID maxInd,SiteID *indexes)
+{
+	SiteID x,y,t,pix;
+	SiteID n;
+
+	for ( t = startT; t < endT; t++ )
+		for ( y = startY; y < endY; y++ )
+			for ( x = startX; x < endX; x++ )			
+			{
+				pix = x+y*m_width+t*m_width*m_height;
+				m_numNeighbors[pix] = maxInd;
+
+				for (n = 0; n < maxInd; n++ )
+					m_neighbors[pix*14+n] = pix+indexes[n];
+			}
+}
+
+//-------------------------------------------------------------------
+
+bool GCoptimizationFwdEn3DSeamGraph::readyToOptimise()
+{
+	GCoptimization::readyToOptimise();
+	return(true);
+}
+
+//-------------------------------------------------------------------
+
+void GCoptimizationFwdEn3DSeamGraph::giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights)
+{
+	//printf("Setup the links between site %d and its neighbors...\n",site);
+	*numSites  = m_numNeighbors[site];
+	*neighbors = &m_neighbors[site*14];
+	
+	if (m_weightedGraph) *weights  = &m_neighborsWeights[site*14];
+	else *weights = m_unityWeights;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
