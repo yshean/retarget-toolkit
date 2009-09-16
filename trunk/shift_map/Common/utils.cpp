@@ -1496,3 +1496,393 @@ int *SimpleUpsamplingMap(int *result, imageSize size, double ratio)
 
 	return up_result;
 }
+
+/*
+ *
+ */
+int *SimpleUpsamplingMapList(int *result, videoSize size, double ratio)
+{
+	videoSize up_size;
+	up_size.width = round(size.width*ratio);
+	up_size.height = round(size.height*ratio);
+	up_size.time = size.time;
+	int *up_result = new int[up_size.width*up_size.height*up_size.time];
+
+	for (int t = 0; t < up_size.time; t++)
+	{
+		for (int y = 0; y < up_size.height; y++)
+		{
+			for (int x = 0; x < up_size.width; x++)
+			{
+				int p = t*up_size.width*up_size.height+y*up_size.width+x;
+				int idx = Downsampling3DIndex(p,up_size,size,ratio);
+				int label = ceil((double)result[idx]*ratio);
+				up_result[p] = label;
+			} // end for x
+		} // end for y
+	}
+
+	return up_result;
+}
+
+/* reduces an image, as described in the Burt-Adelson paper */
+Matrix *ReduceMatrix(Matrix *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	int Cols = (src->NumOfCols() / 2);
+	int Rows = (src->NumOfRows() / 2);
+
+	cout << "Reducing matrix to " << Rows << "x" << Cols << endl;
+	Matrix *result = new Matrix(Rows,Cols);
+
+	/* weights as suggested in the Burt-Adelson's paper */
+	double weight[5] = { 0.05, 0.25, 0.4, 0.25, 0.05 };
+
+
+	for (int i = 1; i <= Rows; i++)
+		for (int j = 1; j <= Cols; j++)
+		{
+			double val = 0.0;
+			for (int m = -2; m < 3; m++)
+				for (int n = -2; n < 3; n++)
+				{
+					int y = (2 * i) + m;
+					int x = (2 * j) + n;
+
+					/* for boundary conditions, use a reflection across the edge node */
+					if (y > src->NumOfRows())
+						y = y-abs(src->NumOfRows()-y)-1;
+					if (x > src->NumOfCols())
+						x = x-abs(src->NumOfCols()-x)-1;
+					if (x <= 1)
+						x = abs(x-1)+1;
+					if (y <= 1)
+						y = abs(y-1)+1;
+
+					int mp = m + 2;
+					int np = n + 2;
+					try {
+						val += weight[mp]*weight[np]*src->Get(y,x);
+					}
+					catch (IndexOutOfBoundsException ex) {}
+				}		
+		
+			result->Set(i,j,val);
+		}
+
+	return result;
+}
+
+/*
+ * spatial gradient for every frame for seam carving
+ */
+Matrix *Gradient_xy(Video *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Matrix *dx = new Matrix[src->GetTime()];	// 0 rows and 0 cols of matrix dx. dx has an array size of src->GetTime()
+	Matrix *dy = new Matrix[src->GetTime()];
+	Matrix *dxy = new Matrix[src->GetTime()];
+
+	gradient2D *frame_gradient = NULL;
+	for (int t=0; t<src->GetTime(); t++)
+	{
+		if (frame_gradient)
+			delete frame_gradient;
+		frame_gradient = Gradient(src->GetFrame(t));			//wj find 2D gradient for frame t
+		dx[t] = *(frame_gradient->dx);
+		dy[t] = *(frame_gradient->dy);
+		dxy[t] = dx[t] + dy[t];			// combine dx[t] and dy[t]
+	}
+	
+	return dxy;
+}
+
+/*
+ * convert the image from RGB to gray level
+ */
+Matrix *Rgb2Gray(Picture *src)
+{
+	Matrix *result = new Matrix(src->GetHeight(),src->GetWidth());
+	double red; double green; double blue; int value;
+
+	for( int i = 0; i < src->GetHeight(); i++ )
+	{
+		for( int j = 0; j < src->GetWidth(); j++ )
+		{
+			red = src->GetPixelIntensity(j, i).r;
+			green = src->GetPixelIntensity(j, i).g;
+			blue = src->GetPixelIntensity(j, i).b;
+
+			//0.2125R+0.7154G+0.0721B
+			value = (0.2125*red) + (0.7154*green) + (0.0721*blue);
+			result->Set(i+1,j+1,value);
+
+//			printf("(%d,%d) r=%f g=%f b=%f	v=%d\n", j, i, red, green, blue, value);
+		}
+	}
+	return result;
+}
+
+/*
+ * 
+ */
+/*
+gradient2D_L1 *Gradient2D_L1(Picture *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+
+	Matrix *grayscale = new Matrix(src->GetHeight(),src->GetWidth());
+	
+	grayscale = Rgb2Gray(src);
+
+	Matrix *dx = new Matrix(src->GetHeight(),src->GetWidth());
+	Matrix *dy = new Matrix(src->GetHeight(),src->GetWidth());
+	int diff;
+
+	for( int i = 1; i <= grayscale->NumOfRows(); i++ )
+	{
+		for( int j = 1; j <= grayscale->NumOfCols(); j++ )
+		{
+			if ( j==grayscale->NumOfCols() )
+				diff = abs(grayscale->Get(i,j) - grayscale->Get(i,1));
+			else
+				diff = abs(grayscale->Get(i,j) - grayscale->Get(i,j+1));
+			dx->Set(i,j,diff);
+
+			if ( i==grayscale->NumOfRows() )
+				diff = abs(grayscale->Get(i,j) - grayscale->Get(1,j));
+			else
+				diff = abs(grayscale->Get(i,j) - grayscale->Get(i+1,j));
+	
+			dy->Set(i,j,diff);
+		}
+	}
+	
+	gradient2D_L1 *result = new gradient2D_L1;
+	result->dx = dx;
+	result->dy = dy;
+	
+	delete grayscale;
+
+	return result;
+}
+*/
+
+/*
+ * Calculate 2D forward energy for seam carving
+ */
+gradient2D_FE *Gradient2D_FE(Picture *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+
+	Matrix *grayscale = new Matrix(src->GetHeight(),src->GetWidth());
+	
+	grayscale = Rgb2Gray(src);
+
+	Matrix *LR = new Matrix(src->GetHeight(),src->GetWidth());
+	Matrix *pLU = new Matrix(src->GetHeight(),src->GetWidth());
+	Matrix *nLU = new Matrix(src->GetHeight(),src->GetWidth());
+	int value;
+
+	for( int i = 1; i <= src->GetHeight(); i++ )
+	{
+		for( int j = 1; j <= src->GetWidth(); j++ )
+		{
+			if ( j==1 )
+				value = abs(grayscale->Get(i,grayscale->NumOfCols()) - grayscale->Get(i,j+1));
+			else if ( j==grayscale->NumOfCols() )
+				value = abs(grayscale->Get(i,j-1) - grayscale->Get(i,1));
+			else
+				value = abs(grayscale->Get(i,j-1) - grayscale->Get(i,j+1));
+	
+			LR->Set(i,j,value);
+
+			if ( i==1 && j==1 )
+				value = abs(grayscale->Get(i,grayscale->NumOfCols()) - grayscale->Get(grayscale->NumOfRows(),j));
+			else if ( i>1 && j==1 )
+				value = abs(grayscale->Get(i,grayscale->NumOfCols()) - grayscale->Get(i-1,j));
+			else if ( i==1 && j>1 )
+				value = abs(grayscale->Get(i,j-1) - grayscale->Get(grayscale->NumOfRows(),j));
+			else
+				value = abs(grayscale->Get(i,j-1) - grayscale->Get(i-1,j));
+	
+			pLU->Set(i,j,value);
+
+			if ( i==grayscale->NumOfRows() && j==1 )
+				value = abs(grayscale->Get(i,grayscale->NumOfCols()) - grayscale->Get(1,j));
+			else if ( i<grayscale->NumOfRows() && j==1 )
+				value = abs(grayscale->Get(i,grayscale->NumOfCols()) - grayscale->Get(i+1,j));
+			else if ( i==grayscale->NumOfRows() && j>1 )
+				value = abs(grayscale->Get(i,j-1) - grayscale->Get(1,j));
+			else
+				value = abs(grayscale->Get(i,j-1) - grayscale->Get(i+1,j));
+			
+			nLU->Set(i,j,value);
+		}
+	}
+	
+	gradient2D_FE *result = new gradient2D_FE;
+	result->LR = LR;
+	result->pLU = pLU;
+	result->nLU = nLU;
+
+	delete grayscale;
+	
+	return result;
+}
+
+/*
+ * Calculate 3D Forward Energy for seam carving
+ */
+gradient3D_FE *Gradient3D_FE(Video *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+
+	Matrix *LR = new Matrix[src->GetTime()];
+	Matrix *pLU = new Matrix[src->GetTime()];
+	Matrix *nLU = new Matrix[src->GetTime()];
+	Matrix *temp_pLU = new Matrix[src->GetHeight()];
+	Matrix *temp_nLU = new Matrix[src->GetHeight()];
+
+	Matrix *grayscale = new Matrix[src->GetTime()];
+
+	int value;
+
+	for (int t=0; t<src->GetTime(); t++)
+		grayscale[t] = *(Rgb2Gray(src->GetFrame(t)));
+	
+	for (int t=0; t<src->GetTime(); t++)
+	{
+		LR[t] = *(new Matrix(src->GetHeight(),src->GetWidth()));
+		pLU[t] = *(new Matrix(src->GetHeight(),src->GetWidth()));
+		nLU[t] = *(new Matrix(src->GetHeight(),src->GetWidth()));
+	}
+
+	for (int h=0; h<src->GetHeight(); h++)
+	{
+		temp_pLU[h] = *(new Matrix(src->GetTime(),src->GetWidth()));
+		temp_nLU[h] = *(new Matrix(src->GetTime(),src->GetWidth()));
+	}
+
+	/* 
+	For pixels on the image boundaries, we use backward energy to calculate the cost for removing that pixel.
+	Because pixels on the boundary are missing the necessary neighbours to calculate the forward energy.
+	Moreover, removing pixels from the image boundaries do not create visual artifacts in the image, thus
+	we do not need to calculate the forward energy.
+	The backward energy is the L1 norm gradient.
+	*/
+	for (int t=0; t<src->GetTime(); t++)
+	{
+		for( int i = 1; i <= src->GetHeight(); i++ )
+		{
+			for( int j = 1; j <= src->GetWidth(); j++ )
+			{
+				if ( j==1 )								// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(i,j+1));	// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t].Get(i,j+1));
+				else if ( j==grayscale[t].NumOfCols() )	// Boundary pixel
+					value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(i,j));	// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(i,1));
+				else
+					value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(i,j+1));
+				//printf("LR[%d].Set(%d,%d,%d)\n",t,i,j,value);
+				LR[t].Set(i,j,value);
+
+				if ( i==1 && j==1 )			// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(grayscale[t].NumOfRows(),j));	// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t].Get(grayscale[t].NumOfRows(),j)); 
+				else if ( i>1 && j==1 )		// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(i-1,j));	// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t].Get(i-1,j));
+				else if ( i==1 && j>1 )		// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(grayscale[t].NumOfRows(),j));	// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(grayscale[t].NumOfRows(),j));
+				else
+					value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(i-1,j));
+				
+				//printf("pLU[%d].Set(%d,%d,%d)\n",t,i,j,value);
+				pLU[t].Set(i,j,value);
+
+				if ( i==grayscale[t].NumOfRows() && j==1 )			// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(1,j));			// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t].Get(1,j));
+				else if ( i<grayscale[t].NumOfRows() && j==1 )		// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(i+1,j));		// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t].Get(i+1,j));
+				else if ( i==grayscale[t].NumOfRows() && j>1 )		// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t].Get(1,j));			// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(1,j));
+				else
+					value = abs(grayscale[t].Get(i,j-1) - grayscale[t].Get(i+1,j));
+				
+				//printf("nLU[%d].Set(%d,%d,%d)\n",t,i,j,value);
+				nLU[t].Set(i,j,value);
+
+				if ( t==0 && j==1 )				// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[src->GetTime()-1].Get(i,j));		// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[src->GetTime()-1].Get(i,j));
+				else if ( t>0 && j==1 )			// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t-1].Get(i,j));			// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t-1].Get(i,j));
+				else if ( t==0 && j>1 )			// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[src->GetTime()-1].Get(i,j));		// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,j-1) - grayscale[src->GetTime()-1].Get(i,j));
+				else
+					value = abs(grayscale[t].Get(i,j-1) - grayscale[t-1].Get(i,j));
+				
+				//printf("temp_pLU[%d].Set(%d,%d,%d)\n",i-1,i,j,value);
+				temp_pLU[i-1].Set(t+1,j,value);
+
+				if ( t==src->GetTime()-1 && j==1 )			// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[0].Get(i,j));			// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[0].Get(i,j));
+				else if ( t<src->GetTime()-1 && j==1 )		// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[t+1].Get(i,j));		// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,grayscale[t].NumOfCols()) - grayscale[t+1].Get(i,j));
+				else if ( t==src->GetTime()-1 && j>1 )		// Boundary pixel
+					value = abs(grayscale[t].Get(i,j) - grayscale[0].Get(i,j));			// Backward energy
+					//Using Forward Energy
+					//value = abs(grayscale[t].Get(i,j-1) - grayscale[0].Get(i,j));
+				else
+					value = abs(grayscale[t].Get(i,j-1) - grayscale[t+1].Get(i,j));
+				
+				//printf("temp_nLU[%d].Set(%d,%d,%d)\n",i-1,i,j,value);
+				temp_nLU[i-1].Set(t+1,j,value);
+			}
+		}
+	}
+
+	gradient3D_FE *result = new gradient3D_FE;
+	result->LR = LR;
+	result->pLU = pLU;
+	result->nLU = nLU;
+	result->temp_pLU = temp_pLU;
+	result->temp_nLU = temp_nLU;
+
+	delete [] grayscale;
+
+	return result;
+}
