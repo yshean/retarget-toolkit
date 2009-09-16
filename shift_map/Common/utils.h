@@ -69,6 +69,27 @@ typedef struct {
 	double *total_dt;
 } gradient3D;
 
+// gradient structure for seam carving
+typedef struct {
+	Matrix *dx;
+	Matrix *dy;
+} gradient2D_L1;
+
+typedef struct {
+	Matrix *LR;
+	Matrix *pLU;
+	Matrix *nLU;
+} gradient2D_FE;
+
+typedef struct {
+	Matrix *LR;
+	Matrix *pLU;
+	Matrix *nLU;
+	Matrix *temp_pLU;
+	Matrix *temp_nLU;
+} gradient3D_FE;
+
+
 #define MAXIMUM_ITERATIONS	100
 #define SMALLEST_ERROR_CHANGE	0.01
 #define MINIMUM_LAMBDA_VALUE	pow((double)(10), (double)(-15))
@@ -88,12 +109,14 @@ int Convolve_Pixel(Picture *src, int x, int y, int kernel[][3]);
 gradient2D *Gradient(Picture *src);
 Picture *DrawImage(Picture *I1, Picture *I2, Matrix *M, bool UseMultiresolutionSpline);
 Matrix *Register(Picture *I1, Picture *I2, pointType InitialPoints[2][4]);
+
 Picture *Reduce(Picture *src);
 Picture *Expand(Picture *src);
 Picture *Laplacian(Picture *g1, Picture *g0);
 pyramidType *GaussianPyramid(Picture *src);
 Matrix *LocalScaleMap(pyramidType *pyramid, int level);
 pyramidType *LaplacianPyramid(pyramidType *gaussianPyramid);
+
 Picture *Collapse(pyramidType *LaplacianPyramid);
 Picture *Combine(Picture *I1, Picture *I2,
                  pointType Max1, pointType Min1,
@@ -124,3 +147,15 @@ int Downsampling3DIndex(int p, videoSize &target_size,
  *
  */
 int *SimpleUpsamplingMap(int *result, imageSize size, double ratio);
+int *SimpleUpsamplingMapList(int *result, videoSize size, double ratio);
+
+Matrix *ReduceMatrix(Matrix *src);
+
+/*
+ * utility functions for seam carving
+ */
+Matrix *Gradient_xy(Video *src);
+//gradient2D_L1 *Gradient2D_L1(Picture *src);
+Matrix *Rgb2Gray(Picture *src);
+gradient2D_FE *Gradient2D_FE(Picture *src);
+gradient3D_FE *Gradient3D_FE(Video *src);
