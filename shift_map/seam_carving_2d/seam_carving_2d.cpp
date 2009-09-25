@@ -357,7 +357,7 @@ int main(int argc, char **argv)
 	if (argc<4)
 	{
 		cout << "Usage: seam_carving_2d <input_img> <num of v seams to remove> <num of h seams to remove> <output_filename> <method>" << endl;
-		//return 0;
+		return 0;
 		//default parameters
 		/*
 		argv[1] = "..\\Images\\sea.ppm";

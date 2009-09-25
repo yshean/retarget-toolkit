@@ -154,8 +154,8 @@ Matrix *ReduceMatrix(Matrix *src);
 /*
  * utility functions for seam carving
  */
-Matrix *Gradient_xy(Video *src);
-//gradient2D_L1 *Gradient2D_L1(Picture *src);
+Matrix *Gradient_xy(PictureList *src);
+gradient2D_L1 *Gradient2D_L1(Picture *src);
 Matrix *Rgb2Gray(Picture *src);
 gradient2D_FE *Gradient2D_FE(Picture *src);
-gradient3D_FE *Gradient3D_FE(Video *src);
+gradient3D_FE *Gradient3D_FE(PictureList *src);

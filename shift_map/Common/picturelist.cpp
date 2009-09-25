@@ -282,8 +282,7 @@ void PictureList::Save(char *foldername)
 		char buf[512] = {'\0'};
 
 		strcat(framename,foldername);
-		strcat(framename,itoa(i,buf,10));
-		strcat(framename,".ppm");
+		strcat(framename,List[i].GetName());
 		List[i].Save(framename);
 	}
 }
