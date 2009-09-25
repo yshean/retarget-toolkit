@@ -70,10 +70,10 @@ double dataFn(int p, int l, void *data)
 		// pixel rearrangement: 
 		// keep the leftmost/rightmost columns
 		if (x==0 && l!=0)
-			cost = MAX_COST_VALUE;
+			cost = 10000*MAX_COST_VALUE;
 		if (x==myData->target_size.width-1 && 
 			l!=myData->src->GetWidth()-myData->target_size.width)
-			cost = MAX_COST_VALUE;
+			cost = 10000*MAX_COST_VALUE;
 	}
 	else
 	{
@@ -154,13 +154,35 @@ double smoothFn(int p1, int p2, int l1, int l2, void *data)
 	//printf("smoothFn: (%d,%d) and (%d,%d)\n",x1,y1,x2,y2);
 
 	if (abs(x1-x2)<=1 && abs(y1-y2)<=1)
-	{		
+	{	
+		/*
+		double weight = 0.0;
+		for (int i = -3; i <= 3; i++)
+		{
+			for (int j = -3; j <= 3; j++)
+			{
+				if (y1+1+j>=1 && y1+1+j<=myData->gradient->dx->NumOfRows() &&
+					x1+1+i>=1 && x1+1+i<=myData->gradient->dx->NumOfCols())
+				{
+					weight += myData->gradient->dx->Get(y1+1+j,x1+1+i);
+					weight += myData->gradient->dy->Get(y1+1+j,x1+1+i);
+				}
+				if (y2+1+j>=1 && y2+1+j<=myData->gradient->dx->NumOfRows() &&
+					x2+1+i>=1 && x2+1+i<=myData->gradient->dx->NumOfCols())
+				{
+					weight += myData->gradient->dx->Get(y2+1+j,x2+1+i);
+					weight += myData->gradient->dy->Get(y2+1+j,x2+1+i);
+				}
+			}
+		}
+		*/
+
 		if (myData->assignments[0]>=0)
 		{
 			cost += myData->alpha*ColorDiff(myData->src, x1, y1, x2, y2, 
-											assignment1+l1-1, assignment2+l2-1);
+													assignment1+l1-1, assignment2+l2-1);
 			cost += myData->beta*GradientDiff(myData->gradient,x1+1, y1+1, x2+1, y2+1, 
-												assignment1+l1-1, assignment2+l2-1);
+													assignment1+l1-1, assignment2+l2-1);
 		}
 		else
 		{
@@ -182,9 +204,16 @@ void SaveRetargetPicture(int *labels, Picture *src,int width, int height, char *
 {
 	Picture *result = new Picture(width,height);
 	result->SetName(name);
+
+	Picture *map = new Picture(width,height);
+	char map_name[512] = {'\0'};
+	strcat(map_name,name);
+	strcat(map_name,"shift.ppm");	
+	map->SetName(map_name);
 	
 	int x, y;
 	pixelType pixel;
+	intensityType map_pix;
 	for ( int  i = 0; i < width*height; i++ )
 	{
 		x = i % width;
@@ -194,10 +223,18 @@ void SaveRetargetPicture(int *labels, Picture *src,int width, int height, char *
 		pixel.g = src->GetPixel(x+labels[i],y).g;
 		pixel.b = src->GetPixel(x+labels[i],y).b;
 		result->SetPixel(x,y,pixel);
+
+		map_pix.r = labels[i];
+		map_pix.g = labels[i];
+		map_pix.b = labels[i];
+		map->SetPixelIntensity(x,y,map_pix);
 	}
 
 	result->Save(result->GetName());
+	map->Save(map->GetName());
+
 	delete result;
+	delete map;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
