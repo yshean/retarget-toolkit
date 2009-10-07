@@ -17,6 +17,19 @@ inline double round( double d )
 	return floor( d + 0.5 );
 }
 
+float simpleGauss(float x, float sigma, float mu)
+{
+	if(sigma == 0) {
+		cerr << "simpleGauss: sigma must be non-zero" << endl;
+		exit(1);
+	}
+	float pi = 3.1415926;
+	float x_p = x - mu;
+	float exponent = exp(x_p * x_p / (-2 * sigma * sigma));
+	exponent /= sqrt(2 * pi) * sigma;
+	return exponent;
+}
+
 /* Converts the RGB values of a pixel to grayscale */
 double Intensity(pixelType p)
 {
@@ -1452,24 +1465,26 @@ int DownsamplingIndex(int p, imageSize &target_size, imageSize &previous_size, d
 int Downsampling3DIndex(int p, videoSize &target_size, videoSize &previous_size, double ratio)
 {
 	int s = floor((double)(p % (target_size.width*target_size.height)));
-	int t = floor((double)(p / (target_size.width*target_size.height))/ratio);
-	if (t==previous_size.time)
-		t--;
+	int t = floor((double)(p / (target_size.width*target_size.height)));
+	if (t>=previous_size.time)
+		t = previous_size.time-1;
 	int x = floor((double)(s % target_size.width)/ratio);
-	if (x==previous_size.width)
-		x--;
+	if (x>=previous_size.width)
+		x = previous_size.width-1;
 	int y = floor((double)(s / target_size.width)/ratio);
-	if (y==previous_size.height)
-		y--;
+	if (y>=previous_size.height)
+		y = previous_size.height-1;
 
 	int idx = t*(previous_size.width*previous_size.height)
 				+y*previous_size.width+x;
 	if (idx<0)
 		idx++;
-	if (idx==previous_size.width*
+	if (idx>=previous_size.width*
 			 previous_size.height*
 			 previous_size.time)
-		idx--;
+		idx = previous_size.width*
+			  previous_size.height*
+			  previous_size.time-1;
 
 	return idx;
 }
@@ -1521,6 +1536,91 @@ int *SimpleUpsamplingMapList(int *result, videoSize size, double ratio)
 				up_result[p] = label;
 			} // end for x
 		} // end for y
+	}
+
+	return up_result;
+}
+
+/*
+ *
+ */
+int *JointBilateralUpsampling(int *result, int s_width, int s_height, 
+							  int s_time, PictureList *ref, double ratio)
+{
+	int mu = 0;
+	float sigma = 0.5;
+	ratio = 1;
+	
+	int width = ref->GetMaxWidth();
+	int height = ref->GetMaxHeight();
+	int time = ref->GetLength();
+	int *up_result = new int[time*width*height];
+
+	for (int t = 0; t < time; t++)
+	{
+		for (int y = 0; y < height; y++)
+		{
+			int refPixLoc = t*(width*height)+y*width;
+			for (int x = 0; x < width; x++)
+			{	
+				refPixLoc += x;
+				pixelType refPix = ref->GetPicture(t)->GetPixel(x,y);
+				
+				float total_val = 0;
+				float normalizing_factor = 0;
+			
+				//prevent black areas fro all rgausses being 0
+				float norgauss = 0; 
+				float norgauss_normalize = 0;
+
+				/* coordinates in the source */
+				float o_x = x/ratio;
+				float o_y = y/ratio;
+
+				for (int nn_y = -ratio-1; nn_y < ratio; nn_y++)
+				{
+					int r_y = (int)round(o_y + nn_y);
+					r_y = (r_y > 0 ? (r_y < s_height ? r_y : s_height-1) : 0);
+					int srcPixLoc = t*(s_width*s_height)+r_y*s_width;
+					int neighborPixLoc = t*(width*height)+r_y*ratio*width;
+
+					for (int nn_x = -ratio-1; nn_x < ratio; nn_x++)
+					{
+						int r_x = (int)round(o_x + nn_x);
+						r_x = (r_x > 0 ? (r_x < s_width ? r_x : s_width-1) : 0);
+						int srcPix = result[srcPixLoc+r_x];
+						
+						neighborPixLoc += r_x*ratio;
+						pixelType neighborPix = ref->GetPicture(t)->GetPixel(r_x*ratio,r_y*ratio);
+
+						//gauss dist to center
+						float sdist = sqrt(pow(o_x-r_x, 2) + pow(o_y-r_y, 2));
+						float sgauss = simpleGauss(sdist,sigma, mu);
+						//gauss radiance diff to center in ref
+						float rdist = sqrt(pow(refPix.r-neighborPix.r, 2.0)+
+									 pow(refPix.g-neighborPix.g, 2.0)+
+									 pow(refPix.b-neighborPix.b, 2.0));
+						float rgauss = simpleGauss(rdist,sigma, mu);
+
+						//multiply gausses by value in source and add to total val
+						norgauss = srcPix * sgauss;
+						norgauss_normalize += sgauss;
+						float totalgauss = sgauss * rgauss;
+						normalizing_factor += totalgauss;
+						total_val += srcPix * totalgauss;						
+					}
+				}
+
+				if(total_val) {
+					total_val /= normalizing_factor;
+					up_result[refPixLoc] = total_val;
+				}
+				else {
+					total_val = norgauss/norgauss_normalize;
+				}
+			
+			}
+		}
 	}
 
 	return up_result;
