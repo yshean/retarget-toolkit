@@ -144,10 +144,13 @@ int Downsampling3DIndex(int p, videoSize &target_size,
 						videoSize &previous_size, double ratio);
 
 /*
- *
+ * upsampling functions
  */
+float simpleGauss(float x, float sigma, float mu);
 int *SimpleUpsamplingMap(int *result, imageSize size, double ratio);
 int *SimpleUpsamplingMapList(int *result, videoSize size, double ratio);
+int *JointBilateralUpsampling(int *result, int s_width, int s_height, 
+							  int s_time, PictureList *ref, double ratio);
 
 Matrix *ReduceMatrix(Matrix *src);
 

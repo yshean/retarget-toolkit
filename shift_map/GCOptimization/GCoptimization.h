@@ -345,13 +345,13 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Use this derived class for grid graphs
+// Use this derived class for grid graphs 4-neighbors
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 class GCoptimizationGridGraph: public GCoptimization
 {
 public:
-  GCoptimizationGridGraph(SiteID width,SiteID height,LabelID num_labels);
+  GCoptimizationGridGraph(SiteID width,SiteID height,LabelID num_labels,int num_connected=4);
   virtual ~GCoptimizationGridGraph();
           
   void setSmoothCostVH(EnergyTermType *smoothArray, EnergyTermType *vCosts, EnergyTermType *hCosts);
@@ -359,12 +359,13 @@ public:
 
 protected:
 	virtual void giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights);
-	EnergyTermType m_unityWeights[4];
+	EnergyTermType m_unityWeights[8]; // 4 for 4-connected 2D grid and 8 for 8-connected 2D grid
 	int m_weightedGraph;  // true if spatially varying w_pq's are present. False otherwise.
 
 private:
 	SiteID m_width;
-	SiteID m_height;	
+	SiteID m_height;
+	int	m_num_connected;				// holds num of connected neighbors for every node 4/8
 	SiteID *m_numNeighbors;              // holds num of neighbors
 	SiteID *m_neighbors;                 // holds neighbor indexes
 	EnergyTermType *m_neighborsWeights;    // holds neighbor weights
@@ -404,13 +405,13 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Use this derived class for spatial temporal grid graphs
+// Use this derived class for spatial temporal grid graphs (shift_map_3d)
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 class GCoptimization3DGridGraph: public GCoptimization
 {
 public:
-  GCoptimization3DGridGraph(SiteID width,SiteID height,SiteID time, LabelID num_labels);
+  GCoptimization3DGridGraph(SiteID width,SiteID height,SiteID time, LabelID num_labels, int num_connected=6);
   virtual ~GCoptimization3DGridGraph();
 
   void setSmoothCostVHT(EnergyTermType *smoothArray, EnergyTermType *vCosts, EnergyTermType *hCosts, EnergyTermType *tCosts);
@@ -418,13 +419,14 @@ public:
 
 protected:
 	virtual void giveNeighborInfo(SiteID site, SiteID *numSites, SiteID **neighbors, EnergyTermType **weights);
-	EnergyTermType m_unityWeights[6];
+	EnergyTermType m_unityWeights[14]; // 6 for 4-connected 3D grid, 14 for 8-connected 3D grid
 	int m_weightedGraph;  // true if spatially varying w_pq's are present. False otherwise.
 
 private:
 	SiteID m_width;
 	SiteID m_height;
 	SiteID m_time;
+	int m_num_connected;				 // holds num of connected neighbors per node 6/14;
 	SiteID *m_numNeighbors;              // holds num of neighbors
 	SiteID *m_neighbors;                 // holds neighbor indexes
 	EnergyTermType *m_neighborsWeights;    // holds neighbor weights
@@ -433,6 +435,7 @@ private:
 						 SiteID startT, SiteID endT, SiteID maxInd, SiteID *indexes);
 	void computeNeighborWeights(EnergyTermType *vCosts,EnergyTermType *hCosts, EnergyTermType *tCosts);
 };
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Use this derived class for 2D seam graphs
