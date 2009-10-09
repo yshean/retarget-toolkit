@@ -28,15 +28,26 @@ public:
 		// allocate pointers memory
 		_firstFrame = (long*)malloc(length * sizeof(long));
 	}
+
+	// create an empty 3D volume, no width and height is required
+	Volume3D(int length)
+	{
+		_length = length;
+		// allocate pointers memory
+		_firstFrame = (long*)malloc(length * sizeof(long));
+	}
 	
 	// extract a frame in a specific time
 	// return NULL if time is not in side the volume
 	virtual IplImage* GetFrame(int time);
 
 	// assign a frame to a specfic time
+	// do not release the image ref as the volume only holds the reference to the image
 	virtual void AssignFrame(IplImage* frame, int time); 
 
 	// get pixel from a specific 3D location
+	// note that do not grab a pixel which is out of volume bound
+	// for efficiency purpose
 	virtual CvScalar Get3DPixel(int x, int y, int z);
 
 public:
