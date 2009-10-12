@@ -11,7 +11,7 @@
 
 using namespace std;
 
-#pragma region unit testing
+#pragma region Unit Testing
 
 #pragma region Volume3D
 #include "Volume3D.h"
@@ -53,6 +53,8 @@ void LoadVolume3D()
 #pragma region Matrix3D
 #include "Matrix3D.h"
 
+#pragma region Save and Load
+
 void PlayMatrix3D(Matrix3D* matrix)
 {
 	int length = matrix->_length;
@@ -69,7 +71,7 @@ void PlayMatrix3D(Matrix3D* matrix)
 	}
 }
 
-void LoadMatrix3D()
+Matrix3D* LoadMatrix3D()
 {
 	int length = 16;
 	char filename[100];
@@ -97,18 +99,44 @@ void LoadMatrix3D()
 		cvReleaseImage(&image);
 	} 
 
+	return matrix;
+}
+
+void TestLoadAndPlay()
+{
+	Matrix3D* matrix = LoadMatrix3D();
 	PlayMatrix3D(matrix);
 }
 
 #pragma endregion
 
-#pragma endregion
+#pragma region Scaling
+#include "Scaling.h"
+
+void TestLoadThenScale()
+{
+	Matrix3D* matrix = LoadMatrix3D();
+	Scaling* scaling = new Scaling();
+	Matrix3D* output = new Matrix3DChar(matrix->_width / 2, matrix->_height / 2, matrix->_length, matrix->_channel);
+
+	scaling->PyrDown(matrix, output);
+	PlayMatrix3D(output);
+}
+
+#pragma endregion Scaling
+
+#pragma endregion Matrix3D
+
+
+
+#pragma endregion Unit Testing
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	
-	//LoadVolume3D();
-	LoadMatrix3D();
+	// LoadVolume3D();
+	// TestLoadAndPlay();
+	TestLoadThenScale();
 
 	//IplImage* frame;
 	//long* begin;
