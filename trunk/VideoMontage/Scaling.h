@@ -11,5 +11,10 @@ public:
 public:
 	// scale down with same number of frames
 	// output should be 2 times smaller than input
-	virtual void PyrDown(Matrix3D* input, Matrix3D* output);
+	// Z-dimension is reserved
+	virtual void PyrDownZ(Matrix3D* input, Matrix3D* output);
+
+	// X-dimension is reserved
+	virtual void PyrDownX(Matrix3D* input, Matrix3D* output);
+
 };
