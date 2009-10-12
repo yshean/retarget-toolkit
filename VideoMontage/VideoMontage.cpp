@@ -13,7 +13,7 @@ using namespace std;
 
 #pragma region unit testing
 
-
+#pragma region Volume3D
 #include "Volume3D.h"
 // scanning through a volume3D and display its
 void PlayVolume3D(Volume3D* volume)
@@ -48,13 +48,68 @@ void LoadVolume3D()
 
 	PlayVolume3D(volume);
 }
+#pragma endregion
+
+#pragma region Matrix3D
+#include "Matrix3D.h"
+
+void PlayMatrix3D(Matrix3D* matrix)
+{
+	int length = matrix->_length;
+	cvNamedWindow("Matrix3D");
+
+	IplImage* image = cvCreateImage(cvSize(matrix->_width, matrix->_height), IPL_DEPTH_8U, matrix->_channel);
+	
+	for(int i = 0; i < length; i++)
+	{
+		matrix->GetIplImageZ(i, image);
+		cvShowImage("Matrix3D", image);
+		int key = cvWaitKey(200);				 
+		if (key == 27) break;
+	}
+}
+
+void LoadMatrix3D()
+{
+	int length = 16;
+	char filename[100];
+	 
+	sprintf(filename, "C:/Documents and Settings/minhchau/My Documents/Visual Studio 2005/Projects/VideoMontage/%i.jpg",1);
+	IplImage* image = cvLoadImage(filename);
+	IplImage* image2 = cvCloneImage(image);
+	
+	
+	Matrix3DChar* matrix = new Matrix3DChar(image->width, image->height, length, image->nChannels);
+	matrix->SetIplImageZ(0, image);
+	cvReleaseImage(&image);
+
+	cvNamedWindow("Load");
+
+	for(int i = 2; i <= length; i++)
+	{
+		sprintf(filename, "C:/Documents and Settings/minhchau/My Documents/Visual Studio 2005/Projects/VideoMontage/%i.jpg",i);
+		image = cvLoadImage(filename);		 
+		matrix->SetIplImageZ(i - 1, image);
+		image2 = cvCloneImage(image);
+		//matrix->GetIplImageZ(i - 1, image2);
+		cvShowImage("Load", image2);
+		cvWaitKey(100);
+		cvReleaseImage(&image);
+	} 
+
+	PlayMatrix3D(matrix);
+}
+
+#pragma endregion
 
 #pragma endregion
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	
-	LoadVolume3D();
+	//LoadVolume3D();
+	LoadMatrix3D();
+
 	//IplImage* frame;
 	//long* begin;
 	//begin = (long*)malloc(10 * sizeof(long));
