@@ -7,6 +7,9 @@
 #include <list>
 
 
+#include "NormL2.h"
+#include "ColorConverter.h"
+#include "Blur.h"
 
 
 using namespace std;
@@ -55,8 +58,9 @@ void LoadVolume3D()
 
 #pragma region Save and Load
 
-void PlayMatrix3D(Matrix3D* matrix)
+void PlayMatrix3D(Matrix3D* matrix, int interval)
 {
+	printf("Playing ... ");
 	int length = matrix->_length;
 	cvNamedWindow("Matrix3D");
 
@@ -64,34 +68,39 @@ void PlayMatrix3D(Matrix3D* matrix)
 	
 	for(int i = 0; i < length; i++)
 	{
+		printf("Displaying frame number: %i \n", i);
 		matrix->GetIplImageZ(i, image);
 		cvShowImage("Matrix3D", image);
-		int key = cvWaitKey(200);				 
+		int key = cvWaitKey(interval);				 
 		if (key == 27) break;
 	}
 }
 
-Matrix3D* LoadMatrix3D()
+Matrix3D* LoadMatrix3D(int start, int end)
 {
-	int length = 16;
 	char filename[100];
 	 
-	sprintf(filename, "C:/Documents and Settings/minhchau/My Documents/Visual Studio 2005/Projects/VideoMontage/%i.jpg",1);
+	sprintf(filename, "C:/Documents and Settings/minhchau/My Documents/Visual Studio 2005/Projects/VideoMontage/%i.jpg",start);
 	IplImage* image = cvLoadImage(filename);
 	IplImage* image2 = cvCloneImage(image);
 	
+	printf("Loading... \n");
 	
+	int length = end - start + 1;
+
 	Matrix3DChar* matrix = new Matrix3DChar(image->width, image->height, length, image->nChannels);
 	matrix->SetIplImageZ(0, image);
 	cvReleaseImage(&image);
 
 	cvNamedWindow("Load");
+	
+	
 
-	for(int i = 2; i <= length; i++)
+	for(int i = start + 1; i <= end; i++)
 	{
 		sprintf(filename, "C:/Documents and Settings/minhchau/My Documents/Visual Studio 2005/Projects/VideoMontage/%i.jpg",i);
 		image = cvLoadImage(filename);		 
-		matrix->SetIplImageZ(i - 1, image);
+		matrix->SetIplImageZ(i - start, image);
 		image2 = cvCloneImage(image);
 		//matrix->GetIplImageZ(i - 1, image2);
 		cvShowImage("Load", image2);
@@ -104,8 +113,8 @@ Matrix3D* LoadMatrix3D()
 
 void TestLoadAndPlay()
 {
-	Matrix3D* matrix = LoadMatrix3D();
-	PlayMatrix3D(matrix);
+	Matrix3D* matrix = LoadMatrix3D(1,14);
+	PlayMatrix3D(matrix, 200);
 }
 
 #pragma endregion
@@ -115,15 +124,61 @@ void TestLoadAndPlay()
 
 void TestLoadThenScale()
 {
-	Matrix3D* matrix = LoadMatrix3D();
+	Matrix3D* matrix = LoadMatrix3D(1,15);
 	Scaling* scaling = new Scaling();
-	Matrix3D* output = new Matrix3DChar(matrix->_width / 2, matrix->_height / 2, matrix->_length, matrix->_channel);
-
-	scaling->PyrDown(matrix, output);
-	PlayMatrix3D(output);
+	
+	// scale in width and height
+	//Matrix3D* output = new Matrix3DChar(matrix->_width, matrix->_height / 2, matrix->_length/2, matrix->_channel);
+	//scaling->PyrDownZ(matrix, output);
+	//PlayMatrix3D(output);
+	
+	// scale in height and temporal
+	Matrix3D* output = new Matrix3DChar(matrix->_width, matrix->_height / 2, matrix->_length/2, matrix->_channel);
+	scaling->PyrDownX(matrix, output);
+	PlayMatrix3D(output, 1000);
 }
 
 #pragma endregion Scaling
+
+#pragma region Saliency
+#include "MontageSaliencyMap.h"
+
+
+
+// calculate the diff of a pixel with its neighbors
+void TestCalculateDiffImage()
+{
+	Matrix3D* matrix = LoadMatrix3D(63,78);
+	Matrix3D* matrix_small = new Matrix3DChar(matrix->_width/2, matrix->_height/2, matrix->_length, 3);
+	Matrix3D* matrix_small2 = new Matrix3DChar(matrix->_width/4, matrix->_height/4, matrix->_length, 3);
+	
+	Matrix3D* matrix_saliency = new Matrix3DChar(matrix->_width/4, matrix->_height/4, matrix->_length, 1);
+	
+	Scaling* scale = new Scaling();
+	scale->PyrDownZ(matrix, matrix_small);
+	scale->PyrDownZ(matrix_small, matrix_small2);
+	
+	
+	// convert to LUV
+	ColorConverter* colorConverter = new ColorConverter();
+	colorConverter->ConvertRGB2LUV(matrix_small2, matrix_small2);
+
+	PlayMatrix3D(matrix_small2, 400);
+
+	MontageSaliencySetting setting;
+	setting.norm = new NormL2();
+	setting.scaling = scale;
+		
+	//Blur* blur = new Blur();
+	//blur->DoBlur(matrix_small2, matrix_small2);
+
+	MontageSaliencyMap* saliency = new MontageSaliencyMap(&setting);
+	saliency->CalculateSaliencyMap(matrix_small2, matrix_saliency);
+
+	PlayMatrix3D(matrix_saliency, 1000);
+}
+
+#pragma endregion Saliency
 
 #pragma endregion Matrix3D
 
@@ -136,8 +191,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	// LoadVolume3D();
 	// TestLoadAndPlay();
-	TestLoadThenScale();
-
+	// TestLoadThenScale();
+	TestCalculateDiffImage();
 	//IplImage* frame;
 	//long* begin;
 	//begin = (long*)malloc(10 * sizeof(long));
