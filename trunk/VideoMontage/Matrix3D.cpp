@@ -133,7 +133,7 @@ void Matrix3D::GetIplImageX(int x, IplImage *image)
 {
 	if( x >= 0 && x < _width)
 	{
-		for(int z = 0; z < _length; x++)
+		for(int z = 0; z < _length; z++)
 			for(int y = 0; y < _height; y++)
 			{
 				CvScalar value = Get3DScalar(x, y, z);
@@ -161,10 +161,10 @@ void Matrix3D::SetIplImageX(int x, IplImage *image)
 {	
 	if( x >= 0 && x < _width)
 	{
-		for(int z = 0; z < _length; x++)
+		for(int z = 0; z < _length; z++)
 			for(int y = 0; y < _height; y++)
 			{
-				CvScalar value = cvGet2D(image, x, y);
+				CvScalar value = cvGet2D(image, z, y);
 				Set3DScalar(x, y, z, value);
 			}
 	}
@@ -176,10 +176,28 @@ void Matrix3D::SetIplImageX(int x, IplImage *image)
 
 #pragma region Matrix3DChar
 
+void Matrix3DChar::Set3D(int x, int y, int z, double value)
+{
+	//printf("X: %i, Y: %i, Z: %i \n", x, y, z);
 
+	if(this->IsCoordinateInside(x, y, z) || _channel == 1)
+	{
+		char* data = _data;	 
+		// move to frame z
+		data += z * _width * _height;
+
+		// align to row
+		data += y * _width;
+		
+		// align to col
+		data += x;	
+
+		*data = (char)value;		 
+	} 
+}
 double Matrix3DChar::Get3D(int x, int y, int z)
 {
-	if(this->IsCoordinateInside(x, y, z))
+	if(this->IsCoordinateInside(x, y, z) && _channel == 1)
 	{
 		char* data = _data;
 		// move to frame z
@@ -202,21 +220,24 @@ CvScalar Matrix3DChar::Get3DScalar(int x, int y, int z)
 {
 	CvScalar value = cvScalar(0);
 	
-	unsigned char* data = (unsigned char*)_data;	 
-	//char* data = _data;
-	// move to frame z
-	data += z * _width * _height * _channel;
-
-	// align to row
-	data += y * _width * _channel;
-	
-	// align to col
-	data += x * _channel;	
-	
-	for(int i = 0; i < _channel; i++)
+	if(this->IsCoordinateInside(x, y, z))
 	{
-		value.val[i] = (double)*data;		
-		data++;
+		unsigned char* data = (unsigned char*)_data;	 
+		//char* data = _data;
+		// move to frame z
+		data += z * _width * _height * _channel;
+
+		// align to row
+		data += y * _width * _channel;
+		
+		// align to col
+		data += x * _channel;	
+		
+		for(int i = 0; i < _channel; i++)
+		{
+			value.val[i] = (double)*data;		
+			data++;
+		}
 	}
 
 	return value;
@@ -244,26 +265,6 @@ void Matrix3DChar::Set3DScalar(int x, int y, int z, CvScalar value)
 	}
 }
 
-
-void Matrix3DChar::Set3D(int x, int y, int z, double value)
-{
-	//printf("X: %i, Y: %i, Z: %i \n", x, y, z);
-
-	if(this->IsCoordinateInside(x, y, z))
-	{
-		char* data = _data;	 
-		// move to frame z
-		data += z * _width * _height;
-
-		// align to row
-		data += y * _width;
-		
-		// align to col
-		data += x;	
-
-		*data = (char)value;		 
-	} 
-}
 
 
 #pragma endregion

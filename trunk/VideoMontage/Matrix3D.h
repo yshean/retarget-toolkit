@@ -18,6 +18,7 @@ public:
 	int _height;
 	int _length;
 	int _channel;
+	int _type;
 
 	// check whether the coordinate is inside the volume
 	bool IsCoordinateInside(int x, int y, int z);
@@ -42,12 +43,14 @@ public:
 	// default 1 channel
 	Matrix3DChar(int width, int height, int length) : Matrix3D(width, height, length)
 	{	
-		_data = (char*)malloc(length * width * height * sizeof(char));
+		_data = (char*)malloc(length * width * height * sizeof(unsigned char));
+		_type = IPL_DEPTH_8U;
 	}
 
 	Matrix3DChar(int width, int height, int length, int channel) : Matrix3D(width, height, length, channel)
 	{
-		_data = (char*)malloc(length * width * height * channel * sizeof(char));
+		_data = (char*)malloc(length * width * height * channel * sizeof(unsigned char));
+		_type = IPL_DEPTH_8U;
 	}
 
 	~Matrix3DChar(void);
