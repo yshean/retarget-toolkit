@@ -14,11 +14,11 @@ IplImage* RegionExtractor::GetRegion(IplImage *image, CvPoint position, CvSize s
 	// cropping
 	if(position.x + size.width >= image->width)
 	{
-		size.width = image->width - position.x - 1;
+		size.width = image->width - position.x;
 	}
 	if(position.y + size.height >= image->height)
 	{
-		size.height = image->height - position.y - 1;
+		size.height = image->height - position.y;
 	}
 
 	IplImage* result = cvCreateImage(size, image->depth, image->nChannels);
