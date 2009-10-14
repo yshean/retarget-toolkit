@@ -10,18 +10,10 @@ ImageMergeCarving::~ImageMergeCarving(void)
 
 IplImage* ImageMergeCarving::GetMergedImage(IplImage* image1, IplImage* image2, int overlap_size)
 {
-	// get overlap area	
-	// the overlap area of right image is shifted 1 pixel
-	// so they are align one pixel shifted with each other
-	// so 2 pixel which is neighbor (horizontally) will have the 
-	// same coordinate in each overlap images.
-	IplImage* overlap1 = extractor->GetRegion(image1, 
-		cvPoint(image1->width - overlap_size, 0), 
-		cvSize(overlap_size, image1->height));
+	IplImage* overlap1;
+	IplImage* overlap2;
 
-	IplImage* overlap2 = extractor->GetRegion(image2,
-		cvPoint(1, 0), 
-		cvSize(overlap_size, image2->height));
+	GetOverlapImages(image1, image2, &overlap1, &overlap2, overlap_size);
 
 	IplImage* overlap_cost = cvCreateImage(cvSize(overlap_size, image1->height), IPL_DEPTH_8U, 1);
 	// get cost image when a pixel is chosen to be interface between 2 images
@@ -38,12 +30,6 @@ IplImage* ImageMergeCarving::GetMergedImage(IplImage* image1, IplImage* image2, 
 		cvSet2D(overlap_cost, y, x, cvScalar(sum));
 	}
 
-	cvNamedWindow("overlap_cost");
-	while(1)
-	{
-		cvShowImage("overlap_cost", overlap_cost);
-		cvWaitKey(100);
-	}
 
 
 	
@@ -52,6 +38,27 @@ IplImage* ImageMergeCarving::GetMergedImage(IplImage* image1, IplImage* image2, 
 	return result;
 }
 
+IplImage* ImageMergeCarving::CreateOverlapImageCost(IplImage* overlap1, IplImage* overlap2)
+{
+	int height = overlap1->height;
+	int width = overlap2->width;
+
+	IplImage* overlap_cost = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+	// get cost image when a pixel is chosen to be interface between 2 images
+	for(int x = 0; x < width; x++)
+		for(int y = 0; y < height; y++)
+	{
+		CvScalar pixel_1 = cvGet2D(overlap1, y, x);
+		CvScalar pixel_2 = cvGet2D(overlap2, y, x);
+		double sum = 0;
+		for(int i = 0; i < 4; i++)
+		{
+			sum += abs(pixel_1.val[i] - pixel_2.val[i]);
+		}
+		cvSet2D(overlap_cost, y, x, cvScalar(sum));
+	}
+	return overlap_cost;
+}
 
 void ImageMergeCarving::GetOverlapImages(IplImage *image1, IplImage *image2, 
 										 IplImage **overlap1, IplImage **overlap2,
@@ -66,14 +73,42 @@ void ImageMergeCarving::GetOverlapImages(IplImage *image1, IplImage *image2,
 		cvSize(overlap_size, image2->height));
 }
 
-void TestOverlap()
+void TestOverlapCost()
 {
+#pragma region Load Images
 	ImageMergeCarving* carving = new ImageMergeCarving();
 	RegionExtractor* extractor = new RegionExtractor();
 	carving->extractor = extractor;
 
 	IplImage* image1 = cvLoadImage("test.jpg");
 	IplImage* image2 = cvLoadImage("test.jpg");
+#pragma endregion
+
+	IplImage* overlap1 = 0;
+	IplImage* overlap2 = 0;
+	carving->GetOverlapImages(image1, image2, &overlap1, &overlap2, 200);
+
+	IplImage* overlap_cost = carving->CreateOverlapImageCost(overlap1, overlap2);
+
+	cvNamedWindow("overlap_cost");
+	while(1)
+	{
+		cvShowImage("overlap_cost", overlap_cost);
+		cvWaitKey(100);
+	}
+
+}
+
+void TestOverlap()
+{
+#pragma region Load Images
+	ImageMergeCarving* carving = new ImageMergeCarving();
+	RegionExtractor* extractor = new RegionExtractor();
+	carving->extractor = extractor;
+
+	IplImage* image1 = cvLoadImage("test.jpg");
+	IplImage* image2 = cvLoadImage("test.jpg");
+#pragma endregion
 
 	IplImage* overlap1 = 0;
 	IplImage* overlap2 = 0;
@@ -91,5 +126,6 @@ void TestOverlap()
 
 void TestImageMergeCarving()
 {
-	TestOverlap();
+	// TestOverlap();
+	TestOverlapCost();
 }
