@@ -31,6 +31,8 @@ public:
 	// - overlap1 and overlap2 should be null
 	virtual void GetOverlapImages(IplImage* image1, IplImage* image2, 
 		IplImage** overlap1, IplImage** overlap2, int overlap_size);
+
+	virtual IplImage* CreateOverlapImageCost(IplImage* overlap1, IplImage* overlap2);
 };
 
 
