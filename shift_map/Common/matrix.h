@@ -40,6 +40,7 @@ class Matrix {
   public:
     Matrix();
     Matrix(const int rows, const int cols);
+	Matrix(const int rows, const int cols, double val);
     Matrix(const Matrix &src);
     ~Matrix();
 
