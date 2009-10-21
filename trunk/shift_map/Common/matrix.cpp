@@ -34,6 +34,21 @@ Matrix::Matrix(const int rows, const int cols)
   }
 }
 
+Matrix::Matrix(const int rows, const int cols, double val)
+{
+#ifdef USE_TRACEBACK
+  Trace->Add(__FILE__, __LINE__);
+#endif
+  Rows = rows;
+  Cols = cols;
+  Row = new matrixRowType[Rows];
+  for (int i = 0; i < Rows; i++) {
+    Row[i].Col = new double[Cols];
+    for (int j = 0; j < Cols; j++)
+      Row[i].Col[j] = val;
+  }
+}
+
 Matrix::Matrix(const Matrix &src)
 {
 #ifdef USE_TRACEBACK
