@@ -557,7 +557,7 @@ int main(int argc, char **argv)
 	int num_labels;
 	int *data;
 	GCoptimization *gc = NULL;
-	int pym_level = 2;					// specify no. of pyramid levels
+	int pym_level = 3;					// specify no. of pyramid levels
 	int list_level;						// 0 <= list_level < pym_level
 
 	if (argc<6)

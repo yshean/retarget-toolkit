@@ -2041,7 +2041,11 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 	int *empty_labels = new int[src->GetMaxHeight()*src->GetMaxWidth()];
 	Picture *band_img;
 	if (!banded)
+	{
 		band_img = src->GetPicture(0);
+		lbound = 0;
+		ubound = src->GetPicture(0)->GetWidth()-2;
+	}
 	else
 		band_img = Subband_Picture(src->GetPicture(0),band,0,ratio,
 								   lbound,ubound,empty_labels,false);
@@ -2098,7 +2102,11 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 		//ubound = -1;
 		empty_labels = new int[src->GetMaxHeight()*src->GetMaxWidth()];
 		if (!banded)
+		{
 			band_img = src->GetPicture(t);
+			lbound = 0;
+			ubound = src->GetPicture(t)->GetWidth()-2;
+		}
 		else
 			band_img = Subband_Picture(src->GetPicture(t),band,t*src->GetMaxHeight(),ratio,
 									   lbound,ubound,empty_labels,false);
