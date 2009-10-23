@@ -662,7 +662,7 @@ double PairImgDataFn(int p, int l, void *data)
 	else
 		min_diff = 100000*MAX_COST_VALUE;
 
-	cost += 0.1*min_diff;
+	cost += 10*min_diff;
 	//cost += 1000*myData->bias->Get(y+1,x+l+1);
 	
 	return cost;
@@ -1002,7 +1002,7 @@ double VideoColorDiff(PictureList *src, int x1, int y1, int t1,
 
 	//printf("ColorDiff: cost between (%d,%d) and (%d,%d) with labels %d and %d is %d\n",x1,y1,x2,y2,l1,l2,diff);
 	if (x1==x2 && y1==y2)
-		return 0.1*diff;
+		return 10*diff;
 	else
 		return diff;
 }
@@ -1040,7 +1040,7 @@ double VideoGradientDiff(gradient2D *gradient, int x1, int y1, int t1,
 	}
 
 	if (x1==x2 && y1==y2)
-		return 0.1*diff;
+		return 10*diff;
 	else
 		return diff;
 }
@@ -2432,10 +2432,10 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
 
-		if (lr_bias!=NULL)
-			delete [] lr_bias;
-		//if (lr_bias==NULL)
-		//{
+		//if (lr_bias!=NULL)
+		//	delete [] lr_bias;
+		if (lr_bias==NULL)
+		{
 			lr_bias = new Matrix[target_size.time];
 			for (int t = 0; t < target_size.time; t++)
 			{
@@ -2444,7 +2444,7 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
 				lr_bias[t] = *(init);
 				delete init;
 			}
-		//}
+		}
 
 		/* graph cut in low resolution */
 		source = GridGraph_SeamCut(source,pow(2.0,level),target_size,
@@ -2503,11 +2503,11 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
 		target = Refine_Seam(band,target,pow(2.0,level),alpha,
 							 beta,output_path,bias,true,true);
 
-		/*
 		lr_bias = CalcSeamBias(lr_bias, lr_band, target_size.width,
 							   target_size.height, target_size.time,
 							   target_size.width/32);
 
+		/*
 		bias = CalcSeamBias(bias, band, origin_size.width, origin_size.height, 
 							origin_size.time, origin_size.width/32);
 		*/
