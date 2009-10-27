@@ -315,30 +315,72 @@ PictureList *removeManifold(GCoptimization *gc, PictureList *src)
 		else if ( i == width*height*time-1 )
 			result->SetPixel(x-1,y,t,pixel);
 	}
-	delete src;
+	delete [] src;
 	return result;
 
 }
 
-PictureList *drawManifold(GCoptimization *gc, PictureList *src)
+//PictureList *drawManifold(GCoptimization *gc, PictureList *src)
+//{
+//	int width = src->GetPicture(0)->GetWidth();
+//	int height = src->GetPicture(0)->GetHeight();
+//	int time = src->GetLength();
+//	PictureList *result = new PictureList(width,height,time);
+//	result->SetName(src->GetName());
+//	
+//	Picture *frames = new Picture[time];
+//	for (int tt = 0; tt< time; tt++)
+//	{
+//		//frames[tt] = *(new Picture(width,height));
+//		//frames[tt].SetName(src->GetPicture(tt)->GetName());
+//		frames[tt] = *(new Picture(width,height));
+//		char target_name[512] = "seam_";
+//		strcat(target_name,src->GetPicture(tt)->GetName());
+//		frames[tt].SetName(target_name);
+//	}
+//	result->SetList(frames,time);
+//	
+//	int x, y, t;
+//	pixelType pixel;
+//	for ( int  i = 0; i < width*height*time; i++ )
+//	{
+//		t = i / (width*height);
+//		x = (i % (width*height)) % width;
+//		y = (i % (width*height)) / width;
+//		
+//		if ( i < width*height*time-1 && gc->whatLabel(i)==0 && gc->whatLabel(i+1)==1 )
+//		{
+//			//printf("Found Seam\n");
+//			pixel.r = 255;
+//			pixel.g = 0;
+//			pixel.b = 0;
+//		}
+//		else{
+//			//printf("SaveRetargetPicture: GetPixel(%d,%d)\n",x+gc->whatLabel(i),y);
+//			pixel.r = src->GetPixel(x,y,t).r;
+//			pixel.g = src->GetPixel(x,y,t).g;
+//			pixel.b = src->GetPixel(x,y,t).b;
+//		}
+//		result->SetPixel(x,y,t,pixel);
+//	}
+//
+//	//delete src;
+//	return result;
+//}
+
+
+void drawManifold(GCoptimization *gc, PictureList *src)
 {
-	int width = src->GetPicture(0)->GetWidth();
-	int height = src->GetPicture(0)->GetHeight();
+	int width = src->GetMaxWidth();
+	int height = src->GetMaxHeight();
 	int time = src->GetLength();
-	PictureList *result = new PictureList(width,height,time);
-	result->SetName(src->GetName());
 	
-	Picture *frames = new Picture[time];
 	for (int tt = 0; tt< time; tt++)
 	{
-		//frames[tt] = *(new Picture(width,height));
-		//frames[tt].SetName(src->GetPicture(tt)->GetName());
-		frames[tt] = *(new Picture(width,height));
 		char target_name[512] = "seam_";
 		strcat(target_name,src->GetPicture(tt)->GetName());
-		frames[tt].SetName(target_name);
+		src->GetPicture(tt)->SetName(target_name);
 	}
-	result->SetList(frames,time);
 	
 	int x, y, t;
 	pixelType pixel;
@@ -347,25 +389,16 @@ PictureList *drawManifold(GCoptimization *gc, PictureList *src)
 		t = i / (width*height);
 		x = (i % (width*height)) % width;
 		y = (i % (width*height)) / width;
-		
+
 		if ( i < width*height*time-1 && gc->whatLabel(i)==0 && gc->whatLabel(i+1)==1 )
 		{
 			//printf("Found Seam\n");
 			pixel.r = 255;
 			pixel.g = 0;
 			pixel.b = 0;
+			src->SetPixel(x,y,t,pixel);
 		}
-		else{
-			//printf("SaveRetargetPicture: GetPixel(%d,%d)\n",x+gc->whatLabel(i),y);
-			pixel.r = src->GetPixel(x,y,t).r;
-			pixel.g = src->GetPixel(x,y,t).g;
-			pixel.b = src->GetPixel(x,y,t).b;
-		}
-		result->SetPixel(x,y,t,pixel);
 	}
-
-	//delete src;
-	return result;
 }
 
 void SaveRetargetVideo(PictureList *src, char *name)
@@ -557,7 +590,7 @@ int main(int argc, char **argv)
 	int num_labels;
 	int *data;
 	GCoptimization *gc = NULL;
-	int pym_level = 3;					// specify no. of pyramid levels
+	int pym_level = 2;					// specify no. of pyramid levels
 	int list_level;						// 0 <= list_level < pym_level
 
 	if (argc<6)
@@ -647,7 +680,7 @@ int main(int argc, char **argv)
 		delete lpyramid;
 		
 		//src = removeManifold(gc, src);
-		src = drawManifold(gc, src);
+		drawManifold(gc, src);
 		
 		SaveRetargetVideo(src, argv[4]);
 
@@ -690,7 +723,7 @@ int main(int argc, char **argv)
 		//	//if (s<atoi(argv[3]))
 		//		src = removeManifold(gc, src);
 		//	//else
-		//	//	src = drawManifold(gc, src);
+		//	//	drawManifold(gc, src);
 		//	
 		//	delete gc;
 		//	gc = NULL;
@@ -704,8 +737,8 @@ int main(int argc, char **argv)
 
 	delete src;
 	
-	system("Pause");
-	return 1;
+	//system("Pause");
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
