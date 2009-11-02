@@ -114,11 +114,10 @@ void cvShowManyImages(char* title, int nArgs, ...) {
         if( i % w == 0 && m!= 20) {
             //m = 20;
             //n+= 20 + size;
-			m = 0;
-            n+= size;
+			m = 20;
+            n+= size-100;
         }
-
-		printf("using scale=%d\n", scale);
+		
         // Set the image ROI to display the current image
         cvSetImageROI(DispImage, cvRect(m, n, (int)( x/scale ), (int)( y/scale )));
 
@@ -140,7 +139,7 @@ void cvShowManyImages(char* title, int nArgs, ...) {
     va_end(args);
 
     // Release the Image Memory
-    cvReleaseImage(&DispImage);
+    cvReleaseImage(&DispImage);	
 }
 
 // Main function, defines the entry point for the program.
