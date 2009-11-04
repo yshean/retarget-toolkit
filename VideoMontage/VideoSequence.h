@@ -12,7 +12,7 @@ using namespace std;
 struct VideoSequence
 {
 	// list of char to the image file name
-	vector<char*> frameList;
+	vector<char*>* frameList;
 };
 
 // Load a frame from memory
