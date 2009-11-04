@@ -8,12 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <math.h>
 #include <float.h>
 #include <limits.h>
 #include <time.h>
 #include <ctype.h>*/
-#include "math.h"
+#include <math.h>
+
 IplImage *Igray=0, *It = 0, *Iat;
 
 //Commented for later use in 2D
@@ -292,9 +292,21 @@ void cvShowManyImages(char* title, int nArgs, ...) {
     cvReleaseImage(&DispImage);	
 }
 
+void calcFsofP(int val, int variance, char chan)
+{
+	float den=0;	
+	double pi=3.1415926, fs;
+
+	den=sqrt(2*pi*variance);
+	fs=exp((double)(val/den));
+
+	printf("%c %f\n", chan, fs);
+}
+
 void cvBlendImages(IplImage *blend1)
 {
-	int width, height, rmean, gmean, bmean, rt=0, bt=0, gt=0, clw=0;
+	int width, height, rmean, gmean, bmean, rt=0, bt=0, gt=0, clw=0, rvar=0, gvar=0, bvar=0;
+	long rvartot=0, gvartot=0, bvartot=0;
 	width = blend1->width;
 	height = blend1->height;	
 
@@ -313,25 +325,70 @@ void cvBlendImages(IplImage *blend1)
 	bmean = bt/clw;
 	gmean = gt/clw;
 
-	printf("R mean=%d\nG mean=%d\nB mean=%d\n",rmean, gmean, bmean);
+	//printf("R mean=%d\nG mean=%d\nB mean=%d\n",rmean, gmean, bmean);
+
+	for(int i=0;i<height;i++)
+	{
+		for(int j=width-20; j<width;j++)
+		{
+			s = cvGet2D(blend1, i, j);
+			rvartot += pow((s.val[2]-rmean),2);				
+			gvartot += pow((s.val[1]-rmean),2);			
+			bvartot += pow((s.val[0]-rmean),2);			
+		}
+	}
+	rvar = rvartot/clw;
+	gvar = gvartot/clw;
+	bvar = bvartot/clw;
+
+	//printf("R var=%d\nG var=%d\nB var=%d\nTotal=%d\n",rvartot, gvartot, bvartot, clw);
+
+	float r, g, b, rval, gval, bval;
+	rval=gval=bval=0;
+	for(int i=0;i<height;i++)
+	{
+		for(int j=width-20; j<width;j++)
+		{
+			s = cvGet2D(blend1, i, j);
+			r = s.val[2];
+			g = s.val[1];
+			b = s.val[0];
+						
+			rval = pow((double)(r - rmean),2)/(2*rvar);			
+			gval = pow((double)(g - gmean),2)/(2*gvar);
+			bval = pow((double)(b - bmean),2)/(2*bvar);
+
+			calcFsofP(rval, rvar, 'R');
+			calcFsofP(gval, gvar, 'G');
+			calcFsofP(bval, bvar, 'B');
+		}
+	}
+
+	//printf("E r=%d\nE g=%d\nE b=%d\n",rval, gval, bval);
 }
+
 // Main function, defines the entry point for the program.
 int main( int argc, char** argv )
-{
-	IplImage *src, *dst, *src1;	
-	
-	src=cvLoadImage(argv[1],1);
-	dst=cvLoadImage(argv[2],1);
-	src1=cvLoadImage(argv[3],1);
+{	
+	if(argc>1)
+	{
+		IplImage *src;/*, *dst, *src1;*/	
+		
+		src=cvLoadImage(argv[1],1);
+		/*dst=cvLoadImage(argv[2],1);
+		src1=cvLoadImage(argv[3],1);*/
 
-	cvBlendImages(src);
-	//cvShowManyImages("Images", 3, src, dst, src1);	
-	
-	cvWaitKey();
+		cvBlendImages(src);
+		/*cvBlendImages(dst);
+		cvBlendImages(src1);*/
+		//cvShowManyImages("Images", 3, src, dst, src1);	
+		
+		cvWaitKey();
 
-	cvReleaseImage(&src);
-	cvReleaseImage(&dst);
-	cvReleaseImage(&src1);
+		cvReleaseImage(&src);
+		/*cvReleaseImage(&dst);
+		cvReleaseImage(&src1);*/
+	}
 
 	return 0;
 }
