@@ -1,147 +1,63 @@
+// ImageSequnce.cpp : Defines the initialization routines for the DLL.
+//
+
 #include "stdafx.h"
-#include "ImageSequence.h"
-#include "VideoSequence.h"
+#include "ImageSequnce.h"
 
-//constructor
-CImageSequence::CImageSequence(void)
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#endif
+
+//
+//TODO: If this DLL is dynamically linked against the MFC DLLs,
+//		any functions exported from this DLL which call into
+//		MFC must have the AFX_MANAGE_STATE macro added at the
+//		very beginning of the function.
+//
+//		For example:
+//
+//		extern "C" BOOL PASCAL EXPORT ExportedFunction()
+//		{
+//			AFX_MANAGE_STATE(AfxGetStaticModuleState());
+//			// normal function body here
+//		}
+//
+//		It is very important that this macro appear in each
+//		function, prior to any calls into MFC.  This means that
+//		it must appear as the first statement within the 
+//		function, even before any object variable declarations
+//		as their constructors may generate calls into the MFC
+//		DLL.
+//
+//		Please see MFC Technical Notes 33 and 58 for additional
+//		details.
+//
+
+// CImageSequnceApp
+
+BEGIN_MESSAGE_MAP(CImageSequnceApp, CWinApp)
+END_MESSAGE_MAP()
+
+
+// CImageSequnceApp construction
+
+CImageSequnceApp::CImageSequnceApp()
 {
-	sDirectoryFiles = "C:\\Java\\File\\Basketball\\RetargetBMP\\";
+	// TODO: add construction code here,
+	// Place all significant initialization in InitInstance
 }
 
 
-//constructor with directory folder initialization
-CImageSequence::CImageSequence(string fileDirectory)
+// The one and only CImageSequnceApp object
+
+CImageSequnceApp theApp;
+
+
+// CImageSequnceApp initialization
+
+BOOL CImageSequnceApp::InitInstance()
 {
-	sDirectoryFiles = fileDirectory;
-}
+	CWinApp::InitInstance();
 
-//constructor with directory folder initialization and extention
-CImageSequence::CImageSequence(string fileDirectory, string fileExtension)
-{
-	sDirectoryFiles = fileDirectory;
-	sfileExtension = fileExtension;
-}
-
-//Destructor
-CImageSequence::~CImageSequence(void)
-{
-}
-
-//Search , list, and load files in target folder into cvloadimage
-void CImageSequence::listingFile(VideoSequence* videoFrameSequence)
-{
-    WIN32_FIND_DATAA findFileData;
-	char path[255];  
-	char* filename = NULL;
-	IplImage* src;
-	//VideoSequence*  videoFrameSequence;
-	vector<string> frameList;
-	int i = 0;
-
-	strcpy(path,(char*)(getDirectory()+ getfileExtension()).c_str());
-	    
-	HANDLE hFind = FindFirstFileA((LPCSTR)path, &findFileData);
-	
-    if(hFind  == INVALID_HANDLE_VALUE) {
-        std::cout <<"No files found." <<std::endl;
-		std::cout << GetLastError() <<std::endl;
-    } else {
-        std::cout <<"Files found." <<std::endl;
-    }
-    
-    int fileNumber = 0;
-    std::cout <<fileNumber <<":" <<convertWCharArrayToString(findFileData.cFileName) <<std::endl;
-
-	//load to first frame list vector
-	frameList.push_back(convertWCharArrayToString(findFileData.cFileName).c_str());
-
-	while(FindNextFileA(hFind, &findFileData)) {
-
-		
-        fileNumber++;
-        std::cout <<fileNumber <<":" <<convertWCharArrayToString(findFileData.cFileName) <<std::endl;
-		
-		//load to frame list vector
-		frameList.push_back(convertWCharArrayToString(findFileData.cFileName).c_str());
-	}
- 
-	// Read files
-	FindClose(hFind);	
-
-	videoFrameSequence->frameList = new vector<char*>(fileNumber + 1);
-	 
-	for(int i = 0; i < fileNumber + 1; i++)
-	{
-		char* temp;
-		(*videoFrameSequence->frameList)[i] = new char(200);
-	}
-
-	// Store list to video sequence
-	
-	for(i=0; i<=fileNumber; i++)
-	{
-		strcpy((*videoFrameSequence->frameList)[i], (((char*) (frameList.at(i)).c_str()  )));
-		//(*videoFrameSequence->frameList)[i] = (char*) (frameList.at(i)).c_str();
-	}
-		//videoFrameSequence->frameList[i] = (char*) (frameList.at(i)).c_str();
-	videoFrameSequence->frameList->resize(fileNumber);
-	
-}
-
-
-//internal function to convert char to string
-string CImageSequence::convertWCharArrayToString(CHAR * wcharArray) 
-{
-    
-	stringstream ss;
- 
-    int i = 0;
-    char c = (char) wcharArray[i];
-
-	while(c != '\0') {
-        ss <<c;
-        i++;
-        c = (char) wcharArray[i];
-    }
- 
-    string convert = ss.str();
-    
-	return convert;
-
-}
-
-
-// Set target directory 
-void CImageSequence::setDirectory(string fileDirectory)
-{
-	sDirectoryFiles = fileDirectory;
-}
-
-// Get target directory
-string CImageSequence::getDirectory()
-{
-	return sDirectoryFiles;
-}
-
-// Get file extension
-string CImageSequence::getfileExtension()
-{
-	return sfileExtension;
-}
-
-// Launch Quick View
-void CImageSequence::launchQuickView()
-{
-	string sConvFile = "C:\\Java\\App\\QuickView.exe ";
-	string sFullExecCmd = "";
-	
-	sFullExecCmd += sConvFile;
-	sFullExecCmd += getDirectory();
-	int length = sFullExecCmd.length();
-	char *pFullExecCmd = new char[ length + 1 ]; // including null
-
-	sFullExecCmd.copy( pFullExecCmd, length, 0 ); // copy string1 to ptr2 char*
-	pFullExecCmd[ length ] = '\0'; // add null terminator
-	system(pFullExecCmd);
-
+	return TRUE;
 }
