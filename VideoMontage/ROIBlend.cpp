@@ -300,7 +300,10 @@ void calcFsofP(int val, int variance, char chan)
 	den=sqrt(2*pi*variance);
 	fs=exp((double)(val/den));
 
-	printf("%c %f\n", chan, fs);
+	if(chan=='B')
+		printf("%c %f\n", chan, fs);
+	else
+		printf("%c %f ", chan, fs);
 }
 
 void cvBlendImages(IplImage *blend1)
