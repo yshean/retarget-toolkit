@@ -3,6 +3,8 @@
 #include <highgui.h>
 #include <vector>
 #include <list>
+
+
 using namespace std;
 
 /******************************** Video Sequence definition ********************************/
@@ -23,6 +25,10 @@ IplImage* LoadFrame(VideoSequence* videoSequence, int frame_number);
 
 void TestCreateSequence();
 /******************************** SubShot/Shot definition **************************************/
+
+#include <iostream> //iostream 
+#include <fstream> //fstream 
+
 
 #define VCSHOT_STATIC 0
 #define VCSHOT_TILT 1
@@ -64,10 +70,16 @@ struct ShotInfo
 	int shotCount;
 };
 
+
+// ************* IO *****************
 // load shot info from file
-ShotInfo LoadShotFromFile(char* fileName);
 
+// testing unit
+void TestSaveLoadShot();
 
+ShotInfo* LoadShotFromFile(char* fileName);
+
+void SaveShotToFile(ShotInfo* shotInfo, char* fileName);
 
 
 
