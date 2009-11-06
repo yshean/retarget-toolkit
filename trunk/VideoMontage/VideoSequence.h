@@ -75,6 +75,7 @@ struct ShotInfo
 // load shot info from file
 
 // testing unit
+// Create a ShotInfo then save/load it to file
 void TestSaveLoadShot();
 
 ShotInfo* LoadShotFromFile(char* fileName);
