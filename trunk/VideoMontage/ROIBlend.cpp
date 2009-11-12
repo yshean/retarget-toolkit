@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ROIBlend.h"
 
-void cvShowManyImages(char* title, int nArgs, ...) {
+void ROIBlend::cvShowManyImages(char* title, int nArgs, ...) {
 
     // img - Used for getting the arguments 
     IplImage *img;
@@ -124,22 +124,30 @@ void cvShowManyImages(char* title, int nArgs, ...) {
     // Release the Image Memory
     cvReleaseImage(&DispImage);	
 }
-void calcFsofP(int val, int variance, char chan)
+double ROIBlend::calcFsofP(int p, int mean, int variance)
 {
-	// Calculates the value of the pixels through a Gaussian function
-	float den=0;	
-	double pi=3.1415926, fs;
-
-	den=sqrt(2*pi*variance);
-	fs=exp((double)(val/den));
-
-	if(chan=='B')
-		printf("%c %f\n", chan, fs);
-	else
-		printf("%c %f ", chan, fs);
+	double pi = 3.1415926535;
+	return Gaussian(mean, variance, p) / ( sqrt(2 * pi) * variance);
 }
 
-void cvBlendImages(IplImage *blend1)
+double ROIBlend::calcDefiniteIntergral(int mean, int variance, int a, int b)
+{
+	double result = 0;
+
+	for(int p = a; p <= b; p++)
+	{
+		result += calcFsofP(p, mean, variance);
+	}
+	return result;
+}
+
+void ROIBlend::BlendImages(IplImage* image1, IplImage* image2)
+{
+	int size = 20;
+	
+}
+
+void ROIBlend::cvBlendImages(IplImage *blend1)
 {
 	int width, height, rmean, gmean, bmean, rt=0, bt=0, gt=0, clw=0, rvar=0, gvar=0, bvar=0;
 	long rvartot=0, gvartot=0, bvartot=0;
@@ -215,15 +223,21 @@ int TestROIBlend( int argc, char** argv )
 	if(argc>1)
 	{
 		IplImage *src;/*, *dst, *src1;*/	
-		
-		src=cvLoadImage(argv[1],1);
+		ROIBlend* roiBlend = new ROIBlend();
+
+		src=cvLoadImage(argv[0],1);
 		/*dst=cvLoadImage(argv[2],1);
 		src1=cvLoadImage(argv[3],1);*/
 
-		cvBlendImages(src);
+		roiBlend->cvBlendImages(src);
+		IplImage* src1 = cvLoadImage(argv[1], 1);;
+		roiBlend->cvBlendImages(src1);
+		
+		IplImage* src2 = cvLoadImage(argv[2],1);
+		roiBlend->cvBlendImages(src2);
 		/*cvBlendImages(dst);
 		cvBlendImages(src1);*/
-		//cvShowManyImages("Images", 3, src, dst, src1);	
+		roiBlend->cvShowManyImages("Images", 3, src, src1, src2);	
 		
 		cvWaitKey();
 
