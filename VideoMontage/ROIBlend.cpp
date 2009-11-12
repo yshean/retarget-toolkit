@@ -375,22 +375,23 @@ int main( int argc, char** argv )
 {	
 	if(argc>1)
 	{
-		IplImage *src;/*, *dst, *src1;*/	
+		IplImage *src, *dst;/*, *src1;*/	
 		
+		printf("%d", argc);
 		src=cvLoadImage(argv[1],1);
-		/*dst=cvLoadImage(argv[2],1);
-		src1=cvLoadImage(argv[3],1);*/
+		dst=cvLoadImage(argv[2],1);
+		/*src1=cvLoadImage(argv[3],1);*/
 
-		cvBlendImages(src);
+		//cvBlendImages(src);
 		/*cvBlendImages(dst);
 		cvBlendImages(src1);*/
-		//cvShowManyImages("Images", 3, src, dst, src1);	
+		cvShowManyImages("Images", 2, src, dst);	
 		
 		cvWaitKey();
 
 		cvReleaseImage(&src);
-		/*cvReleaseImage(&dst);
-		cvReleaseImage(&src1);*/
+		cvReleaseImage(&dst);
+		/*cvReleaseImage(&src1);*/
 	}
 
 	return 0;
