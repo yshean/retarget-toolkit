@@ -124,27 +124,124 @@ void ROIBlend::cvShowManyImages(char* title, int nArgs, ...) {
     // Release the Image Memory
     cvReleaseImage(&DispImage);	
 }
-double ROIBlend::calcFsofP(int p, int mean, int variance)
+double ROIBlend::calcFsofP(int p, int mean)
 {
 	double pi = 3.1415926535;
-	return Gaussian(mean, variance, p) / ( sqrt(2 * pi) * variance);
+	return Gaussian(mean, _variance, p) / ( sqrt(2 * pi) * _variance);
 }
 
-double ROIBlend::calcDefiniteIntergral(int mean, int variance, int a, int b)
+double ROIBlend::calcMean(int p, int a, int b, double scale)
+{
+	return scale * (a + pow((double)p - a, 2.0) / pow((double)b - p, 2) * p);	
+}
+
+double ROIBlend::calcDefiniteIntergral(int p, int start, int end)
 {
 	double result = 0;
+	// calculate mean depends on pixel position
+	double mean = calcMean(p, _a, _b, _scale);
+	
+	// convert start, end to (0, 1) distribution based on mean and variance
+	start = (310 - mean) / 20;
+	end = (end - mean) / _variance;
 
-	for(int p = a; p <= b; p++)
-	{
-		result += calcFsofP(p, mean, variance);
-	}
-	return result;
+	double start_cummulative = NormalDistribution(start);
+	double end_cummulative = NormalDistribution(end); 
+	return end_cummulative - start_cummulative;
 }
 
-void ROIBlend::BlendImages(IplImage* image1, IplImage* image2)
+CvScalar ROIBlend::GetBlendScalar(CvScalar value, CvScalar seam, int p, bool is_S)
 {
-	int size = 20;
+	CvScalar blendValue;					// result
+	for(int i = 0; i < 4; i++)
+	{
+		double Is_p = value.val[i];			// value of Is(p)
+		double It_p = seam.val[i];			// value of It(p) which is actually It(seam)
+		
+		double Ps_p;
+		if(is_S)
+			Ps_p = calcDefiniteIntergral(p, _a, p); // value of Ps(p)
+		else
+			Ps_p = calcDefiniteIntergral(p, p, _b); // value of Ps(p)
+
+		double Pt_p = 1 - Ps_p;				// value of Pt(p)
+		double Is_pb = Is_p * Ps_p + It_p * Pt_p;
+		blendValue.val[i] = Is_pb;
+	}		
+	return blendValue;
+}
+
+IplImage* ROIBlend::CombineImages(IplImage* image1, IplImage* image2)
+{
+	IplImage* image = cvCreateImage(
+		cvSize(image1->width + image2->width, image1->height), 
+		image1->depth, image1->nChannels);
 	
+	for(int x = 0; x < image1->width; x++)
+		for(int y = 0; y < image1->height; y++)
+		{
+			CvScalar value = cvGet2D(image1, y, x);
+			cvSet2D(image, y, x, value);
+		}
+	for(int x = 0; x < image2->width; x++)
+		for(int y = 0; y < image2->height; y++)
+		{
+			CvScalar value = cvGet2D(image2, y, x);
+			cvSet2D(image, y, x + image1->width, value);
+		}
+	return image;
+}
+
+IplImage* ROIBlend::BlendImages(IplImage* image1, IplImage* image2, int a, int b)
+{	 
+	int width1 = image1->width;
+	int height1 = image1->height;
+	int width2 = image2->width;
+	int height2 = image2->height;
+
+	// update _a and _b to the coordinate after blended
+	_a = width1 - a;
+	_b = width1 + b;
+
+	IplImage* image1_clone = cvCloneImage(image1);
+	IplImage* image2_clone = cvCloneImage(image2);
+
+	IplImage* image = cvCreateImage(cvSize(width1 + width2, height1), image1->depth, image1->nChannels);
+
+	// for S part
+	for(int x = _a; x < width1; x++)
+	{
+		for(int y = 0; y < height1; y++)
+		{
+			CvScalar value = cvGet2D(image1, y, x);
+			CvScalar seamValue = cvGet2D(image2, y, 0);
+			CvScalar blendValue = GetBlendScalar(value, seamValue, x, true);
+			cvSet2D(image1_clone, y, x, blendValue);
+		}
+	}
+	
+
+
+	// for T part
+	for(int x = 0; x < _b - width1; x++)
+	{
+		for(int y = 0; y < height2; y++)
+		{
+			CvScalar value = cvGet2D(image2, y, x);
+			CvScalar seamValue = cvGet2D(image1, y, width1 - 1);
+			CvScalar blendValue = GetBlendScalar(value, seamValue, x + width1, false);
+			cvSet2D(image2_clone, y, x, blendValue);
+		}
+	}
+
+	cvNamedWindow("Test1");
+
+	while(1)
+	{
+		cvShowImage("Test", image2_clone);
+		cvWaitKey(100);
+	}
+	return CombineImages(image1_clone, image2_clone);	 
 }
 
 void ROIBlend::cvBlendImages(IplImage *blend1)
@@ -212,10 +309,42 @@ void ROIBlend::cvBlendImages(IplImage *blend1)
 			bval = pow((double)(b - bmean),2)/(2*bvar);
 
 			// Function call to calculate the value of the pixels through a Gaussian distribution
-			calcFsofP(rval, rvar, 'R');
-			calcFsofP(gval, gvar, 'G');
-			calcFsofP(bval, bvar, 'B');
+			//calcFsofP(rval, rvar, 'R');
+			//calcFsofP(gval, gvar, 'G');
+			//calcFsofP(bval, bvar, 'B');
 		}
+	}
+}
+void TestCombineImages()
+{
+	IplImage* image1 = cvLoadImage("test1.jpg");
+	IplImage* image2 = cvLoadImage("test2.jpg");
+	ROIBlend* roiBlend = new ROIBlend(2.0, 2.0); // dummy parameters
+	IplImage* image = roiBlend->CombineImages(image1, image2);
+
+	cvNamedWindow("Test");
+
+	while(1)
+	{
+		cvShowImage("Test", image);
+		cvWaitKey(100);
+	}
+}
+
+
+void TestBlendImages()
+{
+	IplImage* image1 = cvLoadImage("test1.jpg");
+	IplImage* image2 = cvLoadImage("test2.jpg");
+	ROIBlend* roiBlend = new ROIBlend(0.9, 2.0); // dummy parameters
+	IplImage* image = roiBlend->BlendImages(image1, image2, 20, 20);
+
+	cvNamedWindow("Test");
+
+	while(1)
+	{
+		cvShowImage("Test", image);
+		cvWaitKey(100);
 	}
 }
 int TestROIBlend( int argc, char** argv )
@@ -223,7 +352,7 @@ int TestROIBlend( int argc, char** argv )
 	if(argc>1)
 	{
 		IplImage *src;/*, *dst, *src1;*/	
-		ROIBlend* roiBlend = new ROIBlend();
+		ROIBlend* roiBlend = new ROIBlend(2.0, 2.0);
 
 		src=cvLoadImage(argv[0],1);
 		/*dst=cvLoadImage(argv[2],1);
