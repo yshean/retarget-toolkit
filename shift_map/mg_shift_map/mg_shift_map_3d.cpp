@@ -55,8 +55,8 @@ inline double round( double d )
 struct ForSingleImgDataFn
 {
 	Picture *src;
-	gradient2D *gradient;
 	Matrix *bias;
+	bool subbanded;
 	int *subband;
 	int subband_idx;
 	int subband_lbound;
@@ -70,10 +70,9 @@ struct ForSingleImgSmoothFn
 {
 	Picture *src;
 	gradient2D *gradient;
+	gradient2D *naturality;
 	Matrix *bias;
 	imageSize target_size;
-	float alpha;
-	float beta;
 };
 
 /*
@@ -82,10 +81,12 @@ struct ForSingleImgSmoothFn
 struct ForPairImgDataFn
 {
 	Picture *src;
+	Matrix *gray;
 	Picture *pre;
+	Matrix *pre_gray;
 	int *pre_labels;
-	gradient2D *gradient;
 	Matrix *bias;
+	bool subbanded;
 	int *subband;
 	int subband_idx;
 	int subband_lbound;
@@ -98,11 +99,10 @@ struct ForPairImgDataFn
 struct ForPairImgSmoothFn
 {
 	Picture *src;
-	gradient2D *gradient;
+	gradient3D *gradient;
+	gradient2D *naturality;
 	Matrix *bias;
 	imageSize target_size;
-	float alpha;
-	float beta;
 };
 
 /*
@@ -111,7 +111,6 @@ struct ForPairImgSmoothFn
 struct ForVideoDataFn
 {
 	PictureList *src;
-	gradient2D *gradient;
 	Matrix *bias;
 	videoSize target_size;
 };
@@ -122,11 +121,10 @@ struct ForVideoDataFn
 struct ForVideoSmoothFn
 {
 	PictureList *src;
-	gradient2D *gradient;
+	gradient3D *gradient;
+	gradient3D *naturality;
 	Matrix *bias;
 	videoSize target_size;
-	float alpha;
-	float beta;
 };
 
 Matrix *CalcNarrownessPrior(gradient2D *gradient, double threshold)
@@ -248,12 +246,16 @@ double SingleImgDataFn(int p, int l, void *data)
 	if (x==width-1 && 
 		l!=myData->src->GetWidth()-width)
 		return 100000*MAX_COST_VALUE;
-	
-	int refine_offset = 3;
-	if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l>0)
-		return 100000*MAX_COST_VALUE;
-	if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
-		return 100000*MAX_COST_VALUE;
+
+	if (myData->subbanded)
+	{
+		int refine_offset = 1;
+		if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l>0)
+			return 100000*MAX_COST_VALUE;
+		if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
+			return 100000*MAX_COST_VALUE;
+	}
+
 	//cost += 1000*myData->bias->Get(y+1,x+l+1);
 
 	return cost;
@@ -273,25 +275,30 @@ double SingleImgColorDiff(Picture *src, Matrix *bias, int x1, int y1, int x2,
 		x2+l2-x_offset>=0 && x2+l2-x_offset<width && x1+l1>=0 && x1+l1<width)
 	{
 		//double weight;
+		pixelType pix1, pix2;
 		double color_diff;
 		//printf("(%d,%d) color components: %d,%d,%d\n",src->GetPixel(y2+l2,x2).r,src->GetPixel(y2+l2,x2).g,src->GetPixel(y2+l2,x2).b);
 		if (direction==0)
 		{
 			color_diff = 0.0;
+			pix1 = src->GetPixel(x2+l2,y2);
+			pix2 = src->GetPixel(x1+l1+x_offset,y1+y_offset);
 			//weight = bias->Get(y2+1,x2+l2+1)*bias->Get(y1+y_offset+1,x1+l1+x_offset+1);
-			color_diff += pow((double)src->GetPixel(x2+l2,y2).r-src->GetPixel(x1+l1+x_offset,y1+y_offset).r,2);
-			color_diff += pow((double)src->GetPixel(x2+l2,y2).g-src->GetPixel(x1+l1+x_offset,y1+y_offset).g,2);
-			color_diff += pow((double)src->GetPixel(x2+l2,y2).b-src->GetPixel(x1+l1+x_offset,y1+y_offset).b,2);
+			color_diff += pow((double)(pix1.r-pix2.r),2.0);
+			color_diff += pow((double)(pix1.g-pix2.g),2.0);
+			color_diff += pow((double)(pix1.b-pix2.b),2.0);
 			//diff += 1000*weight;
 			diff += (color_diff<threshold) ? 0 : color_diff;
 		}
 		if (direction==1)
 		{
 			color_diff = 0.0;
+			pix1 = src->GetPixel(x2+l2-x_offset,y2-y_offset);
+			pix2 = src->GetPixel(x1+l1,y1);
 			//weight = bias->Get(y2-y_offset+1,x2+l2-x_offset+1)*bias->Get(y1+1,x1+l1+1);
-			color_diff += pow((double)src->GetPixel(x2+l2-x_offset,y2-y_offset).r-src->GetPixel(x1+l1,y1).r,2);		
-			color_diff += pow((double)src->GetPixel(x2+l2-x_offset,y2-y_offset).g-src->GetPixel(x1+l1,y1).g,2);	
-			color_diff += pow((double)src->GetPixel(x2+l2-x_offset,y2-y_offset).b-src->GetPixel(x1+l1,y1).b,2);
+			color_diff += pow((double)(pix1.r-pix2.r),2.0);		
+			color_diff += pow((double)(pix1.g-pix2.g),2.0);	
+			color_diff += pow((double)(pix1.b-pix2.b),2.0);
 			//diff += 1000*weight;
 			diff += (color_diff<threshold) ? 0 : color_diff;
 		}
@@ -302,6 +309,44 @@ double SingleImgColorDiff(Picture *src, Matrix *bias, int x1, int y1, int x2,
 	//printf("ColorDiff: finished\n");
 
 	//printf("ColorDiff: cost between (%d,%d) and (%d,%d) with labels %d and %d is %d\n",x1,y1,x2,y2,l1,l2,diff);
+	return diff;
+}
+
+double SingleImgGrayscaleDiff(Matrix *gray, Matrix *bias, int x1, int y1, 
+							  int x2, int y2, int l1, int l2, int direction, double threshold)
+{
+	double diff = 0.0;
+	int width = gray->NumOfCols();
+	int height = gray->NumOfRows();
+	int x_offset = x2-x1;
+	int y_offset = y2-y1;
+
+	if (x2+l2>0 && x2+l2<=width && x1+l1+x_offset>0 && x1+l1+x_offset<=width &&
+		x2+l2-x_offset>0 && x2+l2-x_offset<=width && x1+l1>0 && x1+l1<=width)
+	{
+		//double weight;
+		double grad_diff;
+		if (direction==0)
+		{
+			//weight = bias->Get(y2,x2+l2)*bias->Get(y1+y_offset,x1+l1+x_offset);
+			grad_diff = 0.0;
+			grad_diff += pow((double)(gray->Get(y2,x2+l2)-gray->Get(y1+y_offset,x1+l1+x_offset)),2.0);
+			//diff += 1000*weight;
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
+		}
+		if (direction==1)
+		{
+			//weight = bias->Get(y2-y_offset,x2+l2-x_offset)*bias->Get(y1,x1+l1);
+			grad_diff = 0.0;
+			grad_diff += pow((double)(gray->Get(y1,x1+l1)-gray->Get(y2-y_offset,x2+l2-x_offset)),2.0);
+			//diff += 1000*weight;
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
+		}
+	} else
+	{	
+		diff += 100000*MAX_COST_VALUE;
+	}
+
 	return diff;
 }
 
@@ -323,8 +368,8 @@ double SingleImgGradientDiff(gradient2D *gradient, Matrix *bias, int x1, int y1,
 		{
 			//weight = bias->Get(y2,x2+l2)*bias->Get(y1+y_offset,x1+l1+x_offset);
 			grad_diff = 0.0;
-			grad_diff += pow((gradient->dx->Get(y2,x2+l2)-gradient->dx->Get(y1+y_offset,x1+l1+x_offset)),2)+
-						 pow((gradient->dy->Get(y2,x2+l2)-gradient->dy->Get(y1+y_offset,x1+l1+x_offset)),2);
+			grad_diff += pow((double)(gradient->dx->Get(y2,x2+l2)-gradient->dx->Get(y1+y_offset,x1+l1+x_offset)),2.0)+
+						 pow((double)(gradient->dy->Get(y2,x2+l2)-gradient->dy->Get(y1+y_offset,x1+l1+x_offset)),2.0);
 			//diff += 1000*weight;
 			diff += (grad_diff<threshold) ? 0 : grad_diff;
 		}
@@ -332,8 +377,8 @@ double SingleImgGradientDiff(gradient2D *gradient, Matrix *bias, int x1, int y1,
 		{
 			//weight = bias->Get(y2-y_offset,x2+l2-x_offset)*bias->Get(y1,x1+l1);
 			grad_diff = 0.0;
-			grad_diff += pow((gradient->dx->Get(y2-y_offset,x2+l2-x_offset)-gradient->dx->Get(y1,x1+l1)),2)+
-						 pow((gradient->dy->Get(y2-y_offset,x2+l2-x_offset)-gradient->dy->Get(y1,x1+l1)),2);
+			grad_diff += pow((double)(gradient->dx->Get(y2-y_offset,x2+l2-x_offset)-gradient->dx->Get(y1,x1+l1)),2.0)+
+						 pow((double)(gradient->dy->Get(y2-y_offset,x2+l2-x_offset)-gradient->dy->Get(y1,x1+l1)),2.0);
 			//diff += 1000*weight;
 			diff += (grad_diff<threshold) ? 0 : grad_diff;
 		}
@@ -365,249 +410,60 @@ double SingleImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	if ((y1==y2) && ((x1<x2 && l1>l2) || (x1>x2 && l1<l2)))
 		return 100000*MAX_COST_VALUE;
 
-	if (abs(x1-x2)<=1 && abs(y1-y2)<=1)
-	{	
-		double cost1 = 0.0;
-		cost1 += myData->alpha*SingleImgColorDiff(myData->src, myData->bias, x1, y1, x2, y2, l1, l2, 0, 0.0);
-		cost1 += myData->beta*SingleImgGradientDiff(myData->gradient, myData->bias, x1+1, y1+1, x2+1, y2+1, l1, l2, 0, 0.0);
+	/* connectivity */
+	/*
+	if ((abs(y1-y2)==1) && (abs(x1-x2)==1))
+	{
+		if (x1<x2 && l1>0 && l2==0)
+			return 100000*MAX_COST_VALUE;
+		if (x2<x1 && l2>0 && l1==0)
+			return 100000*MAX_COST_VALUE;
+	}
+	*/
 
-		double cost2 = 0.0;
-		cost2 += myData->alpha*SingleImgColorDiff(myData->src, myData->bias, x1, y1, x2, y2, l1, l2, 1, 0.0);
-		cost2 += myData->beta*SingleImgGradientDiff(myData->gradient, myData->bias, x1+1, y1+1, x2+1, y2+1, l1, l2, 1, 0.0);
-		
-		double weight;
+	//cost += 100*abs(myData->gray->Get(y2+1,x2+1)-myData->gray->Get(y1+1,x1+1));
+	if (y1==y2)
+	{
 		if (l1>0)
-			weight = myData->bias->Get(y1+1,x1+1);
+		{
+			cost += myData->naturality->dx->Get(y1+1,x1+1);
+			//cost += myData->gradient->dx->Get(y2+1,x2+1);
+			/*
+			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+			if (y1>0)
+				cost += 1*myData->gradient->dy->Get(y1,x1+1);
+			if (y1<height-1)
+				cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
+			*/
+		}
 		if (l2>0)
-			weight = myData->bias->Get(y2+1,x2+1);
-		cost += weight*(cost1+cost2);
-		//cost += min(cost1,cost2);
+		{
+			cost += myData->naturality->dx->Get(y2+1,x2+1);
+			//cost += myData->gradient->dx->Get(y1+1,x1+1);
+			/*
+			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+			if (y2>0)
+				cost += 1*myData->gradient->dy->Get(y2,x2+1);
+			if (y2<height-1)
+				cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
+			*/
+		}
 	}
-	else 
+	if (x1==x2)
 	{
-		cost = 100000*MAX_COST_VALUE;
+		if (y1<y2)
+		{
+			cost += myData->naturality->dy->Get(y1+1,x1+1);
+			//cost += myData->gradient->dy->Get(y1+1,x1+1);
+		}
+		if (y2<y1)
+		{
+			cost += myData->naturality->dy->Get(y2+1,x2+1);
+			//cost += myData->gradient->dy->Get(y2+1,x2+1);
+		}
 	}
-
-	/*
-	if ((y1==y2) && (x1<x2) && l2>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x2,y2);
-		intensityType p2;
-		int offset = 2;
-		double edge_cost = 0.0;
-		for (int nn_y = y2-offset; nn_y <= y2+offset; nn_y++)
-		{
-			for (int nn_x = x2-offset; nn_x <= x2+offset; nn_x++)
-			{
-				if (nn_y>=0 && nn_y<myData->src->GetHeight() &&
-					nn_x>=0 && nn_x<myData->src->GetWidth())
-				{
-					double edgeness = 0.0;
-					p2 = myData->src->GetPixelIntensity(nn_x,nn_y);
-					edgeness += myData->alpha*PairwiseColorDiff(p1,p2,0.0);
-					edgeness += myData->beta*myData->gradient->dx->Get(nn_y+1,nn_x+1);
-					edge_cost = (edge_cost<edgeness) ? edgeness : edge_cost;
-				}
-			}
-		}
-		cost += 1*edge_cost;
-	}
-	if ((y1==y2) && (x2<x1) && l1>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x1,y1);
-		intensityType p2;
-		int offset = 2;
-		double edge_cost = 0.0;
-		for (int nn_y = y1-offset; nn_y <= y1+offset; nn_y++)
-		{
-			for (int nn_x = x1-offset; nn_x <= x1+offset; nn_x++)
-			{
-				if (nn_y>=0 && nn_y<myData->src->GetHeight() &&
-					nn_x>=0 && nn_x<myData->src->GetWidth())
-				{
-					double edgeness = 0.0;
-					p2 = myData->src->GetPixelIntensity(nn_x,nn_y);
-					edgeness += myData->alpha*PairwiseColorDiff(p1,p2,0.0);
-					edgeness += myData->beta*myData->gradient->dx->Get(nn_y+1,nn_x+1);
-					edge_cost = (edge_cost<edgeness) ? edgeness : edge_cost;
-				}
-			}
-		}
-		cost += 1*edge_cost;
-	}
-	*/
-
-	// consider edge
-	/*
-	if ((y1==y2) && (x1<x2) && l2>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x2,y2);
-		gradientType p1_grad;
-		p1_grad.dx = myData->gradient->dx->Get(y2+1,x2+1);
-		p1_grad.dy = myData->gradient->dy->Get(y2+1,x2+1);
-		intensityType p2;
-		gradientType p2_grad;
-		int nn_num = 0;
-		double edge_cost = 0.0;
-		if (x2>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x2-1,y2);
-			p2_grad.dx = myData->gradient->dx->Get(y2+1,x2);
-			p2_grad.dy = myData->gradient->dy->Get(y2+1,x2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x2<myData->src->GetWidth()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x2+1,y2);
-			p2_grad.dx = myData->gradient->dx->Get(y2+1,x2+2);
-			p2_grad.dy = myData->gradient->dy->Get(y2+1,x2+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y2>0)
-		{
-			p2 = myData->src->GetPixelIntensity(x2,y2-1);
-			p2_grad.dx = myData->gradient->dx->Get(y2,x2+1);
-			p2_grad.dy = myData->gradient->dy->Get(y2,x2+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y2<myData->src->GetHeight()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x2,y2+1);
-			p2_grad.dx = myData->gradient->dx->Get(y2+2,x2+1);
-			p2_grad.dy = myData->gradient->dy->Get(y2+2,x2+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x2>0 && y2>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x2-1,y2-1);
-			p2_grad.dx = myData->gradient->dx->Get(y2,x2);
-			p2_grad.dy = myData->gradient->dy->Get(y2,x2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x2<myData->src->GetWidth()-1 && y2>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x2+1,y2-1);
-			p2_grad.dx = myData->gradient->dx->Get(y2,x2+2);
-			p2_grad.dy = myData->gradient->dy->Get(y2,x2+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x2>0 && y2<myData->src->GetHeight()-1)
-		{	
-			p2 = myData->src->GetPixelIntensity(x2-1,y2+1);
-			p2_grad.dx = myData->gradient->dx->Get(y2+2,x2);
-			p2_grad.dy = myData->gradient->dy->Get(y2+2,x2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x2<myData->src->GetWidth()-1 && y2<myData->src->GetHeight()-1)
-		{	
-			p2 = myData->src->GetPixelIntensity(x2+1,y2+1);
-			p2_grad.dx = myData->gradient->dx->Get(y2+2,x2+2);
-			p2_grad.dy = myData->gradient->dy->Get(y2+2,x2+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		cost += 0.1*edge_cost/nn_num;
-	}
-	if ((y1==y2) && (x2<x1) && l1>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x1,y1);
-		gradientType p1_grad;
-		p1_grad.dx = myData->gradient->dx->Get(y1+1,x1+1);
-		p1_grad.dy = myData->gradient->dy->Get(y1+1,x1+1);
-		intensityType p2;
-		gradientType p2_grad;
-		int nn_num = 0;
-		double edge_cost = 0.0;
-		if (x1>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x1-1,y1);
-			p2_grad.dx = myData->gradient->dx->Get(y1+1,x1);
-			p2_grad.dy = myData->gradient->dy->Get(y1+1,x1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x1<myData->src->GetWidth()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x1+1,y1);
-			p2_grad.dx = myData->gradient->dx->Get(y1+1,x1+2);
-			p2_grad.dy = myData->gradient->dy->Get(y1+1,x1+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y1>0)
-		{
-			p2 = myData->src->GetPixelIntensity(x1,y1-1);
-			p2_grad.dx = myData->gradient->dx->Get(y1,x1+1);
-			p2_grad.dy = myData->gradient->dy->Get(y1,x1+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y1<myData->src->GetHeight()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x1,y1+1);
-			p2_grad.dx = myData->gradient->dx->Get(y1+2,x1+1);
-			p2_grad.dy = myData->gradient->dy->Get(y1+2,x1+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x1>0 && y1>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x1-1,y1-1);
-			p2_grad.dx = myData->gradient->dx->Get(y1,x1);
-			p2_grad.dy = myData->gradient->dy->Get(y1,x1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x1<myData->src->GetWidth()-1 && y1>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x1+1,y1-1);
-			p2_grad.dx = myData->gradient->dx->Get(y1,x1+2);
-			p2_grad.dy = myData->gradient->dy->Get(y1,x1+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x1>0 && y1<myData->src->GetHeight()-1)
-		{	
-			p2 = myData->src->GetPixelIntensity(x1-1,y1+1);
-			p2_grad.dx = myData->gradient->dx->Get(y1+2,x1);
-			p2_grad.dy = myData->gradient->dy->Get(y1+2,x1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x1<myData->src->GetWidth()-1 && y1<myData->src->GetHeight()-1)
-		{	
-			p2 = myData->src->GetPixelIntensity(x1+1,y1+1);
-			p2_grad.dx = myData->gradient->dx->Get(y1+2,x1+2);
-			p2_grad.dy = myData->gradient->dy->Get(y1+2,x1+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		cost += 0.1*edge_cost/nn_num;
-	}
-	*/
 
 	//printf("smoothFn: computing cost between (%d,%d) and (%d,%d) with labels %d and %d : %d\n",y1,x1,y2,x2,l1,l2,cost);
 	return cost;
@@ -631,11 +487,14 @@ double PairImgDataFn(int p, int l, void *data)
 		l!=myData->src->GetWidth()-myData->target_size.width)
 		return 100000*MAX_COST_VALUE;
 
-	int refine_offset = 3;
-	if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l>0)
-		return 100000*MAX_COST_VALUE;
-	if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
-		return 100000*MAX_COST_VALUE;
+	if (myData->subbanded)
+	{
+		int refine_offset = 1;
+		if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l>0)
+			return 100000*MAX_COST_VALUE;
+		if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
+			return 100000*MAX_COST_VALUE;
+	}
 
 	// Assign motion guided data energy 
 	// preserve temporal consistency
@@ -645,13 +504,19 @@ double PairImgDataFn(int p, int l, void *data)
 	if (cur_match==pre_match)
 		return 0.0;
 
+
 	double min_diff;
 	if (cur_match>=0 && cur_match<myData->src->GetWidth())
 	{
+		min_diff = min(abs(myData->gray->Get(y+1,cur_match+1)-myData->gray->Get(y+1,pre_match+1)),
+					   abs(myData->pre_gray->Get(y+1,cur_match+1)-myData->pre_gray->Get(y+1,pre_match+1)));
+		/*
 		intensityType p1 = myData->src->GetPixelIntensity(cur_match,y);
 		intensityType p2 = myData->src->GetPixelIntensity(pre_match,y);
 		min_diff = PairwiseColorDiff(myData->src->GetPixelIntensity(cur_match,y),
 									 myData->src->GetPixelIntensity(pre_match,y),0.0);
+		*/
+
 		/*
 		min_diff += pow(myData->gradient->dx->Get(y+1,cur_match+1)-
 						myData->gradient->dx->Get(y+1,pre_match+1),2.0);
@@ -662,7 +527,7 @@ double PairImgDataFn(int p, int l, void *data)
 	else
 		min_diff = 100000*MAX_COST_VALUE;
 
-	cost += 10*min_diff;
+	cost += 0.1*min_diff;
 	//cost += 1000*myData->bias->Get(y+1,x+l+1);
 	
 	return cost;
@@ -685,15 +550,18 @@ double PairImgColorDiff(Picture *src, Matrix *bias, int x1, int y1, int x2,
 		x2+l2-x_offset>=0 && x2+l2-x_offset<width && x1+l1>=0 && x1+l1<width)
 	{
 		//double weight;
+		pixelType pix1, pix2;
 		double color_diff;
 		//printf("(%d,%d) color components: %d,%d,%d\n",src->GetPixel(y2+l2,x2).r,src->GetPixel(y2+l2,x2).g,src->GetPixel(y2+l2,x2).b);
 		if (direction==0)
 		{
 			//weight = bias->Get(y2+1,x2+l2+1)*bias->Get(y1+y_offset+1,x1+l1+x_offset+1);
+			pix1 = src->GetPixel(x2+l2,y2);
+			pix2 = src->GetPixel(x1+l1+x_offset,y1+y_offset);
 			color_diff = 0.0;
-			color_diff += pow((double)(src->GetPixel(x2+l2,y2).r-src->GetPixel(x1+l1+x_offset,y1+y_offset).r),2.0);
-			color_diff += pow((double)(src->GetPixel(x2+l2,y2).g-src->GetPixel(x1+l1+x_offset,y1+y_offset).g),2.0);
-			color_diff += pow((double)(src->GetPixel(x2+l2,y2).b-src->GetPixel(x1+l1+x_offset,y1+y_offset).b),2.0);
+			color_diff += pow((double)(pix1.r-pix2.r),2.0);
+			color_diff += pow((double)(pix1.g-pix2.g),2.0);
+			color_diff += pow((double)(pix1.b-pix2.b),2.0);
 			//diff += 1000*weight;
 			diff += (color_diff<threshold) ? 0 : color_diff;
 		}
@@ -701,10 +569,12 @@ double PairImgColorDiff(Picture *src, Matrix *bias, int x1, int y1, int x2,
 		if (direction==1)
 		{
 			//weight = bias->Get(y2-y_offset+1,x2+l2-x_offset+1)*bias->Get(y1+1,x1+l1+1);
+			pix1 = src->GetPixel(x2+l2-x_offset,y2-y_offset);
+			pix2 = src->GetPixel(x1+l1,y1);
 			color_diff = 0.0;
-			color_diff += pow((double)(src->GetPixel(x2+l2-x_offset,y2-y_offset).r-src->GetPixel(x1+l1,y1).r),2.0);	
-			color_diff += pow((double)(src->GetPixel(x2+l2-x_offset,y2-y_offset).g-src->GetPixel(x1+l1,y1).g),2.0);
-			color_diff += pow((double)(src->GetPixel(x2+l2-x_offset,y2-y_offset).b-src->GetPixel(x1+l1,y1).b),2.0);
+			color_diff += pow((double)(pix1.r-pix2.r),2.0);	
+			color_diff += pow((double)(pix1.g-pix2.g),2.0);
+			color_diff += pow((double)(pix1.b-pix2.b),2.0);
 			//diff += 1000*weight;
 			diff += (color_diff<threshold) ? 0 : color_diff;
 		}
@@ -715,6 +585,50 @@ double PairImgColorDiff(Picture *src, Matrix *bias, int x1, int y1, int x2,
 	//printf("ColorDiff: finished\n");
 
 	//printf("ColorDiff: cost between (%d,%d) and (%d,%d) with labels %d and %d is %d\n",x1,y1,x2,y2,l1,l2,diff);
+	return diff;
+}
+
+/*
+ * Compute grayscale difference between two mapped points
+ */
+double PairImgGrayscaleDiff(Matrix *gray, Matrix *bias, int x1, int y1, 
+						    int x2, int y2, int l1, int l2, int direction, double threshold)
+{
+	if (l1==l2)
+		return 0.0;
+
+	double diff = 0.0;
+	int width = gray->NumOfCols();
+	int height = gray->NumOfRows();
+	int x_offset = x2-x1;
+	int y_offset = y2-y1;
+
+	if (x2+l2>0 && x2+l2<=width && x1+l1+x_offset>0 && x1+l1+x_offset<=width &&
+		x2+l2-x_offset>0 && x2+l2-x_offset<=width && x1+l1>0 && x1+l1<=width)
+	{
+		//double weight;
+		double grad_diff;
+		if (direction==0)
+		{
+			//weight = bias->Get(y2,x2+l2)*bias->Get(y1+y_offset,x1+l1+x_offset);
+			grad_diff = 0.0;
+			grad_diff += pow((double)(gray->Get(y2,x2+l2)-gray->Get(y1+y_offset,x1+l1+x_offset)),2.0);
+			//diff += 1000*weight;
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
+		}
+		if (direction==1)
+		{
+			//weight = bias->Get(y2-y_offset,x2+l2-x_offset)*bias->Get(y1,x1+l1);
+			grad_diff = 0.0;
+			grad_diff += pow((double)(gray->Get(y1,x1+l1)-gray->Get(y2-y_offset,x2+l2-x_offset)),2.0);
+			//diff += 1000*weight;
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
+		}
+	} else
+	{	
+		diff += 100000*MAX_COST_VALUE;
+	}
+
 	return diff;
 }
 
@@ -787,145 +701,62 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	if ((y1==y2) && ((x1<x2 && l1>l2) || (x1>x2 && l1<l2)))
 		return 100000*MAX_COST_VALUE;
 
-	if (abs(x1-x2)<=1 && abs(y1-y2)<=1)
+	/* connectivity */
+	/*
+	if ((abs(y1-y2)==1) && (abs(x1-x2)==1))
 	{
-		double cost1 = 0.0;
-		cost1 += myData->alpha*PairImgColorDiff(myData->src, myData->bias, x1, y1, x2, y2, l1, l2, 0, 0.0);
-		cost1 += myData->beta*PairImgGradientDiff(myData->gradient, myData->bias, x1+1, y1+1, x2+1, y2+1, l1, l2, 0, 0.0);
+		if (x1<x2 && l1>0 && l2==0)
+			return 100000*MAX_COST_VALUE;
+		if (x2<x1 && l2>0 && l1==0)
+			return 100000*MAX_COST_VALUE;
+	}
+	*/
 
-		double cost2 = 0.0;
-		cost2 += myData->alpha*PairImgColorDiff(myData->src, myData->bias, x1, y1, x2, y2, l1, l2, 1, 0.0);
-		cost2 += myData->beta*PairImgGradientDiff(myData->gradient, myData->bias, x1+1, y1+1, x2+1, y2+1, l1, l2, 1, 0.0);
-
-		double weight;
+	//cost += 100*abs(myData->gray->Get(y2+1,x2+1)-myData->gray->Get(y1+1,x1+1));
+	if (y1==y2)
+	{
 		if (l1>0)
-			weight = myData->bias->Get(y1+1,x1+1);
+		{
+			cost += myData->naturality->dx->Get(y1+1,x1+1);
+			//cost += myData->gradient->dx->Get(y2+1,x2+1);
+			/*
+			cost += 1*myData->gradient->dt[0].Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+			if (y1>0)
+				cost += 1*myData->gradient->dy->Get(y1,x1+1);
+			if (y1<height-1)
+				cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
+			*/
+		}
 		if (l2>0)
-			weight = myData->bias->Get(y2+1,x2+1);
-		cost += weight*(cost1+cost2);
-		//cost += min(cost1,cost2);
+		{
+			cost += myData->naturality->dx->Get(y2+1,x2+1);
+			//cost += myData->gradient->dx->Get(y1+1,x1+1);
+			/*
+			cost += 1*myData->gradient->dt[0].Get(y2+1,x2+1);
+			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+			if (y2>0)
+				cost += 1*myData->gradient->dy->Get(y2,x2+1);
+			if (y2<height-1)
+				cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
+			*/
+		}
 	}
-	else 
+	if (x1==x2)
 	{
-		cost = 100000*MAX_COST_VALUE;
+		if (y1<y2)
+		{
+			cost += myData->naturality->dy->Get(y1+1,x1+1);
+			//cost += myData->gradient->dy->Get(y1+1,x1+1);
+		}
+		if (y2<y1)
+		{
+			cost += myData->naturality->dy->Get(y2+1,x2+1);
+			//cost += myData->gradient->dy->Get(y1+1,x1+1);
+		}
 	}
-
-	/*
-	if ((y1==y2) && (x1<x2) && l2>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x2,y2);
-		intensityType p2;
-		int offset = 2;
-		double edge_cost = 0.0;
-		for (int nn_y = y2-offset; nn_y <= y2+offset; nn_y++)
-		{
-			for (int nn_x = x2-offset; nn_x <= x2+offset; nn_x++)
-			{
-				if (nn_y>=0 && nn_y<myData->src->GetHeight() &&
-					nn_x>=0 && nn_x<myData->src->GetWidth())
-				{
-					double edgeness = 0.0;
-					p2 = myData->src->GetPixelIntensity(nn_x,nn_y);
-					edgeness += myData->alpha*PairwiseColorDiff(p1,p2,0.0);
-					edgeness += myData->beta*myData->gradient->dx->Get(nn_y+1,nn_x+1);
-					edge_cost = (edge_cost<edgeness) ? edgeness : edge_cost;
-				}
-			}
-		}
-		cost += 1*edge_cost;
-	}
-	if ((y1==y2) && (x2<x1) && l1>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x1,y1);
-		intensityType p2;
-		int offset = 2;
-		double edge_cost = 0.0;
-		for (int nn_y = y1-offset; nn_y <= y1+offset; nn_y++)
-		{
-			for (int nn_x = x1-offset; nn_x <= x1+offset; nn_x++)
-			{
-				if (nn_y>=0 && nn_y<myData->src->GetHeight() &&
-					nn_x>=0 && nn_x<myData->src->GetWidth())
-				{
-					double edgeness = 0.0;
-					p2 = myData->src->GetPixelIntensity(nn_x,nn_y);
-					edgeness += myData->alpha*PairwiseColorDiff(p1,p2,0.0);
-					edgeness += myData->beta*myData->gradient->dx->Get(nn_y+1,nn_x+1);
-					edge_cost = (edge_cost<edgeness) ? edgeness : edge_cost;
-				}
-			}
-		}
-		cost += 1*edge_cost;
-	}
-	*/
-
-	// consider edge
-	/*
-	if ((y1==y2) && (x1<x2) && l2>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x2,y2);
-		intensityType p2;
-		int nn_num = 0;
-		double edge_cost = 0.0;
-		if (x2>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x2-1,y2);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		if (x2<myData->src->GetWidth()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x2+1,y2);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		if (y2>0)
-		{
-			p2 = myData->src->GetPixelIntensity(x2,y2-1);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		if (y2<myData->src->GetHeight()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x2,y2+1);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		cost += 100*edge_cost/nn_num;
-	}
-	if ((y1==y2) && (x2<x1) && l1>0)
-	{
-		intensityType p1 = myData->src->GetPixelIntensity(x1,y1);
-		intensityType p2;
-		int nn_num = 0;
-		double edge_cost = 0.0;
-		if (x1>0)
-		{	
-			p2 = myData->src->GetPixelIntensity(x1-1,y1);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		if (x1<myData->src->GetWidth()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x1+1,y1);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		if (y1>0)
-		{
-			p2 = myData->src->GetPixelIntensity(x1,y1-1);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		if (y1<myData->src->GetHeight()-1)
-		{
-			p2 = myData->src->GetPixelIntensity(x1,y1+1);
-			edge_cost += PairwiseDiff(p1, p2, 0.0);
-			nn_num++;
-		}
-		cost += 100*edge_cost/nn_num;
-	}
-	*/
 
 	//printf("smoothFn: computing cost between (%d,%d) and (%d,%d) with labels %d and %d : %d\n",y1,x1,y2,x2,l1,l2,cost);
 	return cost;
@@ -954,14 +785,54 @@ double VideoDataFn(int p, int l, void *data)
 		l!=myData->src->GetPicture(0)->GetWidth()-myData->target_size.width)
 		return 100000*MAX_COST_VALUE;
 	
+
 	return cost;
+}
+
+/*
+ * Compute grayscale difference between two mapped points
+ */
+double VideoGrayScaleDiff(Matrix *gray, int x1, int y1, int t1, int x2, int y2, 
+						  int t2, int l1, int l2, int direction, double threshold)
+{
+	double diff = 0.0;
+	int width = gray[0].NumOfCols();
+	int height = gray[0].NumOfRows();
+	int x_offset = x2-x1;
+	int y_offset = y2-y1;
+	int t_offset = t2-t1;
+
+	if (x2+l2>0 && x2+l2<=width && x1+l1+x_offset>0 && x1+l1+x_offset<=width &&
+		x2+l2-x_offset>0 && x2+l2-x_offset<=width  && x1+l1>0 && x1+l1<=width)
+	{
+		double grad_diff = 0.0;
+		if (direction==0)
+		{
+			grad_diff += pow((double)(gray[t2].Get(y2,x2+l2)-gray[t1+t_offset].Get(y1+y_offset,x1+l1+x_offset)),2.0);
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
+		}
+
+		if (direction==1)
+		{
+			grad_diff += pow((double)(gray[t1].Get(y1,x1+l1)-gray[t2-t_offset].Get(y2-y_offset,x2+l2-x_offset)),2.0);
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
+		}
+	} else
+	{	
+		diff += 100000*MAX_COST_VALUE;
+	}
+
+	if (t1!=t2)
+		return 1*diff;
+	else
+		return diff;
 }
 
 /*
  * Compute color difference between two mapped points
  */
-double VideoColorDiff(PictureList *src, int x1, int y1, int t1, 
-					  int x2, int y2, int t2, int l1, int l2, int direction)
+double VideoColorDiff(PictureList *src, int x1, int y1, int t1, int x2, int y2, 
+					  int t2, int l1, int l2, int direction, double threshold)
 {
 	double diff = 0.0;	
 	int width = src->GetPicture(t1)->GetWidth();
@@ -974,24 +845,26 @@ double VideoColorDiff(PictureList *src, int x1, int y1, int t1,
 	if (x2+l2>=0 && x2+l2<width && x1+l1+x_offset>=0 && x1+l1+x_offset<width &&
 		x2+l2-x_offset>=0 && x2+l2-x_offset<width && x1+l1>=0 && x1+l1<width)
 	{
+		pixelType pix1, pix2;
+		double color_diff = 0.0;
 		if (direction == 0)
 		{
-			diff += pow((double)(src->GetPicture(t2)->GetPixel(x2+l2,y2).r-
-						src->GetPicture(t2)->GetPixel(x1+l1+x_offset,y1+y_offset).r),2.0);
-			diff += pow((double)(src->GetPicture(t2)->GetPixel(x2+l2,y2).g-
-						src->GetPicture(t2)->GetPixel(x1+l1+x_offset,y1+y_offset).g),2.0);
-			diff += pow((double)(src->GetPicture(t2)->GetPixel(x2+l2,y2).b-
-						src->GetPicture(t2)->GetPixel(x1+l1+x_offset,y1+y_offset).b),2.0);
+			pix1 = src->GetPicture(t2)->GetPixel(x2+l2,y2);
+			pix2 = src->GetPicture(t1+t_offset)->GetPixel(x1+l1+x_offset,y1+y_offset);
+			color_diff += pow((double)(pix1.r-pix2.r),2.0);
+			color_diff += pow((double)(pix1.g-pix2.g),2.0);
+			color_diff += pow((double)(pix1.b-pix2.b),2.0);
+			diff += (color_diff<threshold) ? 0 : color_diff;
 		}
 
 		if (direction == 1)
 		{
-			diff += pow((double)(src->GetPicture(t1)->GetPixel(x2+l2-x_offset,y2-y_offset).r-
-						src->GetPicture(t1)->GetPixel(x1+l1,y1).r),2.0);
-			diff += pow((double)(src->GetPicture(t1)->GetPixel(x2+l2-x_offset,y2-y_offset).g-
-						src->GetPicture(t1)->GetPixel(x1+l1,y1).g),2.0);
-			diff += pow((double)(src->GetPicture(t1)->GetPixel(x2+l2-x_offset,y2-y_offset).b-
-						src->GetPicture(t1)->GetPixel(x1+l1,y1).b),2.0);
+			pix1 = src->GetPicture(t2-t_offset)->GetPixel(x2+l2-x_offset,y2-y_offset);
+			pix2 = src->GetPicture(t1)->GetPixel(x1+l1,y1); 
+			color_diff += pow((double)(pix1.r-pix2.r),2.0);
+			color_diff += pow((double)(pix1.g-pix2.g),2.0);
+			color_diff += pow((double)(pix1.b-pix2.b),2.0);
+			diff += (color_diff<threshold) ? 0 : color_diff;
 		}
 
 	} else
@@ -1001,8 +874,8 @@ double VideoColorDiff(PictureList *src, int x1, int y1, int t1,
 	//printf("ColorDiff: finished\n");
 
 	//printf("ColorDiff: cost between (%d,%d) and (%d,%d) with labels %d and %d is %d\n",x1,y1,x2,y2,l1,l2,diff);
-	if (x1==x2 && y1==y2)
-		return 10*diff;
+	if (t1!=t2)
+		return 50*diff;
 	else
 		return diff;
 }
@@ -1010,8 +883,8 @@ double VideoColorDiff(PictureList *src, int x1, int y1, int t1,
 /*
  * Compute gradient difference between two mapped points
  */
-double VideoGradientDiff(gradient2D *gradient, int x1, int y1, int t1, 
-						 int x2, int y2, int t2, int l1, int l2, int direction)
+double VideoGradientDiff(gradient2D *gradient, int x1, int y1, int t1, int x2, int y2, 
+						 int t2, int l1, int l2, int direction, double threshold)
 {
 	double diff = 0.0;
 	int width = gradient[0].dx->NumOfCols();
@@ -1021,26 +894,29 @@ double VideoGradientDiff(gradient2D *gradient, int x1, int y1, int t1,
 	int t_offset = t2-t1;
 
 	if (x2+l2>0 && x2+l2<=width && x1+l1+x_offset>0 && x1+l1+x_offset<=width &&
-		x2+l2-x_offset>0 && x2+l2-x_offset<=width)
+		x2+l2-x_offset>0 && x2+l2-x_offset<=width && x1+l1>0 && x1+l1<=width)
 	{
+		double grad_diff = 0.0;
 		if (direction==0)
 		{
-			diff += pow((double)(gradient[t2].dx->Get(y2,x2+l2)-gradient[t2].dx->Get(y1+y_offset,x1+l1+x_offset)),2.0);
-			diff += pow((double)(gradient[t2].dy->Get(y2,x2+l2)-gradient[t2].dy->Get(y1+y_offset,x1+l1+x_offset)),2.0);
+			grad_diff += pow((double)(gradient[t2].dx->Get(y2,x2+l2)-gradient[t1+t_offset].dx->Get(y1+y_offset,x1+l1+x_offset)),2.0);
+			grad_diff += pow((double)(gradient[t2].dy->Get(y2,x2+l2)-gradient[t1+t_offset].dy->Get(y1+y_offset,x1+l1+x_offset)),2.0);
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
 		}
 
 		if (direction==1)
 		{
-			diff += pow((double)(gradient[t1].dx->Get(y2-y_offset,x2+l2-x_offset)-gradient[t1].dx->Get(y1,x1+l1)),2.0);
-			diff += pow((double)(gradient[t1].dy->Get(y2-y_offset,x2+l2-x_offset)-gradient[t1].dy->Get(y1,x1+l1)),2.0);
+			grad_diff += pow((double)(gradient[t1].dx->Get(y1,x1+l1)-gradient[t2-t_offset].dx->Get(y2-y_offset,x2+l2-x_offset)),2.0);
+			grad_diff += pow((double)(gradient[t1].dy->Get(y1,x1+l1)-gradient[t2-t_offset].dy->Get(y2-y_offset,x2+l2-x_offset)),2.0);
+			diff += (grad_diff<threshold) ? 0 : grad_diff;
 		}
 	} else
 	{	
 		diff += 100000*MAX_COST_VALUE;
 	}
 
-	if (x1==x2 && y1==y2)
-		return 10*diff;
+	if (t1!=t2)
+		return 50*diff;
 	else
 		return diff;
 }
@@ -1071,175 +947,95 @@ double VideoSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	if ((y1==y2) && (t1==t2) && ((x1<x2 && l1>l2) || (x1>x2 && l1<l2)))
 		return 100000*MAX_COST_VALUE;
 
-	if (abs(x1-x2)<=1 && abs(y1-y2)<=1 && abs(t1-t2)<=1)
-	{		
-		double cost1 = 0.0;
-		cost1 += myData->alpha*VideoColorDiff(myData->src, x1, y1, t1, x2, y2, t2, l1, l2, 0);
-		cost1 += myData->beta*VideoGradientDiff(myData->gradient, x1+1, y1+1, t1, x2+1, y2+1, t2, l1, l2, 0);
+	/* connectivity */
+	/*
+	if ((abs(t1-t2)==1) && (y1==y2) && (abs(x1-x2)==1))
+	{
+		if (x1<x2 && l1>0 && l2==0)
+			return 100000*MAX_COST_VALUE;
+		if (x2<x1 && l2>0 && l1==0)
+			return 100000*MAX_COST_VALUE;
+	}
+	if ((t1==t2) && (abs(y1-y2)==1) && (abs(x1-x2)==1))
+	{
+		if (x1<x2 && l1>0 && l2==0)
+			return 100000*MAX_COST_VALUE;
+		if (x2<x1 && l2>0 && l1==0)
+			return 100000*MAX_COST_VALUE;
+	}
+	*/
 
-		double cost2 = 0.0;
-		cost2 += myData->alpha*VideoColorDiff(myData->src, x1, y1, t1, x2, y2, t2, l1, l2, 1);
-		cost2 += myData->beta*VideoGradientDiff(myData->gradient, x1+1, y1+1, t1, x2+1, y2+1, t2, l1, l2, 1);
-
-		double weight;
+	//cost += 1000*abs(myData->grayscales[t2].Get(y2+1,x2+1)-myData->grayscales[t1].Get(y1+1,x1+1));
+	//double sigma = width/4;
+	if (t1==t2 && y1==y2)
+	{
 		if (l1>0)
-			weight = myData->bias[t1].Get(y1+1,x1+1);
+		{
+			//double weight = simpleGauss(x1,sigma,width/2);
+			cost += 1*myData->naturality->dx[t1].Get(y1+1,x1+1);
+			//cost += myData->gradient->dx[t2].Get(y2+1,x2+1);
+			/*
+			if (t1<time-1)
+				cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
+			else
+				cost += 1*myData->gradient->dt[t1-1].Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
+			if (y1>0)
+				cost += 1*myData->gradient->dy[t1].Get(y1,x1+1);
+			if (y1<height-1)
+				cost += 1*myData->gradient->dy[t1].Get(y1+2,x1+1);
+			*/
+		}
 		if (l2>0)
-			weight = myData->bias[t2].Get(y2+1,x2+1);
-		cost += weight*(cost1+cost2);
-		//cost += min(cost1,cost2);
+		{
+			//double weight = simpleGauss(x2,sigma,width/2);
+			cost += 1*myData->naturality->dx[t2].Get(y2+1,x2+1);
+			//cost += myData->gradient->dx[t1].Get(y1+1,x1+1);
+			/*
+			if (t2<time-1)
+				cost += 1*myData->gradient->dt[t2].Get(y2+1,x2+1);
+			else
+				cost += 1*myData->gradient->dt[t2-1].Get(y2+1,x2+1);
+			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1+1);
+			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
+			if (y2>0)
+				cost += 1*myData->gradient->dy[t2].Get(y2,x2+1);
+			if (y2<height-1)
+				cost += 1*myData->gradient->dy[t2].Get(y2+2,x2+1);
+			*/
+		}
 	}
-	else 
+	if (t1==t2 && x1==x2)
 	{
-		cost = 100000*MAX_COST_VALUE;
+		if (y1<y2)
+		{
+			//double weight = simpleGauss(x1,sigma,width/2);
+			cost += 1*myData->naturality->dy[t1].Get(y1+1,x1+1);
+			//cost += myData->gradient->dy[t1].Get(y1+1,x1+1);
+		}
+		if (y2<y1)
+		{
+			//double weight = simpleGauss(x1,sigma,width/2);
+			cost += 1*myData->naturality->dy[t2].Get(y2+1,x2+1);
+			//cost += myData->gradient->dy[t2].Get(y2+1,x2+1);
+		}
 	}
-
-	/*
-	if ((t1==t2) && (y1==y2) && (x1<x2) && l2>0)
+	if (x1==x2 && y1==y2)
 	{
-		intensityType p1 = myData->src->GetPicture(t2)->GetPixelIntensity(x2,y2);
-		intensityType p2;
-		int offset = 2;
-		double edge_cost = 0.0;
-		for (int nn_y = y2-offset; nn_y <= y2+offset; nn_y++)
+		if (t1<t2)
 		{
-			for (int nn_x = x2-offset; nn_x <= x2+offset; nn_x++)
-			{
-				if (nn_y>=0 && nn_y<myData->src->GetPicture(t2)->GetHeight() &&
-					nn_x>=0 && nn_x<myData->src->GetPicture(t2)->GetWidth())
-				{
-					double edgeness = 0.0;
-					p2 = myData->src->GetPicture(t2)->GetPixelIntensity(nn_x,nn_y);
-					edgeness += myData->alpha*PairwiseColorDiff(p1,p2,0.0);
-					edge_cost = (edge_cost<edgeness) ? edgeness : edge_cost;
-				}
-			}
+			//double weight = simpleGauss(x1,sigma,width/2);
+			cost += 1*myData->naturality->dt[t1].Get(y1+1,x1+1);
+			//cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
 		}
-		cost += 1000*edge_cost;
+		if (t2<t1)
+		{
+			//double weight = simpleGauss(x1,sigma,width/2);
+			cost += 1*myData->naturality->dt[t2].Get(y2+1,x2+1);
+			//cost += 1*myData->gradient->dt[t2].Get(y2+1,x2+1);
+		}
 	}
-	if ((t1==t2) && (y1==y2) && (x2<x1) && l1>0)
-	{
-		intensityType p1 = myData->src->GetPicture(t1)->GetPixelIntensity(x1,y1);
-		intensityType p2;
-		int offset = 2;
-		double edge_cost = 0.0;
-		for (int nn_y = y1-offset; nn_y <= y1+offset; nn_y++)
-		{
-			for (int nn_x = x1-offset; nn_x <= x1+offset; nn_x++)
-			{
-				if (nn_y>=0 && nn_y<myData->src->GetPicture(t1)->GetHeight() &&
-					nn_x>=0 && nn_x<myData->src->GetPicture(t1)->GetWidth())
-				{
-					double edgeness = 0.0;
-					p2 = myData->src->GetPicture(t1)->GetPixelIntensity(nn_x,nn_y);
-					edgeness += myData->alpha*PairwiseColorDiff(p1,p2,0.0);
-					edge_cost = (edge_cost<edgeness) ? edgeness : edge_cost;
-				}
-			}
-		}
-		cost += 1000*edge_cost;
-	}
-	*/
-
-	// consider edge
-	/*
-	if ((y1==y2) && (t1==t2) && (x1<x2) && l2>0)
-	{
-		intensityType p1 = myData->src->GetPicture(t2)->GetPixelIntensity(x2,y2);
-		gradientType p1_grad;
-		p1_grad.dx = myData->gradient[t2].dx->Get(y2+1,x2+1);
-		p1_grad.dy = myData->gradient[t2].dy->Get(y2+1,x2+1);
-		intensityType p2;
-		gradientType p2_grad;
-		int nn_num = 0;
-		double edge_cost = 0.0;
-		if (x2>0)
-		{	
-			p2 = myData->src->GetPicture(t2)->GetPixelIntensity(x2-1,y2);
-			p2_grad.dx = myData->gradient[t2].dx->Get(y2+1,x2);
-			p2_grad.dy = myData->gradient[t2].dy->Get(y2+1,x2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);			
-			nn_num++;
-		}
-		if (x2<myData->src->GetPicture(t2)->GetWidth()-1)
-		{
-			p2 = myData->src->GetPicture(t2)->GetPixelIntensity(x2+1,y2);
-			p2_grad.dx = myData->gradient[t2].dx->Get(y2+1,x2+2);
-			p2_grad.dy = myData->gradient[t2].dy->Get(y2+1,x2+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y2>0)
-		{
-			p2 = myData->src->GetPicture(t2)->GetPixelIntensity(x2,y2-1);
-			p2_grad.dx = myData->gradient[t2].dx->Get(y2,x2+1);
-			p2_grad.dy = myData->gradient[t2].dy->Get(y2,x2+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y2<myData->src->GetPicture(t2)->GetHeight()-1)
-		{
-			p2 = myData->src->GetPicture(t2)->GetPixelIntensity(x2,y2+1);
-			p2_grad.dx = myData->gradient[t2].dx->Get(y2+2,x2+1);
-			p2_grad.dy = myData->gradient[t2].dy->Get(y2+2,x2+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		cost += 10*edge_cost/nn_num;
-	}
-	if ((y1==y2) && (t1==t2) && (x2<x1) && l1>0)
-	{
-		intensityType p1 = myData->src->GetPicture(t1)->GetPixelIntensity(x1,y1);
-		gradientType p1_grad;
-		p1_grad.dx = myData->gradient[t1].dx->Get(y1+1,x1+1);
-		p1_grad.dy = myData->gradient[t1].dy->Get(y1+1,x1+1);
-		intensityType p2;
-		gradientType p2_grad;
-		int nn_num = 0;
-		double edge_cost = 0.0;
-		if (x1>0)
-		{	
-			p2 = myData->src->GetPicture(t1)->GetPixelIntensity(x1-1,y1);
-			p2_grad.dx = myData->gradient[t1].dx->Get(y1+1,x1);
-			p2_grad.dy = myData->gradient[t1].dy->Get(y1+1,x1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (x1<myData->src->GetPicture(t1)->GetWidth()-1)
-		{
-			p2 = myData->src->GetPicture(t1)->GetPixelIntensity(x1+1,y1);
-			p2_grad.dx = myData->gradient[t1].dx->Get(y1+1,x1+2);
-			p2_grad.dy = myData->gradient[t1].dy->Get(y1+1,x1+2);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y1>0)
-		{
-			p2 = myData->src->GetPicture(t1)->GetPixelIntensity(x1,y1-1);
-			p2_grad.dx = myData->gradient[t1].dx->Get(y1,x1+1);
-			p2_grad.dy = myData->gradient[t1].dy->Get(y1,x1+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		if (y1<myData->src->GetPicture(t1)->GetHeight()-1)
-		{
-			p2 = myData->src->GetPicture(t1)->GetPixelIntensity(x1,y1+1);
-			p2_grad.dx = myData->gradient[t1].dx->Get(y1+2,x1+1);
-			p2_grad.dy = myData->gradient[t1].dy->Get(y1+2,x1+1);
-			edge_cost += myData->alpha*PairwiseColorDiff(p1, p2, 0.0);
-			edge_cost += myData->beta*PairwiseGradientDiff(p1_grad, p2_grad, 0.0);
-			nn_num++;
-		}
-		cost += 10*edge_cost/nn_num;
-	}
-	*/
 
 	//printf("smoothFn: computing cost between (%d,%d) and (%d,%d) with labels %d and %d : %d\n",y1,x1,y2,x2,l1,l2,cost);
 	return cost;
@@ -1541,6 +1337,7 @@ PictureList *GenerateRetargetResult(int *labels, PictureList *src, int width,
 /*
  * Function to find the optimal shift-map
  */
+/*
 int *GridGraph_GraphCut(listPyramidType *src, int level, videoSize &target_size, 
 						int num_labels, float alpha, float beta, char *target_path)
 {
@@ -1629,25 +1426,17 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, videoSize &target_size,
 	return result;
 
 }
+*/
 
 /*
  * Function to find the optimal single seam
  */
 PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target_size, videoSize &up_size,
-							   int num_labels, float alpha, float beta, char *target_path, int *&band,
-							   int *&lr_band, Matrix *bias)
+							   int num_labels, char *target_path, int *&band, int *&lr_band, Matrix *bias, bool saved)
 {
 	// set up the needed data to pass to function for the data costs
-	gradient2D *gradient = new gradient2D[src->GetLength()];
-	for (int t = 0; t < src->GetLength(); t++)
-	{
-		gradient2D* grad = Gradient(src->GetPicture(t));
-		gradient[t].dx = grad->dx;
-		gradient[t].dy = grad->dy;
-		gradient[t].total_dx = grad->total_dx;
-		gradient[t].total_dy = grad->total_dy;
-		delete grad;
-	}
+	//gradient3D *gradient = Diff_3D(src,10.0);
+	gradient3D *naturality = Naturality_3D(src,0.0);
 
 
 	int num_pixels = target_size.width*target_size.height*target_size.time;
@@ -1666,23 +1455,21 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		// data terms comes from function pointer
 		ForVideoDataFn toDataFn;
 		toDataFn.src = src;
-		toDataFn.gradient = gradient;
 		toDataFn.bias = bias;
 		toDataFn.target_size = target_size;
 		gc->setDataCost(&VideoDataFn,&toDataFn);
 
 		// smoothness comes from function pointer
 		ForVideoSmoothFn toSmoothFn;
-		toSmoothFn.src = src;		
-		toSmoothFn.gradient = gradient;
-		toSmoothFn.bias = bias;
+		toSmoothFn.src = src;
+		//toSmoothFn.gradient = gradient;
+		toSmoothFn.naturality = naturality;
+		//toSmoothFn.bias = bias;
 		toSmoothFn.target_size = target_size;
-		toSmoothFn.alpha = alpha;
-		toSmoothFn.beta = beta;
 		gc->setSmoothCost(&VideoSmoothFn, &toSmoothFn);
 
 		//printf("Before optimization energy is %f\n",gc->compute_energy());
-		gc->expansion();// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		gc->expansion(1);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
 		//printf("After optimization energy is %f\n",gc->compute_energy());
 
 		// obtain the labels
@@ -1700,22 +1487,31 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		// update_
 		result = GenerateRetargetResult(labels, src, 
 										target_size.width, 
-										target_size.height,target_path,true);
-		
-		
-		delete labels;
+										target_size.height,target_path,saved);
+				
 		delete gc;
 	}
 	catch (GCException e){
 		e.Report();
 	}
 
-	for (int t = 0; t < src->GetLength(); t++)
-	{
-		delete gradient[t].dx;
-		delete gradient[t].dy;
-	}
-	delete [] gradient;
+	delete [] labels;
+	/*
+	delete [] gradient->dx;
+	delete [] gradient->dy;
+	delete [] gradient->dt;
+	delete [] gradient->total_dx;
+	delete [] gradient->total_dy;
+	delete [] gradient->total_dt;
+	delete gradient;
+	*/
+	delete [] naturality->dx;
+	delete [] naturality->dy;
+	delete [] naturality->dt;
+	delete [] naturality->total_dx;
+	delete [] naturality->total_dy;
+	delete [] naturality->total_dt;
+	delete naturality;
 	return result;
 
 }
@@ -1729,8 +1525,8 @@ Picture *Subband_Picture(Picture *ref, int *&subband, int idx, double ratio,
 		int cur_ubound = -1;
 		for (int y = 0; y < ref->GetHeight(); y++)
 		{
-			int lval = max(subband[idx+y]-0*ratio,0);
-			int uval = min(subband[idx+y]+1*ratio-1,ref->GetWidth()-1);
+			int lval = max(subband[idx+y]-8*ratio,0);
+			int uval = min(subband[idx+y]+9*ratio-1,ref->GetWidth()-1);
 			if (lval<cur_lbound || cur_lbound<0)
 				cur_lbound = lval;
 			if (uval>cur_ubound || cur_ubound<0)
@@ -1771,7 +1567,7 @@ Picture *Subband_Picture(Picture *ref, int *&subband, int idx, double ratio,
 
 	delete [] labels;
 	labels = subband_labels;
-	result->Save("subband_img.ppm");
+	//result->Save("subband_img.ppm");
 	return result;
 }
 
@@ -1837,8 +1633,8 @@ Picture *Combine_SubbandImgs(Picture *src, Picture *band_img,
 	return result;
 }
 
-Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, imageSize &target_size,
-						   float alpha, float beta, int *&labels, Matrix *&bias)
+Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, 
+						   imageSize &target_size, int *&labels, Matrix *&bias, bool banded)
 {
 	int num_pixels = target_size.width*target_size.height;
 	Picture *result = NULL;
@@ -1849,13 +1645,14 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, ima
 																  2);
 
 		// set up the needed data to pass to function for the data costs
-		gradient2D *gradient = Gradient(img);
+		//gradient2D *gradient = Diff_2D(img);
+		gradient2D *naturality = Naturality_2D(img);
 		//Matrix *bias = CalcNarrownessPrior(gradient,1000.0);
 
 		ForSingleImgDataFn toDataFn;
 		toDataFn.src = img;
-		toDataFn.gradient = gradient;
 		toDataFn.bias = bias;
+		toDataFn.subbanded = banded;
 		toDataFn.subband = subband;
 		toDataFn.subband_idx = idx;
 		toDataFn.subband_lbound = lbound;
@@ -1864,16 +1661,15 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, ima
 
 		// smoothness comes from function pointer
 		ForSingleImgSmoothFn toSmoothFn;
-		toSmoothFn.src = img;		
-		toSmoothFn.gradient = gradient;
+		toSmoothFn.src = img;
+		//toSmoothFn.gradient = gradient;
+		toSmoothFn.naturality = naturality;
 		toSmoothFn.bias = bias;
 		toSmoothFn.target_size = target_size;
-		toSmoothFn.alpha = alpha;
-		toSmoothFn.beta = beta;
 		gc->setSmoothCost(&SingleImgSmoothFn, &toSmoothFn);
 
 		//printf("Before optimization energy is %f\n",gc->compute_energy());
-		gc->expansion();// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		gc->expansion(1);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
 		//printf("After optimization energy is %f\n",gc->compute_energy());
 
 		// obtain the labels
@@ -1902,11 +1698,16 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, ima
 		/* generate retargeted subband image */
 		result = GenerateRetargetPicture(labels, img, 
 										 target_size.width, target_size.height);
-		SaveShiftMap(labels,target_size.width,target_size.height,"shift.ppm");
+		//SaveShiftMap(labels,target_size.width,target_size.height,"shift.ppm");
 
+		/*
 		delete gradient->dx;
 		delete gradient->dy;
 		delete gradient;
+		*/
+		delete naturality->dx;
+		delete naturality->dy;
+		delete naturality;
 		//delete bias;
 		delete gc;
 	}
@@ -1917,11 +1718,23 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, ima
 	return result;
 }
 
-Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, int idx, int lbound, Matrix *&bias,
-						 imageSize &target_size, float alpha, float beta, int *&pre_labels, bool tconsistency)
+Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
+						 int idx, int lbound, Matrix *&bias,imageSize &target_size, 
+						 int *&pre_labels, bool tconsistency, bool banded)
 {
 	// set up the needed data to pass to function for the data costs
-	gradient2D *gradient = Gradient(cur_frame);
+	//gradient2D *gradient = Diff_2D(cur_frame);
+	/*
+	PictureList *pair = new PictureList(cur_frame->GetWidth(),
+										cur_frame->GetHeight(),
+										2);
+	pair->SetPicture(0,pre_frame);
+	pair->SetPicture(1,cur_frame);
+	gradient3D *gradient = Diff_3D(pair);
+	*/
+	gradient2D *naturality = Naturality_2D(cur_frame);
+	Matrix *grayscale = Rgb2Gray(cur_frame);
+	Matrix *pre_grayscale = Rgb2Gray(pre_frame);
 	//Matrix *bias = CalcNarrownessPrior(gradient,1000.0);
 
 	int num_pixels = target_size.width*target_size.height;
@@ -1941,10 +1754,12 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
 		{
 			ForPairImgDataFn toDataFn;
 			toDataFn.src = cur_frame;
+			toDataFn.gray = grayscale;
 			toDataFn.pre = pre_frame;
+			toDataFn.pre_gray = pre_grayscale;
 			toDataFn.pre_labels = pre_labels;
-			toDataFn.gradient = gradient;
 			toDataFn.bias = bias;
+			toDataFn.subbanded = banded;
 			toDataFn.subband = subband;
 			toDataFn.subband_idx = idx;
 			toDataFn.subband_lbound = lbound;
@@ -1955,8 +1770,8 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
 		{
 			ForSingleImgDataFn toDataFn;
 			toDataFn.src = cur_frame;
-			toDataFn.gradient = gradient;
 			toDataFn.bias = bias;
+			toDataFn.subbanded = banded;
 			toDataFn.subband = subband;
 			toDataFn.subband_idx = idx;
 			toDataFn.subband_lbound = lbound;
@@ -1966,16 +1781,15 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
 
 		// smoothness comes from function pointer
 		ForPairImgSmoothFn toSmoothFn;
-		toSmoothFn.src = cur_frame;		
-		toSmoothFn.gradient = gradient;
+		toSmoothFn.src = cur_frame;
+		//toSmoothFn.gradient = gradient;
+		toSmoothFn.naturality = naturality;
 		toSmoothFn.bias = bias;
 		toSmoothFn.target_size = target_size;
-		toSmoothFn.alpha = alpha;
-		toSmoothFn.beta = beta;
 		gc->setSmoothCost(&PairImgSmoothFn, &toSmoothFn);
 
 		//printf("Before optimization energy is %f\n",gc->compute_energy());
-		gc->expansion();// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		gc->expansion(1);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
 		//printf("After optimization energy is %f\n",gc->compute_energy());
 
 		// obtain the labels
@@ -2005,12 +1819,19 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
 		result = GenerateRetargetPicture(labels, cur_frame, 
 										 target_size.width, 
 										 target_size.height);
-		SaveShiftMap(labels,target_size.width,target_size.height,"shift.ppm");
+		//SaveShiftMap(labels,target_size.width,target_size.height,"shift.ppm");
 
-
-		delete gradient->dx;
-		delete gradient->dy;
+		/*
+		delete [] gradient->dx;
+		delete [] gradient->dy;
+		delete [] gradient->dt;
 		delete gradient;
+		*/
+		delete naturality->dx;
+		delete naturality->dy;
+		delete naturality;
+		delete grayscale;
+		delete pre_grayscale;
 		delete gc;
 	}
 	catch (GCException e){
@@ -2027,11 +1848,10 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
 /*
  *
  */
-PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha, float beta, 
-						 char *name, Matrix *&bias, bool tconsistency, bool banded)
+PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name, 
+						 Matrix *&bias, bool tconsistency, bool banded, bool saved)
 {
 	imageSize target_size;
-	bool leftmost_preserve, rightmost_preserve;
 	PictureList *result = new PictureList(src->GetMaxWidth()-1,
 										  src->GetMaxHeight(),
 										  src->GetLength());
@@ -2044,7 +1864,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 	{
 		band_img = src->GetPicture(0);
 		lbound = 0;
-		ubound = src->GetPicture(0)->GetWidth()-2;
+		ubound = src->GetPicture(0)->GetWidth()-1;
 	}
 	else
 		band_img = Subband_Picture(src->GetPicture(0),band,0,ratio,
@@ -2055,8 +1875,8 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 	int *labels = new int[target_size.width*target_size.height];
 	
 	Matrix *band_bias = CopySubband_Bias(bias,lbound,ubound,0);
-	Picture *retargeted_band_img = SingleImg_SeamCut(band_img,band,0,lbound,target_size,
-													 alpha,beta,labels,band_bias);
+	Picture *retargeted_band_img = SingleImg_SeamCut(band_img,band,0,lbound,
+													 target_size,labels,band_bias,banded);
 	delete band_bias;
 	if (!banded)
 		retargeted_band_img->SetName(src->GetPicture(0)->GetName());
@@ -2066,6 +1886,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 		combined_img = retargeted_band_img;
 		result->SetPicture(0,combined_img);
 		delete retargeted_band_img;
+		delete combined_img;
 	}
 	else
 	{
@@ -2076,23 +1897,28 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 		delete combined_img;
 	}
 
-	char target_name[512] = {'\0'};
-	strcat(target_name,name);
-	strcat(target_name,result->GetPicture(0)->GetName());
-	result->GetPicture(0)->Save(target_name);
+	if (saved)
+	{
+		char target_name[512] = {'\0'};
+		strcat(target_name,name);
+		strcat(target_name,result->GetPicture(0)->GetName());
+		result->GetPicture(0)->Save(target_name);
 
-	char map_name[512] = {'\0'};
-	strcat(map_name,name);
-	strcat(map_name,"shift_");
-	strcat(map_name,result->GetPicture(0)->GetName());
-	SaveShiftMap(labels,result->GetPicture(0)->GetWidth(),
-				 result->GetPicture(0)->GetHeight(),map_name);
+		/*
+		char map_name[512] = {'\0'};
+		strcat(map_name,name);
+		strcat(map_name,"shift_");
+		strcat(map_name,result->GetPicture(0)->GetName());
+		SaveShiftMap(labels,result->GetPicture(0)->GetWidth(),
+					 result->GetPicture(0)->GetHeight(),map_name);
+		*/
 
-	char seam_name[512] = {'\0'};
-	strcat(seam_name,name);
-	strcat(seam_name,"seam_");
-	strcat(seam_name,result->GetPicture(0)->GetName());
-	SaveSeamImage(labels,result->GetPicture(0),seam_name);
+		char seam_name[512] = {'\0'};
+		strcat(seam_name,name);
+		strcat(seam_name,"seam_");
+		strcat(seam_name,result->GetPicture(0)->GetName());
+		SaveSeamImage(labels,result->GetPicture(0),seam_name);
+	}
 
 	/* process 2nd frame to t-1 frame */
 	Picture *pre_band_img;
@@ -2113,26 +1939,39 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 		delete [] empty_labels; 
 		ubound--;
 		if (!banded)
-			pre_band_img = result->GetPicture(t-1);
+		{
+			//pre_band_img = result->GetPicture(t-1);
+			pre_band_img = src->GetPicture(t-1);			
+		}
 		else
+		{
 			pre_band_img = Subband_Picture(result->GetPicture(t-1),band,t*src->GetMaxHeight(),ratio,
 										   lbound,ubound,labels,true);
+			empty_labels = new int[src->GetMaxHeight()*src->GetMaxWidth()];
+			delete pre_band_img;
+			int uubound = ubound+1;
+			pre_band_img = Subband_Picture(src->GetPicture(t-1),band,t*src->GetMaxHeight(),ratio,
+										   lbound,uubound,empty_labels,true);
+			delete [] empty_labels;
+		}
 		target_size.width = band_img->GetWidth()-1;
 		target_size.height = band_img->GetHeight();
 
 		band_bias = CopySubband_Bias(bias,lbound,ubound,t);	
-		//retargeted_band_img = SingleImg_SeamCut(band_img,band,t*src->GetMaxHeight(),lbound,target_size,
-		//										  alpha,beta,labels,band_bias);
+		//retargeted_band_img = SingleImg_SeamCut(band_img,band,t*src->GetMaxHeight(),lbound,
+		//										  target_size,labels,band_bias);
 		retargeted_band_img = PairImg_SeamCut(band_img,pre_band_img,band,t*src->GetMaxHeight(),
-											  lbound,bias,target_size,alpha,beta,labels,tconsistency);
+											  lbound,bias,target_size,labels,tconsistency,banded);
 		delete band_bias;
 
+		//ubound--;
 		retargeted_band_img->SetName(src->GetPicture(t)->GetName());
 		if (!banded)
 		{
 			combined_img = retargeted_band_img;
 			result->SetPicture(t,combined_img);
 			delete retargeted_band_img;
+			delete combined_img;
 		}
 		else
 		{
@@ -2144,23 +1983,28 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 			delete combined_img;
 		}
 		
-		char frame_name[512] = {'\0'};
-		strcat(frame_name,name);
-		strcat(frame_name,result->GetPicture(t)->GetName());
-		result->GetPicture(t)->Save(frame_name);
+		if (saved)
+		{
+			char frame_name[512] = {'\0'};
+			strcat(frame_name,name);
+			strcat(frame_name,result->GetPicture(t)->GetName());
+			result->GetPicture(t)->Save(frame_name);
 
-		char map_name2[512] = {'\0'};
-		strcat(map_name2,name);
-		strcat(map_name2,"shift_");
-		strcat(map_name2,result->GetPicture(t)->GetName());
-		SaveShiftMap(labels,result->GetPicture(t)->GetWidth(),
-					 result->GetPicture(t)->GetHeight(),map_name2);
+			/*
+			char map_name2[512] = {'\0'};
+			strcat(map_name2,name);
+			strcat(map_name2,"shift_");
+			strcat(map_name2,result->GetPicture(t)->GetName());
+			SaveShiftMap(labels,result->GetPicture(t)->GetWidth(),
+						 result->GetPicture(t)->GetHeight(),map_name2);
+			*/
 
-		char seam_name2[512] = {'\0'};
-		strcat(seam_name2,name);
-		strcat(seam_name2,"seam_");
-		strcat(seam_name2,result->GetPicture(t)->GetName());
-		SaveSeamImage(labels,result->GetPicture(t),seam_name2);
+			char seam_name2[512] = {'\0'};
+			strcat(seam_name2,name);
+			strcat(seam_name2,"seam_");
+			strcat(seam_name2,result->GetPicture(t)->GetName());
+			SaveSeamImage(labels,result->GetPicture(t),seam_name2);
+		}
 	}
 
 	delete [] labels;
@@ -2170,8 +2014,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, float alpha
 /*
  *
  */
-void ResizeVideo_3D(char *input_path, double alpha, double beta,
-					int removed_seam, char *output_path, int level)
+void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int level)
 {
 	listPyramidType *spyramid = NULL;
 	int num_labels;
@@ -2217,7 +2060,7 @@ void ResizeVideo_3D(char *input_path, double alpha, double beta,
 
 		/* graph cut in low resolution */
 		target = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,alpha,beta,output_path,band,lr_band,bias);
+								   num_labels,output_path,band,lr_band,bias,true);
 
 		// generate output result;
 		/*
@@ -2249,8 +2092,7 @@ void ResizeVideo_3D(char *input_path, double alpha, double beta,
 /*
  *
  */
-void ResizeVideo_2D_Incremental(char *input_path, double alpha, double beta,
-								int removed_seam, char *output_path, int level)
+void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output_path, int level)
 {
 	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
@@ -2301,7 +2143,7 @@ void ResizeVideo_2D_Incremental(char *input_path, double alpha, double beta,
 
 		/* refine seam in higher resolution */
 		target = Refine_Seam(band,target,pow(2.0,level),
-							 alpha,beta,output_path,bias,true,false);
+							 output_path,bias,true,false,true);
 
 		removed_seam--;
 		delete [] band;
@@ -2326,8 +2168,7 @@ void ResizeVideo_2D_Incremental(char *input_path, double alpha, double beta,
 /*
  *
  */
-void ResizeImages_2D_Incremental(char *input_path, double alpha, double beta,
-								 int removed_seam, char *output_path, int level)
+void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *output_path, int level)
 {
 	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
@@ -2378,7 +2219,7 @@ void ResizeImages_2D_Incremental(char *input_path, double alpha, double beta,
 
 		/* refine seam in higher resolution */
 		target = Refine_Seam(band,target,pow(2.0,level),
-							 alpha,beta,output_path,bias,false,false);
+							 output_path,bias,false,false,true);
 
 		removed_seam--;
 		delete [] band;
@@ -2403,9 +2244,9 @@ void ResizeImages_2D_Incremental(char *input_path, double alpha, double beta,
 /*
  *
  */
-void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
-						int removed_seam, char *output_path, int level)
+void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, int level)
 {
+	time_t start, end;
 	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
@@ -2422,6 +2263,10 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
 	PictureList *target = shot;
 	while (removed_seam>0)
 	{	
+		bool saved = false;
+		//if (removed_seam==1)
+			saved = true;
+			
 		if (level>0)
 		{
 			spyramid = ListPyramid(target,level+1);
@@ -2448,18 +2293,21 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
 			for (int t = 0; t < target_size.time; t++)
 			{
 				Matrix *init = new Matrix(target_size.height,
-										  target_size.width,1.0);
+										  target_size.width+1,1.0);
 				lr_bias[t] = *(init);
 				delete init;
 			}
 		}
 
 		/* graph cut in low resolution */
-		source = GridGraph_SeamCut(source,pow(2.0,level),target_size,
-								   origin_size,num_labels,alpha,
-								   beta,output_path,band,lr_band,lr_bias);
+		time(&start);
+		source = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
+								   num_labels,output_path,band,lr_band,lr_bias,saved);
+		time(&end);
+		printf("3D shift-map time is %f\n",difftime(end, start));
 
 		// DEBUG: observe interpolated map
+		/*
 		Picture *upsampled_map = NULL;
 		for (int t = 0; t < origin_size.time; t++)
 		{
@@ -2493,29 +2341,33 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
 			upsampled_map->Save(map_name);
 			delete upsampled_map;
 		}
+		*/
 
-		if (bias!=NULL)
-			delete [] bias;
-		//if (bias==NULL)
-		//{
+		//if (bias!=NULL)
+		//	delete [] bias;
+		if (bias==NULL)
+		{
 			bias = new Matrix[origin_size.time];
 			for (int t = 0; t < origin_size.time; t++)
 			{
 				Matrix *init = new Matrix(origin_size.height,
-										  origin_size.width,1.0);
+										  origin_size.width+1,1.0);
 				bias[t] = *(init);
 				delete init;
 			}
-		//}
-		/* refine seam in higher resolution */
-		target = Refine_Seam(band,target,pow(2.0,level),alpha,
-							 beta,output_path,bias,true,true);
+		}
 
-		lr_bias = CalcSeamBias(lr_bias, lr_band, target_size.width,
-							   target_size.height, target_size.time,
-							   target_size.width/32);
+		/* refine seam in higher resolution */
+		time(&start);
+		target = Refine_Seam(band,target,pow(2.0,level),output_path,bias,true,true,saved);
+		time(&end);
+		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
 		/*
+		lr_bias = CalcSeamBias(lr_bias, lr_band, target_size.width,
+							   target_size.height, target_size.time,
+							   target_size.width/target_size.width);
+
 		bias = CalcSeamBias(bias, band, origin_size.width, origin_size.height, 
 							origin_size.time, origin_size.width/32);
 		*/
@@ -2548,35 +2400,35 @@ void ResizeVideo_Hybrid(char *input_path, double alpha, double beta,
  */ 
 int main(int argc, char **argv)
 {
-	if (argc<7)
+	if (argc<5)
 	{
-		cout << "Usage: mg_shift_map_3d <input_folder> <alpha> <beta> <number of removed pixel> <output_folder> method" << endl;
+		cout << "Usage: mg_shift_map_3d <input_folder> <number of removed pixel> <output_folder> method level" << endl;
 		return 0;
 		//default parameters
 	}
 
-	int level = 2; // gpyramid->Levels-1
+	int level = atoi(argv[5]); // gpyramid->Levels-1
 
-	switch (atoi(argv[6]))
+	switch (atoi(argv[4]))
 	{
 		case 0:	// 3D temporal consistent shift-map
 		{
-			ResizeVideo_3D(argv[1],atof(argv[2]),atof(argv[3]),atoi(argv[4]),argv[5],0);
+			ResizeVideo_3D(argv[1],atoi(argv[2]),argv[3],0);
 			break;
 		}
 		case 1:	// 2D incremental temporal consistent shift-map
 		{
-			ResizeVideo_2D_Incremental(argv[1],atof(argv[2]),atof(argv[3]),atoi(argv[4]),argv[5],0);
+			ResizeVideo_2D_Incremental(argv[1],atoi(argv[2]),argv[3],0);
 			break;
 		}
 		case 2: // hybrid 3D & 2D temporal consistent shift-map
 		{
-			ResizeVideo_Hybrid(argv[1],atof(argv[2]),atof(argv[3]),atoi(argv[4]),argv[5],level);
+			ResizeVideo_Hybrid(argv[1],atoi(argv[2]),argv[3],level);
 			break;
 		}
 		case 3: // 2D incremental shift-map without temporal consistency
 		{
-			ResizeImages_2D_Incremental(argv[1],atof(argv[2]),atof(argv[3]),atoi(argv[4]),argv[5],0);
+			ResizeImages_2D_Incremental(argv[1],atoi(argv[2]),argv[3],0);
 		}
 	}
 	

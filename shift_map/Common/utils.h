@@ -106,7 +106,6 @@ double ColorContrast(Video *src, int x, int y, int t);
 double GradientContrast(gradient3D *gradient, int time,int x, int y, int t);
 
 int Convolve_Pixel(Picture *src, int x, int y, int kernel[][3]);
-gradient2D *Gradient(Picture *src);
 Picture *DrawImage(Picture *I1, Picture *I2, Matrix *M, bool UseMultiresolutionSpline);
 Matrix *Register(Picture *I1, Picture *I2, pointType InitialPoints[2][4]);
 
@@ -133,8 +132,15 @@ int *CalcMotionComponent(gradient3D *gradient, int source_time,
 Picture *InterpolateFrame(Picture *left, double lweight, Picture *right, double rweight);
 Video *ReduceVideo(Video *src);
 Matrix *FrameDifference(Picture *left, Picture *right, double &total_dt, double threshold=0);
-gradient3D *Gradient_3D(Video *src, double threshold=0);
+
+gradient2D *Gradient(Picture *src);
+gradient3D *Gradient_3D(Video *src, double threshold=0.0);
+gradient2D *Naturality_2D(Picture *src, double threshold=0.0);
+gradient2D *Diff_2D(Picture *src, double threshold=0.0);
+gradient3D *Naturality_3D(PictureList *src, double threshold=0.0);
+gradient3D *Diff_3D(PictureList *src, double threshold=0.0);
 Matrix *Contrast_3D(Video *src, gradient3D *gradient);
+
 listPyramidType *ListPyramid(PictureList *src, int levels);
 
 

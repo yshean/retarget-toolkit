@@ -175,7 +175,7 @@ GCoptimization::EnergyType GCoptimization::compute_energy()
 {
 	if (readyToOptimise())
 	{
-		printf("%f, %f\n",(this->*m_giveDataEnergyInternal)(),(this->*m_giveSmoothEnergyInternal)());
+		//printf("%f, %f\n",(this->*m_giveDataEnergyInternal)(),(this->*m_giveSmoothEnergyInternal)());
 		return( (this->*m_giveDataEnergyInternal)()+ (this->*m_giveSmoothEnergyInternal)());
 	}
 	else{ 
@@ -213,7 +213,7 @@ GCoptimization::EnergyType GCoptimization::expansion(int max_num_iterations )
 	EnergyType new_energy,old_energy;
 	
 
-	printf("GCoptimization::expansion\n");
+	//printf("GCoptimization::expansion\n");
 	new_energy = compute_energy();
 
 	old_energy = new_energy+1;
@@ -221,7 +221,7 @@ GCoptimization::EnergyType GCoptimization::expansion(int max_num_iterations )
 	while ( old_energy > new_energy  && curr_cycle <= max_num_iterations)
 	{
 		old_energy = new_energy;
-		printf("GCoptimization::expansion: start new expansion iteration.\n");
+		//printf("GCoptimization::expansion: start new expansion iteration.\n");
 		new_energy = oneExpansionIteration();
 		curr_cycle++;	
 	}
