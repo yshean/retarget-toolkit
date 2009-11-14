@@ -479,7 +479,7 @@ GCoptimization/*PictureList*/ *VideoSeamGraph_GraphCut(PictureList *src, int num
 
 			gc->setDataCost(&dataFn,&toDataFn);
 
-			printf("gc->setDataCost(&dataFn,&toDataFn);\n");
+			printf("FwdEn3DSeamGraph setDataCost(&dataFn,&toDataFn);\n");
 
 			toSmoothFEFn.LR = gradient->LR;			
 			toSmoothFEFn.pLU = gradient->pLU;
@@ -504,15 +504,14 @@ GCoptimization/*PictureList*/ *VideoSeamGraph_GraphCut(PictureList *src, int num
 
 			gc->setDataCost(&dataFn,&toDataFn);
 
-			printf("gc->setDataCost(&dataFn,&toDataFn);\n");
+			printf("3DSeamGraph setDataCost(&dataFn,&toDataFn);\n");
 
 			toSmoothBEFn.gradient = gradient;
 			toSmoothBEFn.original_width = width;
 			toSmoothBEFn.original_height = height;
 			toSmoothBEFn.original_time = time;
 
-			gc->setSmoothCost(&smoothBEFn, &toSmoothBEFn);		// set the weights of the seam graph
-			printf("gc->setSmoothCost(&smoothFn, &toSmoothFn)\n");		
+			gc->setSmoothCost(&smoothBEFn, &toSmoothBEFn);		// set the weights of the seam graph		
 		}
 
 		
@@ -583,19 +582,21 @@ PictureList *Transpose_Video( PictureList *src )
 int main(int argc, char **argv)
 {
 	PictureList *src = NULL;
-	int width, height, time;
+	int src_width, src_height, src_time;
 	int prev_width=0, prev_height=0, prev_time=0;
 
 	listPyramidType *lpyramid = NULL;
 	int num_labels;
 	int *data;
 	GCoptimization *gc = NULL;
-	int pym_level = 2;					// specify no. of pyramid levels
+	int pym_level = atoi(argv[6]);					// specify no. of pyramid levels
 	int list_level;						// 0 <= list_level < pym_level
+
+	time_t start, end;
 
 	if (argc<6)
 	{
-		cout << "Usage: seam_carving_3d <src_folder> <num of v seams to remove> <num of h seams to remove> <output_folder> <method>" << endl;
+		cout << "Usage: seam_carving_3d <src_folder> <num of v seams to remove> <num of h seams to remove> <output_folder> <method> <pyramid_level>" << endl;
 		return 0;
 		//default parameters
 		/*
@@ -659,7 +660,11 @@ int main(int argc, char **argv)
 	{
 		printf("\t\t>>> v seam #%d\n",s);
 		list_level = pym_level - 1;
+		time( &start );
 		lpyramid = ListPyramid(src, pym_level);
+		time( &end );
+		cout << "compute L Pyramid: " << difftime( end, start ) << " seconds" << endl;
+
 		delete src;
 		
 		// Refines the seam from the previous level. Continue to refine until the original video size.
@@ -667,12 +672,18 @@ int main(int argc, char **argv)
 		{
 			printf("\t\tcurrent list_level is %d\n", list_level);
 			src = &(lpyramid->Lists[list_level]);
-			width = src->GetMaxWidth();
-			height = src->GetMaxHeight();
-			time = src->GetLength();	
-			data = CalcDataCost(gc,width,height,time,num_labels);
+			src_width = src->GetMaxWidth();
+			src_height = src->GetMaxHeight();
+			src_time = src->GetLength();	
+			time( &start );
+			data = CalcDataCost(gc,src_width,src_height,src_time,num_labels);
+			time( &end );
+			cout << "CalcDataCost list_level " << list_level << ": " << difftime( end, start ) << " seconds" << endl;
 			delete gc;
+			time( &start );
 			gc = VideoSeamGraph_GraphCut(src,num_labels,data,atoi(argv[5]));
+			time( &end );
+			cout << "VideoSeamGraph_GraphCut list_level " << list_level << ": " << difftime( end, start ) << " seconds" << endl;
 			delete data;
 
 			list_level--;
@@ -680,6 +691,7 @@ int main(int argc, char **argv)
 		delete lpyramid;
 		
 		//src = removeManifold(gc, src);
+		
 		drawManifold(gc, src);
 		
 		SaveRetargetVideo(src, argv[4]);
