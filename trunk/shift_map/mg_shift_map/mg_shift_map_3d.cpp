@@ -1525,8 +1525,8 @@ Picture *Subband_Picture(Picture *ref, int *&subband, int idx, double ratio,
 		int cur_ubound = -1;
 		for (int y = 0; y < ref->GetHeight(); y++)
 		{
-			int lval = max(subband[idx+y]-8*ratio,0);
-			int uval = min(subband[idx+y]+9*ratio-1,ref->GetWidth()-1);
+			int lval = max(subband[idx+y]-1*ratio,0);
+			int uval = min(subband[idx+y]+2*ratio-1,ref->GetWidth()-1);
 			if (lval<cur_lbound || cur_lbound<0)
 				cur_lbound = lval;
 			if (uval>cur_ubound || cur_ubound<0)
@@ -1886,7 +1886,6 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 		combined_img = retargeted_band_img;
 		result->SetPicture(0,combined_img);
 		delete retargeted_band_img;
-		delete combined_img;
 	}
 	else
 	{
@@ -1971,7 +1970,6 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 			combined_img = retargeted_band_img;
 			result->SetPicture(t,combined_img);
 			delete retargeted_band_img;
-			delete combined_img;
 		}
 		else
 		{
@@ -2016,6 +2014,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
  */
 void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int level)
 {
+	time_t start, end;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
@@ -2029,9 +2028,14 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 	PictureList *target = shot;
 	while (removed_seam>0)
 	{	
+		bool saved = false;
+		if (removed_seam==1)
+			saved = true;
+
 		if (level>0)
 		{
 			spyramid = ListPyramid(target,level+1);
+			delete target;
 			source = &(spyramid->Lists[level]);	
 			target = &(spyramid->Lists[0]);
 		}
@@ -2052,15 +2056,18 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 			for (int t = 0; t < target_size.time; t++)
 			{
 				Matrix *init = new Matrix(target_size.height,
-										  target_size.width,1.0);
+										  target_size.width+1,1.0);
 				bias[t] = *(init);
 				delete init;
 			}
 		}
 
 		/* graph cut in low resolution */
+		time(&start);
 		target = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,output_path,band,lr_band,bias,true);
+								   num_labels,output_path,band,lr_band,bias,saved);
+		time(&end);
+		printf("3D shift-map time is %f\n",difftime(end, start));
 
 		// generate output result;
 		/*
@@ -2071,6 +2078,7 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 
 		removed_seam--;
 		delete [] band;
+		delete [] lr_band;
 		if (level>0)
 		{
 			delete [] spyramid->Lists;
@@ -2083,9 +2091,11 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 
 	if (level>0)
 	{
-		delete shot;
-		delete source;
+		//delete shot;
+		//delete source;
 	}
+
+	delete [] bias;
 	delete target;
 }
 
@@ -2094,6 +2104,7 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
  */
 void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output_path, int level)
 {
+	time_t start, end;
 	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
@@ -2108,9 +2119,14 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 	PictureList *target = shot;
 	while (removed_seam>0)
 	{	
+		bool saved = false;
+		if (removed_seam==1)
+			saved = true;
+
 		if (level>0)
 		{
 			spyramid = ListPyramid(target,level+1);
+			delete target;
 			source = &(spyramid->Lists[level]);	
 			target = &(spyramid->Lists[0]);
 		}
@@ -2135,15 +2151,18 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 			for (int t = 0; t < origin_size.time; t++)
 			{
 				Matrix *init = new Matrix(origin_size.height,
-										  origin_size.width,1.0);
+										  origin_size.width+1,1.0);
 				bias[t] = *(init);
 				delete init;
 			}
 		}
 
 		/* refine seam in higher resolution */
+		time(&start);
 		target = Refine_Seam(band,target,pow(2.0,level),
-							 output_path,bias,true,false,true);
+							 output_path,bias,true,false,saved);
+		time(&end);
+		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
 		removed_seam--;
 		delete [] band;
@@ -2159,9 +2178,11 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 
 	if (level>0)
 	{
-		delete shot;
-		delete source;
+		//delete shot;
+		//delete source;
 	}
+
+	delete [] bias;
 	delete target;
 }
 
@@ -2170,6 +2191,7 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
  */
 void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *output_path, int level)
 {
+	time_t start, end;
 	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
@@ -2184,9 +2206,14 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 	PictureList *target = shot;
 	while (removed_seam>0)
 	{	
+		bool saved = false;
+		if (removed_seam==1)
+			saved = true;
+
 		if (level>0)
 		{
 			spyramid = ListPyramid(target,level+1);
+			delete target;
 			source = &(spyramid->Lists[level]);	
 			target = &(spyramid->Lists[0]);
 		}
@@ -2211,15 +2238,19 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 			for (int t = 0; t < origin_size.time; t++)
 			{
 				Matrix *init = new Matrix(origin_size.height,
-										  origin_size.width,1.0);
+										  origin_size.width+1,1.0);
 				bias[t] = *(init);
 				delete init;
 			}
 		}
 
 		/* refine seam in higher resolution */
+		time(&start);
 		target = Refine_Seam(band,target,pow(2.0,level),
-							 output_path,bias,false,false,true);
+							 output_path,bias,false,false,saved);
+		time(&end);
+		printf("Independent shift-map time is %f\n",difftime(end, start));
+
 
 		removed_seam--;
 		delete [] band;
@@ -2235,9 +2266,11 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 
 	if (level>0)
 	{
-		delete shot;
-		delete source;
+		//delete shot;
+		//delete source;
 	}
+
+	delete [] bias;
 	delete target;
 }
 
@@ -2264,7 +2297,7 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 	while (removed_seam>0)
 	{	
 		bool saved = false;
-		//if (removed_seam==1)
+		if (removed_seam==1)
 			saved = true;
 			
 		if (level>0)
