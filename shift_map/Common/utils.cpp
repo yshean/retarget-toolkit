@@ -300,7 +300,7 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 	double *total_dx = new double[src->GetLength()];
 	double *total_dy = new double[src->GetLength()];
 	double *total_dt = new double[src->GetLength()];
-	double sigma = src->GetMaxWidth()/4;
+	double sigma = src->GetMaxWidth()/2;
 
 	double weight;
 	for (int t=0; t<src->GetLength(); t++)
@@ -361,7 +361,7 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 					if (x<src->GetPicture(t)->GetWidth()-1)
 					{
 						weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
-						double diff = min(abs(grayscale->Get(y+1,x+1) - next->Get(y+1,x+2)),
+						double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
 										  abs(next->Get(y+1,x+1) - next->Get(y+1,x+2)));
 						if (diff>=threshold)
 							tdiff->Set(y+1,x+1,weight*diff);
