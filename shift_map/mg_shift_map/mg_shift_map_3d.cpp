@@ -244,13 +244,13 @@ double SingleImgDataFn(int p, int l, void *data)
 	if (x==0 && l!=0)
 		return 100000*MAX_COST_VALUE;
 	if (x==width-1 && 
-		l!=myData->src->GetWidth()-width)
+		l!=abs(myData->src->GetWidth()-width))
 		return 100000*MAX_COST_VALUE;
 
 	if (myData->subbanded)
 	{
-		int refine_offset = 1;
-		if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l>0)
+		int refine_offset = 2;
+		if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l!=0)
 			return 100000*MAX_COST_VALUE;
 		if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
 			return 100000*MAX_COST_VALUE;
@@ -422,46 +422,60 @@ double SingleImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	*/
 
 	//cost += 100*abs(myData->gray->Get(y2+1,x2+1)-myData->gray->Get(y1+1,x1+1));
-	if (y1==y2)
+
+	/* enlarge */
+	if (myData->src->GetWidth()<width)
 	{
-		if (l1>0)
-		{
-			cost += myData->naturality->dx->Get(y1+1,x1+1);
-			//cost += myData->gradient->dx->Get(y2+1,x2+1);
-			/*
-			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
-			if (y1>0)
-				cost += 1*myData->gradient->dy->Get(y1,x1+1);
-			if (y1<height-1)
-				cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
-			*/
-		}
-		if (l2>0)
-		{
-			cost += myData->naturality->dx->Get(y2+1,x2+1);
-			//cost += myData->gradient->dx->Get(y1+1,x1+1);
-			/*
-			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
-			if (y2>0)
-				cost += 1*myData->gradient->dy->Get(y2,x2+1);
-			if (y2<height-1)
-				cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
-			*/
-		}
+		if (l1>0 && x2>0)
+			cost += myData->gradient->dx->Get(y1+1,x1);
+		if (l2>0 && x2>0)
+			cost += myData->gradient->dx->Get(y2+1,x2);
 	}
-	if (x1==x2)
+
+	/* reduce */
+	if (myData->src->GetWidth()>width)
 	{
-		if (y1<y2)
+		if (y1==y2)
 		{
-			cost += myData->naturality->dy->Get(y1+1,x1+1);
-			//cost += myData->gradient->dy->Get(y1+1,x1+1);
+			if (l1>0)
+			{
+				cost += myData->naturality->dx->Get(y1+1,x1+1);
+				//cost += myData->gradient->dx->Get(y2+1,x2+1);
+				/*
+				cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+				if (y1>0)
+					cost += 1*myData->gradient->dy->Get(y1,x1+1);
+				if (y1<height-1)
+					cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
+				*/
+			}
+			if (l2>0)
+			{
+				cost += myData->naturality->dx->Get(y2+1,x2+1);
+				//cost += myData->gradient->dx->Get(y1+1,x1+1);
+				/*
+				cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+				if (y2>0)
+					cost += 1*myData->gradient->dy->Get(y2,x2+1);
+				if (y2<height-1)
+					cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
+				*/
+			}
 		}
-		if (y2<y1)
+		if (x1==x2)
 		{
-			cost += myData->naturality->dy->Get(y2+1,x2+1);
-			//cost += myData->gradient->dy->Get(y2+1,x2+1);
+			if (y1<y2)
+			{
+				cost += myData->naturality->dy->Get(y1+1,x1+1);
+				//cost += myData->gradient->dy->Get(y1+1,x1+1);
+			}
+			if (y2<y1)
+			{
+				cost += myData->naturality->dy->Get(y2+1,x2+1);
+				//cost += myData->gradient->dy->Get(y2+1,x2+1);
+			}
 		}
 	}
 
@@ -484,13 +498,13 @@ double PairImgDataFn(int p, int l, void *data)
 	if (x==0 && l!=0)
 		return 100000*MAX_COST_VALUE;
 	if (x==myData->target_size.width-1 && 
-		l!=myData->src->GetWidth()-myData->target_size.width)
+		l!=abs(myData->src->GetWidth()-myData->target_size.width))
 		return 100000*MAX_COST_VALUE;
 
 	if (myData->subbanded)
 	{
-		int refine_offset = 1;
-		if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l>0)
+		int refine_offset = 2;
+		if (x+myData->subband_lbound<myData->subband[myData->subband_idx+y]-refine_offset && l!=0)
 			return 100000*MAX_COST_VALUE;
 		if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
 			return 100000*MAX_COST_VALUE;
@@ -713,48 +727,61 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	*/
 
 	//cost += 100*abs(myData->gray->Get(y2+1,x2+1)-myData->gray->Get(y1+1,x1+1));
-	if (y1==y2)
+	/* enlarge */
+	if (myData->src->GetWidth()<width)
 	{
-		if (l1>0)
-		{
-			cost += myData->naturality->dx->Get(y1+1,x1+1);
-			//cost += myData->gradient->dx->Get(y2+1,x2+1);
-			/*
-			cost += 1*myData->gradient->dt[0].Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
-			if (y1>0)
-				cost += 1*myData->gradient->dy->Get(y1,x1+1);
-			if (y1<height-1)
-				cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
-			*/
-		}
-		if (l2>0)
-		{
-			cost += myData->naturality->dx->Get(y2+1,x2+1);
-			//cost += myData->gradient->dx->Get(y1+1,x1+1);
-			/*
-			cost += 1*myData->gradient->dt[0].Get(y2+1,x2+1);
-			cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
-			if (y2>0)
-				cost += 1*myData->gradient->dy->Get(y2,x2+1);
-			if (y2<height-1)
-				cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
-			*/
-		}
+		if (l1>0 && x1>0)
+			cost += myData->gradient->dx[1].Get(y1+1,x1);
+		if (l2>0 && x2>0)
+			cost += myData->gradient->dx[1].Get(y2+1,x2);
 	}
-	if (x1==x2)
+
+	/* reduce */
+	if (myData->src->GetWidth()>width)
 	{
-		if (y1<y2)
+		if (y1==y2)
 		{
-			cost += myData->naturality->dy->Get(y1+1,x1+1);
-			//cost += myData->gradient->dy->Get(y1+1,x1+1);
+			if (l1>0)
+			{
+				cost += myData->naturality->dx->Get(y1+1,x1+1);
+				//cost += myData->gradient->dx->Get(y2+1,x2+1);
+				/*
+				cost += 1*myData->gradient->dt[0].Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+				if (y1>0)
+					cost += 1*myData->gradient->dy->Get(y1,x1+1);
+				if (y1<height-1)
+					cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
+				*/
+			}
+			if (l2>0)
+			{
+				cost += myData->naturality->dx->Get(y2+1,x2+1);
+				//cost += myData->gradient->dx->Get(y1+1,x1+1);
+				/*
+				cost += 1*myData->gradient->dt[0].Get(y2+1,x2+1);
+				cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx->Get(y2+1,x2+1);
+				if (y2>0)
+					cost += 1*myData->gradient->dy->Get(y2,x2+1);
+				if (y2<height-1)
+					cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
+				*/
+			}
 		}
-		if (y2<y1)
+		if (x1==x2)
 		{
-			cost += myData->naturality->dy->Get(y2+1,x2+1);
-			//cost += myData->gradient->dy->Get(y1+1,x1+1);
+			if (y1<y2)
+			{
+				cost += myData->naturality->dy->Get(y1+1,x1+1);
+				//cost += myData->gradient->dy->Get(y1+1,x1+1);
+			}
+			if (y2<y1)
+			{
+				cost += myData->naturality->dy->Get(y2+1,x2+1);
+				//cost += myData->gradient->dy->Get(y1+1,x1+1);
+			}
 		}
 	}
 
@@ -782,9 +809,8 @@ double VideoDataFn(int p, int l, void *data)
 	if (x==0 && l!=0)
 		return 100000*MAX_COST_VALUE;
 	if (x==myData->target_size.width-1 && 
-		l!=myData->src->GetPicture(0)->GetWidth()-myData->target_size.width)
-		return 100000*MAX_COST_VALUE;
-	
+		l!=abs(myData->src->GetPicture(0)->GetWidth()-myData->target_size.width))
+		return 100000*MAX_COST_VALUE;	
 
 	return cost;
 }
@@ -967,73 +993,87 @@ double VideoSmoothFn(int p1, int p2, int l1, int l2, void *data)
 
 	//cost += 1000*abs(myData->grayscales[t2].Get(y2+1,x2+1)-myData->grayscales[t1].Get(y1+1,x1+1));
 	//double sigma = width/4;
-	if (t1==t2 && y1==y2)
+
+	/* expansion */
+	if (myData->src->GetMaxWidth()<width)
 	{
-		if (l1>0)
-		{
-			//double weight = simpleGauss(x1,sigma,width/2);
-			cost += 1*myData->naturality->dx[t1].Get(y1+1,x1+1);
-			//cost += myData->gradient->dx[t2].Get(y2+1,x2+1);
-			/*
-			if (t1<time-1)
-				cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
-			else
-				cost += 1*myData->gradient->dt[t1-1].Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
-			if (y1>0)
-				cost += 1*myData->gradient->dy[t1].Get(y1,x1+1);
-			if (y1<height-1)
-				cost += 1*myData->gradient->dy[t1].Get(y1+2,x1+1);
-			*/
-		}
-		if (l2>0)
-		{
-			//double weight = simpleGauss(x2,sigma,width/2);
-			cost += 1*myData->naturality->dx[t2].Get(y2+1,x2+1);
-			//cost += myData->gradient->dx[t1].Get(y1+1,x1+1);
-			/*
-			if (t2<time-1)
-				cost += 1*myData->gradient->dt[t2].Get(y2+1,x2+1);
-			else
-				cost += 1*myData->gradient->dt[t2-1].Get(y2+1,x2+1);
-			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1+1);
-			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
-			if (y2>0)
-				cost += 1*myData->gradient->dy[t2].Get(y2,x2+1);
-			if (y2<height-1)
-				cost += 1*myData->gradient->dy[t2].Get(y2+2,x2+1);
-			*/
-		}
+		if (l1>0 && x1>0)
+			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1);
+		if (l2>0 && x2>0)
+			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2);
 	}
-	if (t1==t2 && x1==x2)
+
+	/* reduce */
+	if (myData->src->GetMaxWidth()>width)
 	{
-		if (y1<y2)
+		if (t1==t2 && y1==y2)
 		{
-			//double weight = simpleGauss(x1,sigma,width/2);
-			cost += 1*myData->naturality->dy[t1].Get(y1+1,x1+1);
-			//cost += myData->gradient->dy[t1].Get(y1+1,x1+1);
+			if (l1>0)
+			{
+				//double weight = simpleGauss(x1,sigma,width/2);
+				cost += 1*myData->naturality->dx[t1].Get(y1+1,x1+1);
+				//cost += myData->gradient->dx[t2].Get(y2+1,x2+1);
+				/*
+				if (t1<time-1)
+					cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
+				else
+					cost += 1*myData->gradient->dt[t1-1].Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx[t1].Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
+				if (y1>0)
+					cost += 1*myData->gradient->dy[t1].Get(y1,x1+1);
+				if (y1<height-1)
+					cost += 1*myData->gradient->dy[t1].Get(y1+2,x1+1);
+				*/
+			}
+			if (l2>0)
+			{
+				//double weight = simpleGauss(x2,sigma,width/2);
+				cost += 1*myData->naturality->dx[t2].Get(y2+1,x2+1);
+				//cost += myData->gradient->dx[t1].Get(y1+1,x1+1);
+				/*
+				if (t2<time-1)
+					cost += 1*myData->gradient->dt[t2].Get(y2+1,x2+1);
+				else
+					cost += 1*myData->gradient->dt[t2-1].Get(y2+1,x2+1);
+				cost += 1*myData->gradient->dx[t1].Get(y1+1,x1+1);
+				cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
+				if (y2>0)
+					cost += 1*myData->gradient->dy[t2].Get(y2,x2+1);
+				if (y2<height-1)
+					cost += 1*myData->gradient->dy[t2].Get(y2+2,x2+1);
+				*/
+			}
 		}
-		if (y2<y1)
+		if (t1==t2 && x1==x2)
 		{
-			//double weight = simpleGauss(x1,sigma,width/2);
-			cost += 1*myData->naturality->dy[t2].Get(y2+1,x2+1);
-			//cost += myData->gradient->dy[t2].Get(y2+1,x2+1);
+			if (y1<y2)
+			{
+				//double weight = simpleGauss(x1,sigma,width/2);
+				cost += 1*myData->naturality->dy[t1].Get(y1+1,x1+1);
+				//cost += myData->gradient->dy[t1].Get(y1+1,x1+1);
+			}
+			if (y2<y1)
+			{
+				//double weight = simpleGauss(x1,sigma,width/2);
+				cost += 1*myData->naturality->dy[t2].Get(y2+1,x2+1);
+				//cost += myData->gradient->dy[t2].Get(y2+1,x2+1);
+			}
 		}
-	}
-	if (x1==x2 && y1==y2)
-	{
-		if (t1<t2)
+		if (x1==x2 && y1==y2)
 		{
-			//double weight = simpleGauss(x1,sigma,width/2);
-			cost += 1*myData->naturality->dt[t1].Get(y1+1,x1+1);
-			//cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
-		}
-		if (t2<t1)
-		{
-			//double weight = simpleGauss(x1,sigma,width/2);
-			cost += 1*myData->naturality->dt[t2].Get(y2+1,x2+1);
-			//cost += 1*myData->gradient->dt[t2].Get(y2+1,x2+1);
+			if (t1<t2)
+			{
+				//double weight = simpleGauss(x1,sigma,width/2);
+				cost += 1*myData->naturality->dt[t1].Get(y1+1,x1+1);
+				//cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
+			}
+			if (t2<t1)
+			{
+				//double weight = simpleGauss(x1,sigma,width/2);
+				cost += 1*myData->naturality->dt[t2].Get(y2+1,x2+1);
+				//cost += 1*myData->gradient->dt[t2].Get(y2+1,x2+1);
+			}
 		}
 	}
 
@@ -1057,7 +1097,7 @@ int *UpsamplingShiftMap(int *result, videoSize &size, double ratio, videoSize &u
             {
                 int p = t*up_size.width*up_size.height+y*up_size.width+x;
                 int idx = Downsampling3DIndex(p,up_size,size,ratio);
-				if (result[idx]>0)
+				if (result[idx]!=0)
 				{
 					band[cur_idx] = x;
 					cur_idx++;
@@ -1176,33 +1216,68 @@ void SaveShiftMap(int *labels, int width, int height, char *name)
 	delete map;
 }
 
-void SaveSeamImage(int *labels, Picture *ref, char *name)
+void SaveSeamImage(int *labels, Picture *ref, char *name, int flag)
 {
-	Picture *seam_img = new Picture(ref->GetWidth()+1,
-									ref->GetHeight());
-	
-	pixelType pix;
-	for (int y = 0; y < ref->GetHeight(); y++)
+	Picture *seam_img;
+
+	/* reduce */	
+	if (flag==0)
 	{
-		bool found_seam = false;
-		for (int x = 0; x < ref->GetWidth()+1; x++)
+		seam_img = new Picture(ref->GetWidth()+1,
+										ref->GetHeight());
+	
+		pixelType pix;
+		for (int y = 0; y < ref->GetHeight(); y++)
 		{
-			int label;
-			if (x<ref->GetWidth())
-				label = labels[y*ref->GetWidth()+x];
-			else
-				label = 1;
-			if (label>0 && !found_seam)
+			bool found_seam = false;
+			for (int x = 0; x < ref->GetWidth()+1; x++)
 			{
-				pix.r = 255;
-				pix.g = 0;
-				pix.b = 0;
-				seam_img->SetPixel(x,y,pix);
-				found_seam = true;
+				int label;
+				if (x<ref->GetWidth())
+					label = labels[y*ref->GetWidth()+x];
+				else
+					label = 1;
+				if (label>0 && !found_seam)
+				{
+					pix.r = 255;
+					pix.g = 0;
+					pix.b = 0;
+					seam_img->SetPixel(x,y,pix);
+					found_seam = true;
+				}
+				else
+				{
+					seam_img->SetPixel(x,y,ref->GetPixel(x-label,y));
+				}
 			}
-			else
+		}
+	}
+
+	/* enlarge */
+	if (flag==1)
+	{
+		seam_img = new Picture(ref->GetWidth(),
+										ref->GetHeight());
+	
+		pixelType pix;
+		for (int y = 0; y < ref->GetHeight(); y++)
+		{
+			bool found_seam = false;
+			for (int x = 0; x < ref->GetWidth(); x++)
 			{
-				seam_img->SetPixel(x,y,ref->GetPixel(x-label,y));
+				int label = labels[y*ref->GetWidth()+x];
+				if (label!=0 && !found_seam)
+				{
+					pix.r = 255;
+					pix.g = 0;
+					pix.b = 0;
+					seam_img->SetPixel(x,y,pix);
+					found_seam = true;
+				}
+				else
+				{
+					seam_img->SetPixel(x,y,ref->GetPixel(x,y));
+				}
 			}
 		}
 	}
@@ -1317,13 +1392,16 @@ PictureList *GenerateRetargetResult(int *labels, PictureList *src, int width,
 		{
 			frame->Save(target_name);
 			map->Save(map_name);
-		}
 
-		char seam_name[512] = {'\0'};
-		strcat(seam_name,name);
-		strcat(seam_name,"seam_");
-		strcat(seam_name,src->GetPicture(t)->GetName());
-		SaveSeamImage(frame_labels,frame,seam_name);
+			char seam_name[512] = {'\0'};
+			strcat(seam_name,name);
+			strcat(seam_name,"seam_");
+			strcat(seam_name,src->GetPicture(t)->GetName());
+			if (src->GetMaxWidth()>width)
+				SaveSeamImage(frame_labels,frame,seam_name,0);
+			else
+				SaveSeamImage(frame_labels,frame,seam_name,1);
+		}
 
 		delete frame;
 		delete map;
@@ -1432,10 +1510,10 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, videoSize &target_size,
  * Function to find the optimal single seam
  */
 PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target_size, videoSize &up_size,
-							   int num_labels, char *target_path, int *&band, int *&lr_band, Matrix *bias, bool saved)
+							   int num_labels, char *target_path, int *&band, int *&lr_band, bool saved)
 {
 	// set up the needed data to pass to function for the data costs
-	//gradient3D *gradient = Diff_3D(src,10.0);
+	gradient3D *gradient = Diff_3D(src,0.0);
 	gradient3D *naturality = Naturality_3D(src,0.0);
 
 
@@ -1455,16 +1533,14 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		// data terms comes from function pointer
 		ForVideoDataFn toDataFn;
 		toDataFn.src = src;
-		toDataFn.bias = bias;
 		toDataFn.target_size = target_size;
 		gc->setDataCost(&VideoDataFn,&toDataFn);
 
 		// smoothness comes from function pointer
 		ForVideoSmoothFn toSmoothFn;
 		toSmoothFn.src = src;
-		//toSmoothFn.gradient = gradient;
+		toSmoothFn.gradient = gradient;
 		toSmoothFn.naturality = naturality;
-		//toSmoothFn.bias = bias;
 		toSmoothFn.target_size = target_size;
 		gc->setSmoothCost(&VideoSmoothFn, &toSmoothFn);
 
@@ -1476,7 +1552,10 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		for ( int  i = 0; i < num_pixels; i++ )
 		{
 			//printf("The optimal label for pixel %d is %d\n",i,gc->whatLabel(i));
-			labels[i] = gc->whatLabel(i);
+			if (src->GetMaxWidth()>target_size.width)
+				labels[i] = gc->whatLabel(i);
+			if (src->GetMaxWidth()<target_size.width)
+				labels[i] = -gc->whatLabel(i);
 		}		
 
 		// upsampling shift-map from low-resolution to high-resolution
@@ -1496,7 +1575,6 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 	}
 
 	delete [] labels;
-	/*
 	delete [] gradient->dx;
 	delete [] gradient->dy;
 	delete [] gradient->dt;
@@ -1504,7 +1582,6 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 	delete [] gradient->total_dy;
 	delete [] gradient->total_dt;
 	delete gradient;
-	*/
 	delete [] naturality->dx;
 	delete [] naturality->dy;
 	delete [] naturality->dt;
@@ -1558,10 +1635,10 @@ Picture *Subband_Picture(Picture *ref, int *&subband, int idx, double ratio,
 		pixelType pixel;
 		for (int x = lbound; x <= ubound; x++)
 		{
-			int idx = y*ref->GetWidth()+x;
+			int lidx = y*ref->GetWidth()+x;
 			pixel = ref->GetPixel(x,y);
 			result->SetPixel(x-lbound,y,pixel);
-			subband_labels[y*(ubound-lbound+1)+x-lbound] = labels[idx];
+			subband_labels[y*(ubound-lbound+1)+x-lbound] = labels[lidx];
 		}
 	}
 
@@ -1594,15 +1671,15 @@ Picture *GenerateRetargetPicture(int *labels, Picture *src,int width, int height
 	return result;
 }
 
-Picture *Combine_SubbandImgs(Picture *src, Picture *band_img, 
+Picture *Combine_SubbandImgs(Picture *src, Picture *band_img, imageSize &target_size,
 							 double ratio, int lbound, int ubound, int *&labels)
 {
-	Picture *result = new Picture(src->GetWidth()-1, src->GetHeight());
+	Picture *result = new Picture(target_size.width, target_size.height);
 	result->SetName(src->GetName());
 	int *new_labels = new int[result->GetWidth()*result->GetHeight()];
 
 	pixelType pixel;
-	for (int y = 0; y < src->GetHeight(); y++)
+	for (int y = 0; y < target_size.height; y++)
 	{
 		int idx;
 		for (int x = 0; x < lbound; x++)
@@ -1612,19 +1689,19 @@ Picture *Combine_SubbandImgs(Picture *src, Picture *band_img,
 			result->SetPixel(x,y,pixel);
 			new_labels[idx] = 0;
 		}
-		for (int x = lbound; x < ubound; x++)
+		for (int x = lbound; x < lbound+band_img->GetWidth(); x++)
 		{
 			idx = y*result->GetWidth()+x;
 			pixel = band_img->GetPixel(x-lbound,y);
 			result->SetPixel(x,y,pixel);
-			new_labels[idx] = labels[y*(ubound-lbound)+x-lbound];
+			new_labels[idx] = labels[y*band_img->GetWidth()+x-lbound];
 		}
-		for (int x = ubound; x < result->GetWidth(); x++)
+		for (int x = lbound+band_img->GetWidth(); x < result->GetWidth(); x++)
 		{
 			idx = y*result->GetWidth()+x;
-			pixel = src->GetPixel(x+1,y);
+			pixel = src->GetPixel(x-target_size.width+src->GetWidth(),y);
 			result->SetPixel(x,y,pixel);
-			new_labels[idx] = 1;
+			new_labels[idx] = src->GetWidth()-target_size.width;
 		}
 	}
 
@@ -1634,7 +1711,7 @@ Picture *Combine_SubbandImgs(Picture *src, Picture *band_img,
 }
 
 Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, 
-						   imageSize &target_size, int *&labels, Matrix *&bias, bool banded)
+						   imageSize &target_size, int *&labels, bool banded)
 {
 	int num_pixels = target_size.width*target_size.height;
 	Picture *result = NULL;
@@ -1645,13 +1722,12 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 																  2);
 
 		// set up the needed data to pass to function for the data costs
-		//gradient2D *gradient = Diff_2D(img);
+		gradient2D *gradient = Diff_2D(img);
 		gradient2D *naturality = Naturality_2D(img);
 		//Matrix *bias = CalcNarrownessPrior(gradient,1000.0);
 
 		ForSingleImgDataFn toDataFn;
 		toDataFn.src = img;
-		toDataFn.bias = bias;
 		toDataFn.subbanded = banded;
 		toDataFn.subband = subband;
 		toDataFn.subband_idx = idx;
@@ -1662,9 +1738,8 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 		// smoothness comes from function pointer
 		ForSingleImgSmoothFn toSmoothFn;
 		toSmoothFn.src = img;
-		//toSmoothFn.gradient = gradient;
+		toSmoothFn.gradient = gradient;
 		toSmoothFn.naturality = naturality;
-		toSmoothFn.bias = bias;
 		toSmoothFn.target_size = target_size;
 		gc->setSmoothCost(&SingleImgSmoothFn, &toSmoothFn);
 
@@ -1676,7 +1751,10 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 		for ( int  i = 0; i < num_pixels; i++ )
 		{
 			//printf("The optimal label for pixel %d is %d\n",i,gc->whatLabel(i));
-			labels[i] = gc->whatLabel(i);
+			if (img->GetWidth()>target_size.width)
+				labels[i] = gc->whatLabel(i);
+			if (img->GetWidth()<target_size.width)
+				labels[i] = -gc->whatLabel(i);
 		}
 
 		/* update subband */
@@ -1686,7 +1764,7 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 			for (int x = 0; x < target_size.width; x++)
             {
 				int p = y*target_size.width+x;
-				if (labels[p]>0)
+				if (labels[p] != 0)
 				{
 					subband[subband_idx] = x+lbound;
 					subband_idx++;
@@ -1700,11 +1778,9 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 										 target_size.width, target_size.height);
 		//SaveShiftMap(labels,target_size.width,target_size.height,"shift.ppm");
 
-		/*
 		delete gradient->dx;
 		delete gradient->dy;
 		delete gradient;
-		*/
 		delete naturality->dx;
 		delete naturality->dy;
 		delete naturality;
@@ -1719,19 +1795,18 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 }
 
 Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
-						 int idx, int lbound, Matrix *&bias,imageSize &target_size, 
+						 int idx, int lbound, imageSize &target_size, 
 						 int *&pre_labels, bool tconsistency, bool banded)
 {
 	// set up the needed data to pass to function for the data costs
 	//gradient2D *gradient = Diff_2D(cur_frame);
-	/*
 	PictureList *pair = new PictureList(cur_frame->GetWidth(),
 										cur_frame->GetHeight(),
 										2);
 	pair->SetPicture(0,pre_frame);
 	pair->SetPicture(1,cur_frame);
 	gradient3D *gradient = Diff_3D(pair);
-	*/
+	delete pair;
 	gradient2D *naturality = Naturality_2D(cur_frame);
 	Matrix *grayscale = Rgb2Gray(cur_frame);
 	Matrix *pre_grayscale = Rgb2Gray(pre_frame);
@@ -1758,7 +1833,6 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 			toDataFn.pre = pre_frame;
 			toDataFn.pre_gray = pre_grayscale;
 			toDataFn.pre_labels = pre_labels;
-			toDataFn.bias = bias;
 			toDataFn.subbanded = banded;
 			toDataFn.subband = subband;
 			toDataFn.subband_idx = idx;
@@ -1770,7 +1844,6 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 		{
 			ForSingleImgDataFn toDataFn;
 			toDataFn.src = cur_frame;
-			toDataFn.bias = bias;
 			toDataFn.subbanded = banded;
 			toDataFn.subband = subband;
 			toDataFn.subband_idx = idx;
@@ -1782,9 +1855,8 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 		// smoothness comes from function pointer
 		ForPairImgSmoothFn toSmoothFn;
 		toSmoothFn.src = cur_frame;
-		//toSmoothFn.gradient = gradient;
+		toSmoothFn.gradient = gradient;
 		toSmoothFn.naturality = naturality;
-		toSmoothFn.bias = bias;
 		toSmoothFn.target_size = target_size;
 		gc->setSmoothCost(&PairImgSmoothFn, &toSmoothFn);
 
@@ -1796,7 +1868,10 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 		for ( int  i = 0; i < num_pixels; i++ )
 		{
 			//printf("The optimal label for pixel %d is %d\n",i,gc->whatLabel(i));
-			labels[i] = gc->whatLabel(i);
+			if (cur_frame->GetWidth()>target_size.width)
+				labels[i] = gc->whatLabel(i);
+			if (cur_frame->GetWidth()<target_size.width)
+				labels[i] = -gc->whatLabel(i);
 		}
 
 		/* update subband */
@@ -1806,7 +1881,7 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 			for (int x = 0; x < target_size.width; x++)
             {
 				int p = y*target_size.width+x;
-				if (labels[p]>0)
+				if (labels[p]!=0)
 				{
 					subband[subband_idx] = x+lbound;
 					subband_idx++;
@@ -1821,12 +1896,13 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 										 target_size.height);
 		//SaveShiftMap(labels,target_size.width,target_size.height,"shift.ppm");
 
-		/*
 		delete [] gradient->dx;
 		delete [] gradient->dy;
 		delete [] gradient->dt;
+		delete [] gradient->total_dx;
+		delete [] gradient->total_dy;
+		delete [] gradient->total_dt;
 		delete gradient;
-		*/
 		delete naturality->dx;
 		delete naturality->dy;
 		delete naturality;
@@ -1848,13 +1924,13 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 /*
  *
  */
-PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name, 
-						 Matrix *&bias, bool tconsistency, bool banded, bool saved)
+PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, double ratio, 
+						 char *name,  bool tconsistency, bool banded, bool saved)
 {
 	imageSize target_size;
-	PictureList *result = new PictureList(src->GetMaxWidth()-1,
-										  src->GetMaxHeight(),
-										  src->GetLength());
+	PictureList *result = new PictureList(origin_size.width,
+										  origin_size.height,
+										  origin_size.time);
 	/* process first frame */
 	int lbound = -1;
 	int ubound = -1;
@@ -1870,14 +1946,12 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 		band_img = Subband_Picture(src->GetPicture(0),band,0,ratio,
 								   lbound,ubound,empty_labels,false);
 	delete [] empty_labels;
-	target_size.width = band_img->GetWidth()-1;
+	target_size.width = band_img->GetWidth()-src->GetMaxWidth()+origin_size.width;
 	target_size.height = band_img->GetHeight();
 	int *labels = new int[target_size.width*target_size.height];
 	
-	Matrix *band_bias = CopySubband_Bias(bias,lbound,ubound,0);
 	Picture *retargeted_band_img = SingleImg_SeamCut(band_img,band,0,lbound,
-													 target_size,labels,band_bias,banded);
-	delete band_bias;
+													 target_size,labels,banded);
 	if (!banded)
 		retargeted_band_img->SetName(src->GetPicture(0)->GetName());
 	Picture *combined_img;
@@ -1889,7 +1963,9 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 	}
 	else
 	{
-		combined_img = Combine_SubbandImgs(src->GetPicture(0),retargeted_band_img,ratio,lbound,ubound,labels);
+		target_size.width = src->GetMaxWidth()-src->GetMaxWidth()+origin_size.width;
+		target_size.height = src->GetMaxHeight();
+		combined_img = Combine_SubbandImgs(src->GetPicture(0),retargeted_band_img,target_size,ratio,lbound,ubound,labels);
 		result->SetPicture(0,combined_img);
 		delete band_img;
 		delete retargeted_band_img;
@@ -1916,7 +1992,10 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 		strcat(seam_name,name);
 		strcat(seam_name,"seam_");
 		strcat(seam_name,result->GetPicture(0)->GetName());
-		SaveSeamImage(labels,result->GetPicture(0),seam_name);
+		if (origin_size.width<src->GetMaxWidth())
+			SaveSeamImage(labels,result->GetPicture(0),seam_name,0);
+		if (origin_size.width>src->GetMaxWidth())
+			SaveSeamImage(labels,result->GetPicture(0),seam_name,1);
 	}
 
 	/* process 2nd frame to t-1 frame */
@@ -1936,7 +2015,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 			band_img = Subband_Picture(src->GetPicture(t),band,t*src->GetMaxHeight(),ratio,
 									   lbound,ubound,empty_labels,false);
 		delete [] empty_labels; 
-		ubound--;
+		ubound = ubound+origin_size.width-src->GetMaxWidth();
 		if (!banded)
 		{
 			//pre_band_img = result->GetPicture(t-1);
@@ -1948,20 +2027,18 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 										   lbound,ubound,labels,true);
 			empty_labels = new int[src->GetMaxHeight()*src->GetMaxWidth()];
 			delete pre_band_img;
-			int uubound = ubound+1;
+			ubound = ubound+src->GetMaxWidth()-origin_size.width;
 			pre_band_img = Subband_Picture(src->GetPicture(t-1),band,t*src->GetMaxHeight(),ratio,
-										   lbound,uubound,empty_labels,true);
+										   lbound,ubound,empty_labels,true);
 			delete [] empty_labels;
 		}
-		target_size.width = band_img->GetWidth()-1;
+		target_size.width = band_img->GetWidth()-src->GetMaxWidth()+origin_size.width;
 		target_size.height = band_img->GetHeight();
 
-		band_bias = CopySubband_Bias(bias,lbound,ubound,t);	
 		//retargeted_band_img = SingleImg_SeamCut(band_img,band,t*src->GetMaxHeight(),lbound,
 		//										  target_size,labels,band_bias);
 		retargeted_band_img = PairImg_SeamCut(band_img,pre_band_img,band,t*src->GetMaxHeight(),
-											  lbound,bias,target_size,labels,tconsistency,banded);
-		delete band_bias;
+											  lbound,target_size,labels,tconsistency,banded);
 
 		//ubound--;
 		retargeted_band_img->SetName(src->GetPicture(t)->GetName());
@@ -1973,7 +2050,9 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 		}
 		else
 		{
-			combined_img = Combine_SubbandImgs(src->GetPicture(t),retargeted_band_img,ratio,lbound,ubound+1,labels);
+			target_size.width = src->GetMaxWidth()-src->GetMaxWidth()+origin_size.width;
+			target_size.height = src->GetMaxHeight();
+			combined_img = Combine_SubbandImgs(src->GetPicture(t),retargeted_band_img,target_size,ratio,lbound,ubound+1,labels);
 			result->SetPicture(t,combined_img);
 			delete band_img;
 			delete pre_band_img;
@@ -2001,7 +2080,10 @@ PictureList *Refine_Seam(int *&band, PictureList *src, double ratio, char *name,
 			strcat(seam_name2,name);
 			strcat(seam_name2,"seam_");
 			strcat(seam_name2,result->GetPicture(t)->GetName());
-			SaveSeamImage(labels,result->GetPicture(t),seam_name2);
+			if (origin_size.width<src->GetMaxWidth())
+				SaveSeamImage(labels,result->GetPicture(t),seam_name2,0);
+			if (origin_size.width>src->GetMaxWidth())
+				SaveSeamImage(labels,result->GetPicture(t),seam_name2,1);
 		}
 	}
 
@@ -2019,7 +2101,6 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	int *lr_band = NULL;
-	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	PictureList *shot = new PictureList(input_path);
@@ -2050,22 +2131,12 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
 
-		if (bias==NULL)
-		{
-			bias = new Matrix[target_size.time];
-			for (int t = 0; t < target_size.time; t++)
-			{
-				Matrix *init = new Matrix(target_size.height,
-										  target_size.width+1,1.0);
-				bias[t] = *(init);
-				delete init;
-			}
-		}
+
 
 		/* graph cut in low resolution */
 		time(&start);
 		target = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,output_path,band,lr_band,bias,saved);
+								   num_labels,output_path,band,lr_band,saved);
 		time(&end);
 		printf("3D shift-map time is %f\n",difftime(end, start));
 
@@ -2095,7 +2166,6 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 		//delete source;
 	}
 
-	delete [] bias;
 	delete target;
 }
 
@@ -2109,7 +2179,6 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
-	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	shot = new PictureList(input_path);	
@@ -2145,22 +2214,11 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 		// TODO
 		band = new int[origin_size.time*origin_size.height];
 		
-		if (bias==NULL)
-		{
-			bias = new Matrix[origin_size.time];
-			for (int t = 0; t < origin_size.time; t++)
-			{
-				Matrix *init = new Matrix(origin_size.height,
-										  origin_size.width+1,1.0);
-				bias[t] = *(init);
-				delete init;
-			}
-		}
 
 		/* refine seam in higher resolution */
 		time(&start);
-		target = Refine_Seam(band,target,pow(2.0,level),
-							 output_path,bias,true,false,saved);
+		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
+							 output_path,true,false,saved);
 		time(&end);
 		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
@@ -2182,7 +2240,6 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 		//delete source;
 	}
 
-	delete [] bias;
 	delete target;
 }
 
@@ -2196,7 +2253,6 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
-	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	shot = new PictureList(input_path);	
@@ -2232,22 +2288,10 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 		// TODO
 		band = new int[origin_size.time*origin_size.height];
 
-		if (bias==NULL)
-		{
-			bias = new Matrix[origin_size.time];
-			for (int t = 0; t < origin_size.time; t++)
-			{
-				Matrix *init = new Matrix(origin_size.height,
-										  origin_size.width+1,1.0);
-				bias[t] = *(init);
-				delete init;
-			}
-		}
-
 		/* refine seam in higher resolution */
 		time(&start);
-		target = Refine_Seam(band,target,pow(2.0,level),
-							 output_path,bias,false,false,saved);
+		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
+							 output_path,false,false,saved);
 		time(&end);
 		printf("Independent shift-map time is %f\n",difftime(end, start));
 
@@ -2270,7 +2314,6 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 		//delete source;
 	}
 
-	delete [] bias;
 	delete target;
 }
 
@@ -2285,8 +2328,6 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	int *lr_band = NULL;
-	Matrix *lr_bias = NULL;
-	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	shot = new PictureList(input_path);	
@@ -2294,10 +2335,10 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 
 	PictureList *source;
 	PictureList *target = shot;
-	while (removed_seam>0)
+	while (removed_seam != 0)
 	{	
 		bool saved = false;
-		if (removed_seam==1)
+		if (removed_seam==1 || removed_seam==-1)
 			saved = true;
 			
 		if (level>0)
@@ -2311,31 +2352,23 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 			source = target;
 
 		num_labels = 2;
-		target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam>0)
+			target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam<0)
+			target_size.width = source->GetMaxWidth()+1;
 		target_size.height = source->GetMaxHeight();
 		target_size.time = source->GetLength();
-		origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam>0)
+			origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam<0)
+			origin_size.width = target->GetMaxWidth()+1;
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
-
-		//if (lr_bias!=NULL)
-		//	delete [] lr_bias;
-		if (lr_bias==NULL)
-		{
-			lr_bias = new Matrix[target_size.time];
-			for (int t = 0; t < target_size.time; t++)
-			{
-				Matrix *init = new Matrix(target_size.height,
-										  target_size.width+1,1.0);
-				lr_bias[t] = *(init);
-				delete init;
-			}
-		}
 
 		/* graph cut in low resolution */
 		time(&start);
 		source = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,output_path,band,lr_band,lr_bias,saved);
+								   num_labels,output_path,band,lr_band,saved);
 		time(&end);
 		printf("3D shift-map time is %f\n",difftime(end, start));
 
@@ -2376,36 +2409,17 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 		}
 		*/
 
-		//if (bias!=NULL)
-		//	delete [] bias;
-		if (bias==NULL)
-		{
-			bias = new Matrix[origin_size.time];
-			for (int t = 0; t < origin_size.time; t++)
-			{
-				Matrix *init = new Matrix(origin_size.height,
-										  origin_size.width+1,1.0);
-				bias[t] = *(init);
-				delete init;
-			}
-		}
-
 		/* refine seam in higher resolution */
 		time(&start);
-		target = Refine_Seam(band,target,pow(2.0,level),output_path,bias,true,true,saved);
+		target = Refine_Seam(band,target,origin_size,pow(2.0,level),output_path,true,true,saved);
 		time(&end);
 		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
-		/*
-		lr_bias = CalcSeamBias(lr_bias, lr_band, target_size.width,
-							   target_size.height, target_size.time,
-							   target_size.width/target_size.width);
 
-		bias = CalcSeamBias(bias, band, origin_size.width, origin_size.height, 
-							origin_size.time, origin_size.width/32);
-		*/
-
-		removed_seam--;
+		if (removed_seam>0)
+			removed_seam--;
+		if (removed_seam<0)
+			removed_seam++;
 		delete [] band;
 		delete [] lr_band;
 		if (level>0)
@@ -2423,8 +2437,6 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 		//delete source;
 	}
 
-	delete [] lr_bias;
-	delete [] bias;
 	delete target;
 }
 

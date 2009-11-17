@@ -277,6 +277,8 @@ gradient2D *Diff_2D(Picture *src, double threshold)
 		}
 	} // end for
 
+	delete grayscale;
+
 	gradient2D *results = new gradient2D;
 	results->dx = dx;
 	results->dy = dy;
