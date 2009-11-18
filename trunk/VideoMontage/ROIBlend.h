@@ -20,13 +20,16 @@ public class ROIBlend
 {
 public:
 	// scale: scale for calculating Gaussian mean 
-	// variance: variance of the Gaussian mean
-	// a: size to blend in left image, e.g 20
-	// b: size to blend in right image, e.g 20
+	// variance: variance of the Gaussian mean 
 	ROIBlend(double scale, double variance) 
 	{
 		_scale = scale;
 		_variance = variance; 
+	}
+
+	// new implementation does not need any parameter
+	ROIBlend()
+	{
 	}
 protected:
 	double _scale;
@@ -41,8 +44,12 @@ public:
 	// calculate integral of function in calcFsofP from start to end
 	// actually is the result of Ps(p)	
 	double calcDefiniteIntergral(int p, int start, int end);
-
-	CvScalar ROIBlend::GetBlendScalar(CvScalar value, CvScalar seam, int p, bool is_S);
+ 
+	CvScalar GetBlendScalar(CvScalar value, CvScalar seam, int p, bool is_S);
+	
+	// new implementation, put gaussian mean into the middle
+	// each part has 1 gaussian seperately, and the deviation is  _a and _b
+	CvScalar GetBlendScalar2(CvScalar value, CvScalar seam, int p, int deviation);
 private:
 	// calculate Gaussian distribution fs(p).
 	double calcFsofP(int p, int mean);
@@ -55,6 +62,9 @@ public:
 	// b - size of right image portion to blend
 	IplImage* BlendImages(IplImage* image1, IplImage* image2, int a, int b);
 	
+	// new implementation, put gaussian mean into the middle
+	IplImage* BlendImages2(IplImage* image1, IplImage* image2, int a, int b);
+
 	// combine to image with same height side by side
 	IplImage* CombineImages(IplImage* image1, IplImage* image2);
 	void cvBlendImages(IplImage *blend1);

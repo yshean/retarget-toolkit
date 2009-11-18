@@ -171,6 +171,25 @@ CvScalar ROIBlend::GetBlendScalar(CvScalar value, CvScalar seam, int p, bool is_
 	return blendValue;
 }
 
+CvScalar ROIBlend::GetBlendScalar2(CvScalar value, CvScalar seam, int p, int deviation)
+{
+	CvScalar blendValue;					// result
+	for(int i = 0; i < 4; i++)
+	{
+		double Is_p = value.val[i];			// value of Is(p)
+		double It_p = seam.val[i];			// value of It(p) which is actually It(seam)
+		
+		double Ps_p;
+		// integrate from -inf to end
+		double end =  (double)p / deviation;
+		Ps_p = NormalDistribution(end);
+		double Pt_p = 1 - Ps_p;				// value of Pt(p)
+		double Is_pb = Is_p * Ps_p + It_p * Pt_p;
+		blendValue.val[i] = Is_pb;
+	}		
+	return blendValue;
+}
+
 IplImage* ROIBlend::CombineImages(IplImage* image1, IplImage* image2)
 {
 	IplImage* image = cvCreateImage(
@@ -191,6 +210,7 @@ IplImage* ROIBlend::CombineImages(IplImage* image1, IplImage* image2)
 		}
 	return image;
 }
+
 
 IplImage* ROIBlend::BlendImages(IplImage* image1, IplImage* image2, int a, int b)
 {	 
@@ -220,8 +240,6 @@ IplImage* ROIBlend::BlendImages(IplImage* image1, IplImage* image2, int a, int b
 		}
 	}
 	
-
-
 	// for T part
 	for(int x = 0; x < _b - width1; x++)
 	{
@@ -235,12 +253,61 @@ IplImage* ROIBlend::BlendImages(IplImage* image1, IplImage* image2, int a, int b
 	}
 
 	cvNamedWindow("Test1");
-
+	printf("Display image 2 after blended");
 	while(1)
 	{
 		cvShowImage("Test", image2_clone);
 		cvWaitKey(100);
 	}
+	return CombineImages(image1_clone, image2_clone);	 
+}
+
+IplImage* ROIBlend::BlendImages2(IplImage* image1, IplImage* image2, int a, int b)
+{	 
+	int width1 = image1->width;
+	int height1 = image1->height;
+	int width2 = image2->width;
+	int height2 = image2->height;
+
+	_a = a;
+	_b = b;
+
+	IplImage* image1_clone = cvCloneImage(image1);
+	IplImage* image2_clone = cvCloneImage(image2);
+
+	IplImage* image = cvCreateImage(cvSize(width1 + width2, height1), image1->depth, image1->nChannels);
+
+	// for S part
+	for(int x = width1 - _a - 30; x < width1; x++)
+	{
+		for(int y = 0; y < height1; y++)
+		{
+			CvScalar value = cvGet2D(image1, y, x);
+			CvScalar seamValue = cvGet2D(image2, y, 0);
+			CvScalar blendValue = GetBlendScalar2(value, seamValue, width1 - x, _a);
+			cvSet2D(image1_clone, y, x, blendValue);
+		}
+	}
+	
+	// for T part
+	for(int x = 0; x < _b + 30; x++)
+	{
+		for(int y = 0; y < height2; y++)
+		{
+			CvScalar value = cvGet2D(image2, y, x);
+			CvScalar seamValue = cvGet2D(image1, y, width1 - 1);
+			CvScalar blendValue = GetBlendScalar2(value, seamValue, x, _b);
+			cvSet2D(image2_clone, y, x, blendValue);
+		}
+	}
+
+	//cvNamedWindow("Test1");
+	//printf("Display image 2 after blended");
+	//while(1)
+	//{
+	//	cvShowImage("Test", image2_clone);
+	//	cvWaitKey(100);
+	//}
 	return CombineImages(image1_clone, image2_clone);	 
 }
 
@@ -336,8 +403,10 @@ void TestBlendImages()
 {
 	IplImage* image1 = cvLoadImage("test1.jpg");
 	IplImage* image2 = cvLoadImage("test2.jpg");
-	ROIBlend* roiBlend = new ROIBlend(0.9, 2.0); // dummy parameters
-	IplImage* image = roiBlend->BlendImages(image1, image2, 20, 20);
+	//ROIBlend* roiBlend = new ROIBlend(0.9, 2.0); // dummy parameters
+	ROIBlend* roiBlend = new ROIBlend();
+
+	IplImage* image = roiBlend->BlendImages2(image1, image2, 20, 20);
 
 	cvNamedWindow("Test");
 
