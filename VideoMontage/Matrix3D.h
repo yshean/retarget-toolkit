@@ -33,7 +33,7 @@ public:
 	// fill a image to the matrix
 	virtual void SetIplImageZ(int z, IplImage* image);
 	virtual void SetIplImageX(int x, IplImage* image);
-
+ 
 	char* _data;	
 };
 
@@ -53,7 +53,7 @@ public:
 		_type = IPL_DEPTH_8U;
 	}
 
-	~Matrix3DChar(void);
+	~Matrix3DChar(void);		
 
 	virtual double Get3D(int x, int y, int z);
 	virtual CvScalar Get3DScalar(int x, int y, int z);
@@ -61,3 +61,52 @@ public:
 	virtual void Set3DScalar(int x, int y, int z, CvScalar value);
 };
 
+class Matrix3DInt : public Matrix3D
+{
+public:
+
+	// default 1 channel
+	Matrix3DInt(int width, int height, int length) : Matrix3D(width, height, length)
+	{	
+		_data = (char*)malloc(length * width * height * sizeof(unsigned int));
+		_type = IPL_DEPTH_16U;
+	}
+
+	Matrix3DInt(int width, int height, int length, int channel) : Matrix3D(width, height, length, channel)
+	{
+		_data = (char*)malloc(length * width * height * channel * sizeof(unsigned int));
+		_type = IPL_DEPTH_8U;
+	}
+
+	~Matrix3DInt(void);
+
+	virtual double Get3D(int x, int y, int z);
+	virtual CvScalar Get3DScalar(int x, int y, int z);
+	virtual void Set3D(int x, int y, int z, double value);
+	virtual void Set3DScalar(int x, int y, int z, CvScalar value);
+};
+
+
+class Matrix3DFloat : public Matrix3D
+{
+public:
+	// default 1 channel
+	Matrix3DFloat(int width, int height, int length) : Matrix3D(width, height, length)
+	{	
+		_data = (char*)malloc(length * width * height * sizeof(float));
+		_type = IPL_DEPTH_32F;
+	}
+
+	Matrix3DFloat(int width, int height, int length, int channel) : Matrix3D(width, height, length, channel)
+	{
+		_data = (char*)malloc(length * width * height * channel * sizeof(float));
+		_type = IPL_DEPTH_32F;
+	}
+
+	~Matrix3DFloat(void);
+
+	virtual double Get3D(int x, int y, int z);
+	virtual CvScalar Get3DScalar(int x, int y, int z);
+	virtual void Set3D(int x, int y, int z, double value);
+	virtual void Set3DScalar(int x, int y, int z, CvScalar value);
+};

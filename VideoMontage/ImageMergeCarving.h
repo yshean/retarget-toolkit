@@ -2,6 +2,7 @@
 #include <cv.h>
 #include "EnergyPath.h"
 #include "RegionExtractor.h"
+#include "DrawingFunctions.h"
 
 using namespace Zooming;
 
@@ -16,6 +17,7 @@ public:
 	~ImageMergeCarving(void);
 
 	RegionExtractor* extractor;
+	// MinEnergyPath* minEnergyPath;
 
 	// assuming that 2 images having the same height
 	// slide 2 images over to see with which seam the 2 can be combined
@@ -32,6 +34,7 @@ public:
 	virtual void GetOverlapImages(IplImage* image1, IplImage* image2, 
 		IplImage** overlap1, IplImage** overlap2, int overlap_size);
 
+	// create the overlap cost image by comparing every pixel in same location of overlap1 and overlap2
 	virtual IplImage* CreateOverlapImageCost(IplImage* overlap1, IplImage* overlap2);
 };
 
