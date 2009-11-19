@@ -69,8 +69,8 @@ void MontageSaliencyMap::CalculateSaliencyMap(Matrix3D* matrix, Matrix3D* output
 							CvScalar value = matrix->Get3DScalar(i, j, k);
 							double diff = _setting->norm->CalculateNorm(value, center);
 							sum_diff += diff;
-						}
-				output->Set3D(x, y, z, sum_diff);
+						}						
+				output->Set3D(x, y, z, sum_diff);				
 			}	
 	}
 }

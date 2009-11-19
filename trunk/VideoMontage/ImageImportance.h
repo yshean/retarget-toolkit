@@ -10,3 +10,4 @@ public:
 	// Return the important of the image
 	virtual double GetImageImportance(IplImage* image) = 0;
 };
+

@@ -10,7 +10,7 @@ public:
 	// Calculate L2 Norm between 2 Point3D
 	virtual double CalculateNorm(Point3D point1, Point3D point2);
 	
-	// Calculate L2 Norm between 2
+	// Calculate L2 Norm between 2 CvScalar 
 	virtual double CalculateNorm(CvScalar value1, CvScalar value2);	
 	
 };

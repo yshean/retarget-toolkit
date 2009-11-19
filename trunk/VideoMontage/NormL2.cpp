@@ -26,4 +26,5 @@ double NormL2::CalculateNorm(CvScalar value1, CvScalar value2)
 		sum += pow(value1.val[i] - value2.val[i], 2.0);
 	}
 	return sqrt(sum);
+	//return sum;
 }
