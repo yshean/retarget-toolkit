@@ -60,7 +60,7 @@ public:
 	// blend 2 images - assumed to be of the SAME HEIGHT and SAME TYPE
 	// a - size of left image portion to blend
 	// b - size of right image portion to blend
-	IplImage* BlendImages(IplImage* image1, IplImage* image2, int a, int b);
+	IplImage* BlendImages1(IplImage* image1, IplImage* image2, int a, int b);
 	// blend 2 images - assumed to be of the SAME HEIGHT and SAME TYPE
 	// new implementation, put gaussian mean into the middle
 	IplImage* BlendImages2(IplImage* image1, IplImage* image2, int a, int b);
@@ -75,7 +75,8 @@ public:
 	// first resize all images to same height
 	// blend multiple images using filenames
 	// then show the result
-	void TestBlendMultiple3(char** fileList, int count);
+	// blendType can be 1 or 2 or 3
+	void TestBlendMultiple(char** fileList, int count, int para1, int para2, int blendType);
 	
 	// combine to image with same height side by side
 	IplImage* CombineImages(IplImage* image1, IplImage* image2);

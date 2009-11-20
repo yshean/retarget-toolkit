@@ -212,7 +212,7 @@ IplImage* ROIBlend::CombineImages(IplImage* image1, IplImage* image2)
 }
 
 
-IplImage* ROIBlend::BlendImages(IplImage* image1, IplImage* image2, int a, int b)
+IplImage* ROIBlend::BlendImages1(IplImage* image1, IplImage* image2, int a, int b)
 {	 
 	int width1 = image1->width;
 	int height1 = image1->height;
@@ -250,15 +250,7 @@ IplImage* ROIBlend::BlendImages(IplImage* image1, IplImage* image2, int a, int b
 			CvScalar blendValue = GetBlendScalar(value, seamValue, x + width1, false);
 			cvSet2D(image2_clone, y, x, blendValue);
 		}
-	}
-
-	cvNamedWindow("Test1");
-	printf("Display image 2 after blended");
-	while(1)
-	{
-		cvShowImage("Test", image2_clone);
-		cvWaitKey(100);
-	}
+	} 
 	return CombineImages(image1_clone, image2_clone);	 
 }
 
@@ -300,14 +292,6 @@ IplImage* ROIBlend::BlendImages2(IplImage* image1, IplImage* image2, int a, int 
 			cvSet2D(image2_clone, y, x, blendValue);
 		}
 	}
-
-	//cvNamedWindow("Test1");
-	//printf("Display image 2 after blended");
-	//while(1)
-	//{
-	//	cvShowImage("Test", image2_clone);
-	//	cvWaitKey(100);
-	//}
 	return CombineImages(image1_clone, image2_clone);	 
 }
 
@@ -358,11 +342,16 @@ IplImage* ROIBlend::BlendImages3(IplImage* image1, IplImage* image2, int size, i
 	
 	// release if using OpenCV 1.0
 	// here we use OpenCV 2.0 so no release is needed.
-
+	
+	cvReleaseImage(&overlap1);
+	cvReleaseImage(&overlap2);
+	cvReleaseImage(&nonoverlap1);
+	cvReleaseImage(&nonoverlap2);
+	cvReleaseImage(&firstPart);
 	return result;
 }
 
-void ROIBlend::TestBlendMultiple3(char **fileList, int count)
+void ROIBlend::TestBlendMultiple(char **fileList, int count, int para1, int para2, int blendType)
 {	
 	if(count > 1)
 	{	
@@ -390,8 +379,17 @@ void ROIBlend::TestBlendMultiple3(char **fileList, int count)
 			imageList[i]->depth, imageList[i]->nChannels);
 			cvResize(imageList[i], temp);
 
-			// blend
-			result = BlendImages3(result, temp, 30, 7);
+			switch(blendType)
+			{
+			case 1: result = BlendImages1(result, temp, para1, para2);
+				break;
+			case 2: result = BlendImages2(result, temp, para1, para2);
+				break;
+			case 3: result = BlendImages3(result, temp, para1, para2);
+				break;
+			default:
+				result = BlendImages3(result, temp, para1, para2);
+			}
 		}
 
 		cvSaveImage("blend.jpg", result);
@@ -507,11 +505,15 @@ void TestBlendImages()
 	ROIBlend* roiBlend = new ROIBlend();
 
 	//IplImage* image = roiBlend->BlendImages2(image1, image2, 20, 20);
-	IplImage* image = roiBlend->BlendImages3(image1, image2, 80, 20);
+	
 	cvNamedWindow("Test");
-
+	int size = 80;
+	int std = 20;
+	cvCreateTrackbar("Size", "Test", &size, 100, NULL);
+	cvCreateTrackbar("Std", "Test", &std, 100, NULL);
 	while(1)
 	{
+		IplImage* image = roiBlend->BlendImages3(image1, image2, size, std);
 		cvShowImage("Test", image);
 		cvWaitKey(100);
 	}
