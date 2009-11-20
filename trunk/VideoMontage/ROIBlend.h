@@ -16,7 +16,7 @@ Usage:
 */
 
 // refer to paper: "Video Collage - a novel presentation of video sequence" for more details
-public class ROIBlend
+public class __declspec(dllexport) ROIBlend
 {
 public:
 	// scale: scale for calculating Gaussian mean 
@@ -61,10 +61,22 @@ public:
 	// a - size of left image portion to blend
 	// b - size of right image portion to blend
 	IplImage* BlendImages(IplImage* image1, IplImage* image2, int a, int b);
-	
+	// blend 2 images - assumed to be of the SAME HEIGHT and SAME TYPE
 	// new implementation, put gaussian mean into the middle
 	IplImage* BlendImages2(IplImage* image1, IplImage* image2, int a, int b);
-
+	// blend 2 images - assumed to be of the SAME HEIGHT and SAME TYPE
+	// new implementation, put gaussian mean into the middle and overlap 2 images
+	// - size: overlap area size
+	// - std: deviation of gaussian.
+	// put std < size allow smoother transition
+	// mean of Gaussian is always in the middle of the overlap area
+	IplImage* BlendImages3(IplImage* image1, IplImage* image2, int size, int std);
+	
+	// first resize all images to same height
+	// blend multiple images using filenames
+	// then show the result
+	void TestBlendMultiple3(char** fileList, int count);
+	
 	// combine to image with same height side by side
 	IplImage* CombineImages(IplImage* image1, IplImage* image2);
 	void cvBlendImages(IplImage *blend1);
