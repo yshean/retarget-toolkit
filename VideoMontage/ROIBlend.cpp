@@ -311,6 +311,101 @@ IplImage* ROIBlend::BlendImages2(IplImage* image1, IplImage* image2, int a, int 
 	return CombineImages(image1_clone, image2_clone);	 
 }
 
+IplImage* ROIBlend::BlendImages3(IplImage* image1, IplImage* image2, int size, int std)
+{	
+	int width1 = image1->width;
+	int height1 = image1->height;
+	int width2 = image2->width;
+	int height2 = image2->height;
+
+	// get non-overlap part in image1	
+	IplImage* nonoverlap1 = cvCreateImage(cvSize(width1 - size, height1), image1->depth, image1->nChannels);	 
+	cvSetImageROI(image1, cvRect(0, 0, width1 - size, height1));
+	cvCopyImage(image1, nonoverlap1);	
+	
+	// get overlap area in image1
+	cvSetImageROI(image1, cvRect(width1 - size, 0, size, height1));
+	IplImage* overlap1 = cvCreateImage(cvSize(size, height1), image1->depth, image1->nChannels);
+	cvCopyImage(image1, overlap1);
+
+	// get the first part of 2nd image
+	cvSetImageROI(image2, cvRect(0,0, size, height2));
+	IplImage* overlap2 = cvCreateImage(cvSize(size, height2), image2->depth, image2->nChannels);
+	cvCopyImage(image2, overlap2);
+
+	// get non-overlap area in image2
+	IplImage* nonoverlap2 = cvCreateImage(cvSize(width2 - size, height1), image2->depth, image2->nChannels);	 
+	cvSetImageROI(image2, cvRect(size, 0, width2 - size, height2));
+	cvCopyImage(image2, nonoverlap2);	
+
+	// blend 2 overlap area using Gaussian
+	IplImage* blendArea = cvCreateImage(cvSize(size, height2), image2->depth, image2->nChannels);
+	int mean = size / 2;
+	for(int x = 0; x < size; x++)
+	{
+		for(int y = 0; y < height1; y++)
+		{
+			CvScalar value1 = cvGet2D(overlap1, y, x);
+			CvScalar value2 = cvGet2D(overlap2, y, x);
+			CvScalar value = GetBlendScalar2(value1, value2, mean - x, std);
+			cvSet2D(blendArea, y, x, value);
+		}
+	}
+
+	// combine 2 images
+	IplImage* firstPart = CombineImages(nonoverlap1, blendArea);
+	IplImage* result = CombineImages(firstPart, nonoverlap2);
+	
+	// release if using OpenCV 1.0
+	// here we use OpenCV 2.0 so no release is needed.
+
+	return result;
+}
+
+void ROIBlend::TestBlendMultiple3(char **fileList, int count)
+{	
+	if(count > 1)
+	{	
+		IplImage* result;
+		int minHeight = int::MaxValue;
+		IplImage** imageList = (IplImage**)malloc(count * sizeof(long));;
+		for(int i = 0; i < count; i++)
+		{
+			IplImage* image = cvLoadImage(fileList[i]);
+			imageList[i] = image;
+			int height = image->height;
+			if(height < minHeight) minHeight = height;		
+		}		
+		
+		// ********resize then blend
+		// first image
+		double ratio = (double)minHeight/ (double)imageList[0]->height;
+		result = cvCreateImage(cvSize(imageList[0]->width * ratio, minHeight), 
+			imageList[0]->depth, imageList[0]->nChannels);
+		cvResize(imageList[0], result);
+		// from second image
+		for(int i = 1; i < count; i++)
+		{
+			IplImage* temp = cvCreateImage(cvSize(imageList[i]->width * ratio, minHeight), 
+			imageList[i]->depth, imageList[i]->nChannels);
+			cvResize(imageList[i], temp);
+
+			// blend
+			result = BlendImages3(result, temp, 30, 7);
+		}
+
+		cvSaveImage("blend.jpg", result);
+		cvNamedWindow("Blended");
+		while(1)
+		{
+			cvShowImage("Blended", result);
+			int key = cvWaitKey(100);
+			if(key == 27) break;
+		}
+	}	
+}
+
+// old version
 void ROIBlend::cvBlendImages(IplImage *blend1)
 {
 	int width, height, rmean, gmean, bmean, rt=0, bt=0, gt=0, clw=0, rvar=0, gvar=0, bvar=0;
@@ -382,6 +477,11 @@ void ROIBlend::cvBlendImages(IplImage *blend1)
 		}
 	}
 }
+
+
+
+
+
 void TestCombineImages()
 {
 	IplImage* image1 = cvLoadImage("test1.jpg");
@@ -406,8 +506,8 @@ void TestBlendImages()
 	//ROIBlend* roiBlend = new ROIBlend(0.9, 2.0); // dummy parameters
 	ROIBlend* roiBlend = new ROIBlend();
 
-	IplImage* image = roiBlend->BlendImages2(image1, image2, 20, 20);
-
+	//IplImage* image = roiBlend->BlendImages2(image1, image2, 20, 20);
+	IplImage* image = roiBlend->BlendImages3(image1, image2, 80, 20);
 	cvNamedWindow("Test");
 
 	while(1)
