@@ -28,7 +28,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ImageProcessing, Version=1.0.3614.26938, Culture=neutral, processorArchitecture=x86" />
+    <Reference Include="ImageProcessing, Version=1.0.3614.27781, Culture=neutral, processorArchitecture=x86" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
