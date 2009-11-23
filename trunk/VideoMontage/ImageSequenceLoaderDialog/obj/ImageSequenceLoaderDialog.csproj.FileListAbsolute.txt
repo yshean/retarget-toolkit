@@ -6,4 +6,3 @@ C:\Documents and Settings\budi\My Documents\Visual Studio 2005\Projects\ImagePro
 C:\Documents and Settings\budi\My Documents\Visual Studio 2005\Projects\ImageProcessing\ImageSequenceLoaderDialog\bin\Debug\ImageSequenceLoaderDialog.pdb
 C:\Documents and Settings\budi\My Documents\Visual Studio 2005\Projects\ImageProcessing\ImageSequenceLoaderDialog\obj\Debug\ImageSequenceLoaderDialog.exe
 C:\Documents and Settings\budi\My Documents\Visual Studio 2005\Projects\ImageProcessing\ImageSequenceLoaderDialog\obj\Debug\ImageSequenceLoaderDialog.pdb
-C:\Documents and Settings\budi\My Documents\Visual Studio 2005\Projects\ImageProcessing\ImageSequenceLoaderDialog\bin\Debug\ImageProcessing.pdb
