@@ -197,6 +197,37 @@ Matrix *CalcSeamBias(Matrix *&mask, int *&band, int width, int height, int time,
 	return result;
 }
 
+Matrix *DownsamlingBias(Matrix *bias, int time, double ratio)
+{
+	Matrix *lr_bias = new Matrix[time];
+
+	for (int t = 0; t < time; t++)
+	{
+		Matrix *frame_bias = new Matrix(floor((double)(bias[t].NumOfRows()/ratio)),
+									    floor((double)(bias[t].NumOfCols()/ratio)));
+		//Matrix *frame_bias = new Matrix(bias[t].NumOfRows(),
+		//							    bias[t].NumOfCols());
+		frame_bias->LoadZero();
+		for (int y = 0; y < bias[t].NumOfRows(); y++)
+			for (int x = 0; x < bias[t].NumOfCols(); x++)
+			{
+                int lr_y = floor((double)y/ratio);
+				int lr_x = floor((double)x/ratio);
+				if (lr_y>=floor((double)(bias[t].NumOfRows()/ratio)))
+					lr_y--;
+				if (lr_x>=floor((double)(bias[t].NumOfCols()/ratio)))
+					lr_x--;
+				if (bias[t].Get(y+1,x+1)>0 && frame_bias->Get(lr_y+1,lr_x+1)==0)
+					frame_bias->Set(lr_y+1,lr_x+1,1.0);
+			}
+		lr_bias[t] = *(frame_bias);
+		delete frame_bias;
+	}
+
+	return lr_bias;
+}
+
+
 double PairwiseColorDiff(intensityType &p1, intensityType &p2, double threshold)
 {
 	double result = 0.0;
@@ -421,15 +452,27 @@ double SingleImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	}
 	*/
 
-	//cost += 100*abs(myData->gray->Get(y2+1,x2+1)-myData->gray->Get(y1+1,x1+1));
-
 	/* enlarge */
 	if (myData->src->GetWidth()<width)
 	{
-		if (l1>0 && x2>0)
+		if (x1==x2)
+		{
+			if (y1<y2 && x1>0)
+				cost += myData->naturality->dy->Get(y1+1,x1);
+			if (y2<y1 && x2>0)
+				cost += myData->naturality->dy->Get(y2+1,x2);
+		}
+		if (y1==y2 && l1>0 && x1>0)
+			cost += myData->gradient->dx->Get(y1+1,x1);
+		if (y1==y2 && l2>0 && x2>0)
+			cost += myData->gradient->dx->Get(y2+1,x2);
+
+		/*
+		if (l1>0 && x1>0)
 			cost += myData->gradient->dx->Get(y1+1,x1);
 		if (l2>0 && x2>0)
 			cost += myData->gradient->dx->Get(y2+1,x2);
+		*/
 	}
 
 	/* reduce */
@@ -440,6 +483,7 @@ double SingleImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 			if (l1>0)
 			{
 				cost += myData->naturality->dx->Get(y1+1,x1+1);
+				/* edgeness */
 				//cost += myData->gradient->dx->Get(y2+1,x2+1);
 				/*
 				cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
@@ -447,12 +491,13 @@ double SingleImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 				if (y1>0)
 					cost += 1*myData->gradient->dy->Get(y1,x1+1);
 				if (y1<height-1)
-					cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
+					cost += 1*myData->gradient->dy->Get(y1+1,x1+1);
 				*/
 			}
 			if (l2>0)
 			{
 				cost += myData->naturality->dx->Get(y2+1,x2+1);
+				/* edgeness */
 				//cost += myData->gradient->dx->Get(y1+1,x1+1);
 				/*
 				cost += 1*myData->gradient->dx->Get(y1+1,x1+1);
@@ -460,7 +505,7 @@ double SingleImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 				if (y2>0)
 					cost += 1*myData->gradient->dy->Get(y2,x2+1);
 				if (y2<height-1)
-					cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
+					cost += 1*myData->gradient->dy->Get(y2+1,x2+1);
 				*/
 			}
 		}
@@ -509,40 +554,65 @@ double PairImgDataFn(int p, int l, void *data)
 		if (x+myData->subband_lbound>myData->subband[myData->subband_idx+y]+refine_offset && l==0)
 			return 100000*MAX_COST_VALUE;
 	}
-
-	// Assign motion guided data energy 
+ 
 	// preserve temporal consistency
-	int cur_match = x+l;
-	int pre_match = x+myData->pre_labels[p];
-
-	if (cur_match==pre_match)
-		return 0.0;
-
-
-	double min_diff;
-	if (cur_match>=0 && cur_match<myData->src->GetWidth())
+	/* enlarge */
+	if (myData->src->GetWidth()<myData->target_size.width)
 	{
-		min_diff = min(abs(myData->gray->Get(y+1,cur_match+1)-myData->gray->Get(y+1,pre_match+1)),
-					   abs(myData->pre_gray->Get(y+1,cur_match+1)-myData->pre_gray->Get(y+1,pre_match+1)));
-		/*
-		intensityType p1 = myData->src->GetPixelIntensity(cur_match,y);
-		intensityType p2 = myData->src->GetPixelIntensity(pre_match,y);
-		min_diff = PairwiseColorDiff(myData->src->GetPixelIntensity(cur_match,y),
-									 myData->src->GetPixelIntensity(pre_match,y),0.0);
-		*/
+		int cur_match = x-l;
+		int pre_match = x+myData->pre_labels[p];
 
-		/*
-		min_diff += pow(myData->gradient->dx->Get(y+1,cur_match+1)-
-						myData->gradient->dx->Get(y+1,pre_match+1),2.0);
-		min_diff += pow(myData->gradient->dy->Get(y+1,cur_match+1)-
-						myData->gradient->dy->Get(y+1,pre_match+1),2.0);
-		*/
+		if (cur_match==pre_match)
+			return 0.0;
+
+		double min_diff;
+		if (cur_match>=0 && cur_match<myData->src->GetWidth())
+		{
+			min_diff = min(abs(myData->gray->Get(y+1,cur_match+1)-myData->gray->Get(y+1,pre_match+1)),
+						   abs(myData->pre_gray->Get(y+1,cur_match+1)-myData->pre_gray->Get(y+1,pre_match+1)));
+		}
+		else
+			min_diff = 100000*MAX_COST_VALUE;
+
+		cost += 1*min_diff;
+		//cost += 1000*myData->bias->Get(y+1,x+l+1);
 	}
-	else
-		min_diff = 100000*MAX_COST_VALUE;
 
-	cost += 0.1*min_diff;
-	//cost += 1000*myData->bias->Get(y+1,x+l+1);
+	/* reduce */
+	if (myData->src->GetWidth()>myData->target_size.width)
+	{
+		int cur_match = x+l;
+		int pre_match = x+myData->pre_labels[p];
+
+		if (cur_match==pre_match)
+			return 0.0;
+
+
+		double min_diff;
+		if (cur_match>=0 && cur_match<myData->src->GetWidth())
+		{
+			min_diff = min(abs(myData->gray->Get(y+1,cur_match+1)-myData->gray->Get(y+1,pre_match+1)),
+						   abs(myData->pre_gray->Get(y+1,cur_match+1)-myData->pre_gray->Get(y+1,pre_match+1)));
+			/*
+			intensityType p1 = myData->src->GetPixelIntensity(cur_match,y);
+			intensityType p2 = myData->src->GetPixelIntensity(pre_match,y);
+			min_diff = PairwiseColorDiff(myData->src->GetPixelIntensity(cur_match,y),
+										 myData->src->GetPixelIntensity(pre_match,y),0.0);
+			*/
+
+			/*
+			min_diff += pow(myData->gradient->dx->Get(y+1,cur_match+1)-
+							myData->gradient->dx->Get(y+1,pre_match+1),2.0);
+			min_diff += pow(myData->gradient->dy->Get(y+1,cur_match+1)-
+							myData->gradient->dy->Get(y+1,pre_match+1),2.0);
+			*/
+		}
+		else
+			min_diff = 100000*MAX_COST_VALUE;
+
+		cost += 1*min_diff;
+		//cost += 1000*myData->bias->Get(y+1,x+l+1);
+	}
 	
 	return cost;
 }
@@ -730,10 +800,24 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	/* enlarge */
 	if (myData->src->GetWidth()<width)
 	{
+		if (x1==x2)
+		{
+			if (y1<y2 && x1>0)
+				cost += myData->naturality->dy->Get(y1+1,x1);
+			if (y2<y1 && x2>0)
+				cost += myData->naturality->dy->Get(y2+1,x2);
+		}
+		if (y1==y2 && l1>0 && x1>0)
+			cost += myData->gradient->dx->Get(y1+1,x1);
+		if (y1==y2 && l2>0 && x2>0)
+			cost += myData->gradient->dx->Get(y2+1,x2);
+
+		/*
 		if (l1>0 && x1>0)
 			cost += myData->gradient->dx[1].Get(y1+1,x1);
 		if (l2>0 && x2>0)
 			cost += myData->gradient->dx[1].Get(y2+1,x2);
+		*/
 	}
 
 	/* reduce */
@@ -743,7 +827,8 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 		{
 			if (l1>0)
 			{
-				cost += myData->naturality->dx->Get(y1+1,x1+1);
+				cost += 1*myData->naturality->dx->Get(y1+1,x1+1);
+				/* edgeness */
 				//cost += myData->gradient->dx->Get(y2+1,x2+1);
 				/*
 				cost += 1*myData->gradient->dt[0].Get(y1+1,x1+1);
@@ -752,12 +837,13 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 				if (y1>0)
 					cost += 1*myData->gradient->dy->Get(y1,x1+1);
 				if (y1<height-1)
-					cost += 1*myData->gradient->dy->Get(y1+2,x1+1);
+					cost += 1*myData->gradient->dy->Get(y1+1,x1+1);
 				*/
 			}
 			if (l2>0)
 			{
-				cost += myData->naturality->dx->Get(y2+1,x2+1);
+				cost += 1*myData->naturality->dx->Get(y2+1,x2+1);
+				/* edgeness */
 				//cost += myData->gradient->dx->Get(y1+1,x1+1);
 				/*
 				cost += 1*myData->gradient->dt[0].Get(y2+1,x2+1);
@@ -766,7 +852,7 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 				if (y2>0)
 					cost += 1*myData->gradient->dy->Get(y2,x2+1);
 				if (y2<height-1)
-					cost += 1*myData->gradient->dy->Get(y2+2,x2+1);
+					cost += 1*myData->gradient->dy->Get(y2+1,x2+1);
 				*/
 			}
 		}
@@ -991,16 +1077,40 @@ double VideoSmoothFn(int p1, int p2, int l1, int l2, void *data)
 	}
 	*/
 
-	//cost += 1000*abs(myData->grayscales[t2].Get(y2+1,x2+1)-myData->grayscales[t1].Get(y1+1,x1+1));
-	//double sigma = width/4;
-
 	/* expansion */
 	if (myData->src->GetMaxWidth()<width)
 	{
+		if (t1==t2 && x1==x2)
+		{
+			if (y1<y2 && x1>0)
+				cost += 1*myData->naturality->dy[t1].Get(y1+1,x1);
+			if (y2<y1 && x2>0)
+				cost += 1*myData->naturality->dy[t2].Get(y2+1,x2);
+		}
+		if (x1==x2 && y1==y2)
+		{
+			if (t1<t2 && x1>0)
+				cost += 1*myData->naturality->dt[t1].Get(y1+1,x1);
+			if (t2<t1 && x2>0)
+				cost += 1*myData->naturality->dt[t2].Get(y2+1,x2);
+		}
+		if (t1==t2 && y1==y2 && l1>0 && x1>0)
+			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1);
+		if (t1==t2 && y1==y2 && l2>0 && x2>0)
+			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2);
+		/*
 		if (l1>0 && x1>0)
 			cost += 1*myData->gradient->dx[t1].Get(y1+1,x1);
 		if (l2>0 && x2>0)
 			cost += 1*myData->gradient->dx[t2].Get(y2+1,x2);
+		*/
+		if (t1==t2 && y1==y2)
+		{
+			if (x1<x2 && l2>0 && myData->bias[t1].Get(y1+1,x1+1)>0)
+				return 100000*MAX_COST_VALUE;
+			if (x2<x1 && l1>0 && myData->bias[t2].Get(y2+1,x2+1)>0)
+				return 100000*MAX_COST_VALUE;
+		}
 	}
 
 	/* reduce */
@@ -1012,7 +1122,8 @@ double VideoSmoothFn(int p1, int p2, int l1, int l2, void *data)
 			{
 				//double weight = simpleGauss(x1,sigma,width/2);
 				cost += 1*myData->naturality->dx[t1].Get(y1+1,x1+1);
-				//cost += myData->gradient->dx[t2].Get(y2+1,x2+1);
+				/* edgeness */
+				//cost += 1*myData->gradient->dx[t2].Get(y2+1,x2+1);
 				/*
 				if (t1<time-1)
 					cost += 1*myData->gradient->dt[t1].Get(y1+1,x1+1);
@@ -1023,13 +1134,14 @@ double VideoSmoothFn(int p1, int p2, int l1, int l2, void *data)
 				if (y1>0)
 					cost += 1*myData->gradient->dy[t1].Get(y1,x1+1);
 				if (y1<height-1)
-					cost += 1*myData->gradient->dy[t1].Get(y1+2,x1+1);
+					cost += 1*myData->gradient->dy[t1].Get(y1+1,x1+1);
 				*/
 			}
 			if (l2>0)
 			{
 				//double weight = simpleGauss(x2,sigma,width/2);
 				cost += 1*myData->naturality->dx[t2].Get(y2+1,x2+1);
+				/* edgeness */
 				//cost += myData->gradient->dx[t1].Get(y1+1,x1+1);
 				/*
 				if (t2<time-1)
@@ -1041,7 +1153,7 @@ double VideoSmoothFn(int p1, int p2, int l1, int l2, void *data)
 				if (y2>0)
 					cost += 1*myData->gradient->dy[t2].Get(y2,x2+1);
 				if (y2<height-1)
-					cost += 1*myData->gradient->dy[t2].Get(y2+2,x2+1);
+					cost += 1*myData->gradient->dy[t2].Get(y2+1,x2+1);
 				*/
 			}
 		}
@@ -1510,11 +1622,12 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, videoSize &target_size,
  * Function to find the optimal single seam
  */
 PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target_size, videoSize &up_size,
-							   int num_labels, char *target_path, int *&band, int *&lr_band, bool saved)
+							   int num_labels, char *target_path, int *&band, int *&lr_band, Matrix *&bias, bool saved)
 {
 	// set up the needed data to pass to function for the data costs
+	Matrix *new_bias;
 	gradient3D *gradient = Diff_3D(src,0.0);
-	gradient3D *naturality = Naturality_3D(src,0.0);
+	gradient3D *naturality = Naturality_3D(src,5.0);
 
 
 	int num_pixels = target_size.width*target_size.height*target_size.time;
@@ -1542,6 +1655,7 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		toSmoothFn.gradient = gradient;
 		toSmoothFn.naturality = naturality;
 		toSmoothFn.target_size = target_size;
+		toSmoothFn.bias = bias;
 		gc->setSmoothCost(&VideoSmoothFn, &toSmoothFn);
 
 		//printf("Before optimization energy is %f\n",gc->compute_energy());
@@ -1562,6 +1676,36 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		lr_band = UpsamplingShiftMap(labels,target_size,1.0,target_size);											 
 		band = UpsamplingShiftMap(labels,target_size,ratio,up_size);											 
 		//delete [] result;		
+
+		if (target_size.width>src->GetMaxWidth())
+		{
+			new_bias = new Matrix[target_size.time];
+			for (int t = 0; t < target_size.time; t++)
+			{
+				Matrix *frame_bias = new Matrix(target_size.height,
+												target_size.width);
+				for (int y = 0; y < target_size.height; y++)
+				{
+					int bidx = t*target_size.height+y;
+					for (int x = 0; x < lr_band[bidx]-1; x++)
+					{
+						frame_bias->Set(y+1,x+1,bias[t].Get(y+1,x+1));
+					}
+					for (int x = lr_band[bidx]; x < src->GetMaxWidth(); x++)
+					{
+						frame_bias->Set(y+1,x+2,bias[t].Get(y+1,x+1));
+					}
+					frame_bias->Set(y+1,lr_band[bidx],1.0);
+					frame_bias->Set(y+1,lr_band[bidx]+1,1.0);
+				}
+				new_bias[t] = *(frame_bias);
+				delete frame_bias;
+			}
+
+			if (bias != NULL)
+				delete [] bias;
+			bias = new_bias;
+		}
 
 		// update_
 		result = GenerateRetargetResult(labels, src, 
@@ -1925,9 +2069,12 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
  *
  */
 PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, double ratio, 
-						 char *name,  bool tconsistency, bool banded, bool saved)
+						 char *name,  Matrix *&bias, bool tconsistency, bool banded, bool saved)
 {
 	imageSize target_size;
+	Matrix *new_bias = NULL;
+	if (origin_size.width>src->GetMaxWidth())
+		new_bias = new Matrix[origin_size.time];
 	PictureList *result = new PictureList(origin_size.width,
 										  origin_size.height,
 										  origin_size.time);
@@ -1970,6 +2117,28 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 		delete band_img;
 		delete retargeted_band_img;
 		delete combined_img;
+	}
+
+	/* update bias */
+	if (origin_size.width>src->GetMaxWidth())
+	{
+		Matrix *first_frame_bias = new Matrix(origin_size.height,
+										 origin_size.width);
+		for (int y = 0; y < origin_size.height; y++)
+		{
+			for (int x = 0; x < band[y]-1; x++)
+			{
+				first_frame_bias->Set(y+1,x+1,bias[0].Get(y+1,x+1));
+			}
+			for (int x = band[y]; x < src->GetMaxWidth(); x++)
+			{
+				first_frame_bias->Set(y+1,x+2,bias[0].Get(y+1,x+1));
+			}
+			first_frame_bias->Set(y+1,band[y],1.0);
+			first_frame_bias->Set(y+1,band[y]+1,1.0);
+		}
+		new_bias[0] = *(first_frame_bias);
+		delete first_frame_bias;
 	}
 
 	if (saved)
@@ -2060,6 +2229,29 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 			delete combined_img;
 		}
 		
+		/* update bias */
+		if (origin_size.width>src->GetMaxWidth())
+		{
+			Matrix *next_frame_bias = new Matrix(origin_size.height,
+												 origin_size.width);
+			for (int y = 0; y < origin_size.height; y++)
+			{
+				int bidx = t*origin_size.height+y;
+				for (int x = 0; x < band[bidx]-1; x++)
+				{
+					next_frame_bias->Set(y+1,x+1,bias[t].Get(y+1,x+1));
+				}
+				for (int x = band[bidx]; x < src->GetMaxWidth(); x++)
+				{
+					next_frame_bias->Set(y+1,x+2,bias[t].Get(y+1,x+1));
+				}
+				next_frame_bias->Set(y+1,band[bidx],1.0);
+				next_frame_bias->Set(y+1,band[bidx]+1,1.0);
+			}	
+			new_bias[t] = *(next_frame_bias);
+			delete next_frame_bias;
+		}
+
 		if (saved)
 		{
 			char frame_name[512] = {'\0'};
@@ -2087,6 +2279,11 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 		}
 	}
 
+	if (origin_size.width>src->GetMaxWidth())
+	{
+		delete [] bias;
+		bias = new_bias;
+	}
 	delete [] labels;
 	return result;
 }
@@ -2101,16 +2298,17 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	int *lr_band = NULL;
+	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	PictureList *shot = new PictureList(input_path);
 
 	PictureList *source = NULL;
 	PictureList *target = shot;
-	while (removed_seam>0)
+	while (removed_seam != 0)
 	{	
 		bool saved = false;
-		if (removed_seam==1)
+		if (removed_seam==1 || removed_seam==-1)
 			saved = true;
 
 		if (level>0)
@@ -2124,19 +2322,35 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 			source = target;
 		
 		num_labels = 2;
-		target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam>0)
+			target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam<0)
+			target_size.width = source->GetMaxWidth()+1;
 		target_size.height = source->GetMaxHeight();
 		target_size.time = source->GetLength();
-		origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam>0)
+			origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam<0)
+			origin_size.width = target->GetMaxWidth()+1;
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
 
-
+		if (bias==NULL)
+        {
+			bias = new Matrix[origin_size.time];
+            for (int t = 0; t < origin_size.time; t++)
+            {
+				Matrix *init = new Matrix(target->GetMaxHeight(),
+										  target->GetMaxWidth(),0.0);
+                bias[t] = *(init);
+                delete init;
+            }
+		}
 
 		/* graph cut in low resolution */
 		time(&start);
 		target = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,output_path,band,lr_band,saved);
+								   num_labels,output_path,band,lr_band,bias,saved);
 		time(&end);
 		printf("3D shift-map time is %f\n",difftime(end, start));
 
@@ -2147,7 +2361,10 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 										origin_size.height,"..\\..\\..\\results\\video5\\1\\",true);
 		*/
 
-		removed_seam--;
+		if (removed_seam>0)
+			removed_seam--;
+		if (removed_seam<0)
+			removed_seam++;
 		delete [] band;
 		delete [] lr_band;
 		if (level>0)
@@ -2166,6 +2383,7 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 		//delete source;
 	}
 
+	delete [] bias;
 	delete target;
 }
 
@@ -2179,6 +2397,7 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
+	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	shot = new PictureList(input_path);	
@@ -2186,10 +2405,10 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 
 	PictureList *source;
 	PictureList *target = shot;
-	while (removed_seam>0)
+	while (removed_seam != 0)
 	{	
 		bool saved = false;
-		if (removed_seam==1)
+		if (removed_seam==1 || removed_seam==-1)
 			saved = true;
 
 		if (level>0)
@@ -2203,26 +2422,46 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 			source = target;
 
 		num_labels = 2;
-		target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam>0)
+			target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam<0)
+			target_size.width = source->GetMaxWidth()+1;
 		target_size.height = source->GetMaxHeight();
 		target_size.time = source->GetLength();
-		origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam>0)
+			origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam<0)
+			origin_size.width = target->GetMaxWidth()+1;
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
 
 		/* graph cut in low resolution */
 		// TODO
 		band = new int[origin_size.time*origin_size.height];
+		if (bias==NULL)
+        {
+			bias = new Matrix[origin_size.time];
+            for (int t = 0; t < origin_size.time; t++)
+            {
+				Matrix *init = new Matrix(target->GetMaxHeight(),
+										  target->GetMaxWidth(),0.0);
+                bias[t] = *(init);
+                delete init;
+            }
+		}
 		
 
 		/* refine seam in higher resolution */
 		time(&start);
 		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
-							 output_path,true,false,saved);
+							 output_path,bias,true,false,saved);
 		time(&end);
 		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
-		removed_seam--;
+		if (removed_seam>0)
+			removed_seam--;
+		if (removed_seam<0)
+			removed_seam++;
 		delete [] band;
 		if (level>0)
 		{
@@ -2240,6 +2479,7 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 		//delete source;
 	}
 
+	delete [] bias;
 	delete target;
 }
 
@@ -2253,6 +2493,7 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
+	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
 	shot = new PictureList(input_path);	
@@ -2260,10 +2501,10 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 
 	PictureList *source;
 	PictureList *target = shot;
-	while (removed_seam>0)
+	while (removed_seam != 0)
 	{	
 		bool saved = false;
-		if (removed_seam==1)
+		if (removed_seam==1 || removed_seam==-1)
 			saved = true;
 
 		if (level>0)
@@ -2277,26 +2518,46 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 			source = target;
 
 		num_labels = 2;
-		target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam>0)
+			target_size.width = source->GetMaxWidth()-1;
+		if (removed_seam<0)
+			target_size.width = source->GetMaxWidth()+1;
 		target_size.height = source->GetMaxHeight();
 		target_size.time = source->GetLength();
-		origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam>0)
+			origin_size.width = target->GetMaxWidth()-1;
+		if (removed_seam<0)
+			origin_size.width = target->GetMaxWidth()+1;
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
 
 		/* graph cut in low resolution */
 		// TODO
 		band = new int[origin_size.time*origin_size.height];
+		if (bias==NULL)
+        {
+			bias = new Matrix[origin_size.time];
+            for (int t = 0; t < origin_size.time; t++)
+            {
+				Matrix *init = new Matrix(target->GetMaxHeight(),
+										  target->GetMaxWidth(),0.0);
+                bias[t] = *(init);
+                delete init;
+            }
+		}
 
 		/* refine seam in higher resolution */
 		time(&start);
 		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
-							 output_path,false,false,saved);
+							 output_path,bias,false,false,saved);
 		time(&end);
 		printf("Independent shift-map time is %f\n",difftime(end, start));
 
 
-		removed_seam--;
+		if (removed_seam>0)
+			removed_seam--;
+		if (removed_seam<0)
+			removed_seam++;
 		delete [] band;
 		if (level>0)
 		{
@@ -2314,6 +2575,7 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 		//delete source;
 	}
 
+	delete [] bias;
 	delete target;
 }
 
@@ -2328,6 +2590,8 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	int *lr_band = NULL;
+	Matrix *bias = NULL;
+	Matrix *lr_bias = NULL;
 	videoSize target_size, origin_size;
 
 	shot = new PictureList(input_path);	
@@ -2338,7 +2602,7 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 	while (removed_seam != 0)
 	{	
 		bool saved = false;
-		if (removed_seam==1 || removed_seam==-1)
+		//if (removed_seam==1 || removed_seam==-1)
 			saved = true;
 			
 		if (level>0)
@@ -2365,12 +2629,39 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 		origin_size.height = target->GetMaxHeight();
 		origin_size.time = target->GetLength();
 
+		//if (lr_bias!=NULL)
+        //      delete [] lr_bias;
+        if (bias==NULL)
+        {
+			bias = new Matrix[origin_size.time];
+            for (int t = 0; t < origin_size.time; t++)
+            {
+				Matrix *init = new Matrix(target->GetMaxHeight(),
+										  target->GetMaxWidth(),0.0);
+                bias[t] = *(init);
+                delete init;
+            }
+			lr_bias = new Matrix[target_size.time];
+            for (int t = 0; t < target_size.time; t++)
+            {
+				Matrix *init = new Matrix(source->GetMaxHeight(),
+										  source->GetMaxWidth(),0.0);
+                lr_bias[t] = *(init);
+                delete init;
+            }
+        }
+		else
+		{
+			lr_bias = DownsamlingBias(bias,target_size.time,pow(2.0,level));
+		}
+
 		/* graph cut in low resolution */
 		time(&start);
 		source = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,output_path,band,lr_band,saved);
+								   num_labels,output_path,band,lr_band,lr_bias,saved);
 		time(&end);
 		printf("3D shift-map time is %f\n",difftime(end, start));
+		delete [] lr_bias;
 
 		// DEBUG: observe interpolated map
 		/*
@@ -2411,7 +2702,8 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 
 		/* refine seam in higher resolution */
 		time(&start);
-		target = Refine_Seam(band,target,origin_size,pow(2.0,level),output_path,true,true,saved);
+		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
+							 output_path,bias,true,true,saved);
 		time(&end);
 		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
@@ -2437,6 +2729,7 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 		//delete source;
 	}
 
+	delete [] bias;
 	delete target;
 }
 
@@ -2445,7 +2738,7 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
  */ 
 int main(int argc, char **argv)
 {
-	if (argc<5)
+	if (argc<6)
 	{
 		cout << "Usage: mg_shift_map_3d <input_folder> <number of removed pixel> <output_folder> method level" << endl;
 		return 0;
