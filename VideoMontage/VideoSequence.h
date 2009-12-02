@@ -72,7 +72,16 @@ struct ShotInfo
 
 
 // ************* IO *****************
-// load shot info from file
+// LOAD SEQUENCE FROM FILE
+void TestLoadSaveSequence();
+// load list of frame filename from file
+VideoSequence* LoadSequenceFromFile(char* filename);
+
+// save list of frame filename to file
+void SaveVideoSequenceToFile(VideoSequence* sequence, char* fileName);
+
+
+// LOAD SHOT INFO FROM FILE
 
 // testing unit
 // Create a ShotInfo then save/load it to file
