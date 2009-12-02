@@ -5,12 +5,26 @@
 void TestCreateSequence()
 {
 	VideoSequence sequence;
-	vector<char*> frameList(50);
+	vector<char*> frameList(2);
 	
-	frameList[1] = "Ha ha ha ha";
-	frameList[5] = "Ha ha ha ha 2";
+	frameList[0] = "Ha ha ha ha";
+	frameList[1] = "Ha ha ha ha 2";
 	 
 	sequence.frameList = &frameList;
+}
+
+void TestLoadSaveSequence()
+{
+	VideoSequence sequence;
+	vector<char*> frameList(2);
+	
+	frameList[0] = "Ha ha ha ha";
+	frameList[1] = "Ha ha ha ha 2";
+	 
+	sequence.frameList = &frameList;
+	SaveVideoSequenceToFile(&sequence, "test.tst");
+	VideoSequence* sequ = LoadSequenceFromFile("test.tst");
+	sequ->frameList = 0;
 }
 
 // Load a frame from memory
@@ -20,6 +34,46 @@ IplImage* LoadFrame(VideoSequence* videoSequence, int frame_number)
 	return cvLoadImage(filename);
 }
 
+void SaveVideoSequenceToFile(VideoSequence* sequence, char* fileName)
+{
+	ofstream out(fileName, ios::binary);
+	int count = sequence->frameList->size();	
+	out.write((char*)&count, sizeof(int));
+	
+	for(int i = 0; i < count; i++)
+	{		 
+		char* name = (*(sequence->frameList))[i];
+		int length = strlen(name);
+		out.write((char*)&length, sizeof(int));
+		out.write(name, sizeof(char) * length);
+	}
+	
+    out.close();
+}
+
+VideoSequence* LoadSequenceFromFile(char* filename)
+{
+	ifstream in(filename, ios::binary);
+	VideoSequence* sequence = new VideoSequence();
+	int count;
+	in.read((char*)&count, sizeof(int));
+
+	vector<char*>* frameList = new vector<char*>(count);
+	
+	for(int i = 0; i < count; i++)
+	{
+		int length;		
+		in.read((char*)&length, sizeof(int));		
+		char* name = (char*) malloc(length * sizeof(char));
+		// malloc will allocate more than necessary sometime
+		name[length] = '\0';
+		in.read(name, sizeof(char) * length);
+		(*frameList)[i] = name;
+		//strncpy((*frameList)[i], name, length);		
+	}
+	sequence->frameList = frameList;
+	return sequence;
+}
 
 ShotInfo* LoadShotFromFile(char* fileName)
 {	
