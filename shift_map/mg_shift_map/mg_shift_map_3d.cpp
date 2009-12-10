@@ -1635,10 +1635,16 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 	PictureList *result;
 
 	try{
-		GCoptimization3DGridGraph *gc = new GCoptimization3DGridGraph(target_size.width,
-																	  target_size.height,
-																	  target_size.time,
-																	  num_labels);
+		GCoptimization *gc;
+		if (target_size.time>1)
+			gc = new GCoptimization3DGridGraph(target_size.width,
+																		  target_size.height,
+																		  target_size.time,
+																		  num_labels);
+		else
+			gc = new GCoptimizationGridGraph(target_size.width,
+																		target_size.height,
+																		num_labels);
 
 
 		// TODO: replace the hardcode of gradient threoshold
@@ -2291,7 +2297,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 /*
  *
  */
-void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int level)
+PictureList *ResizeVideo_3D(PictureList *shot, int removed_seam, char *output_path, int level)
 {
 	time_t start, end;
 	listPyramidType *spyramid = NULL;
@@ -2300,8 +2306,6 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 	int *lr_band = NULL;
 	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
-
-	PictureList *shot = new PictureList(input_path);
 
 	PictureList *source = NULL;
 	PictureList *target = shot;
@@ -2384,23 +2388,22 @@ void ResizeVideo_3D(char *input_path, int removed_seam, char *output_path, int l
 	}
 
 	delete [] bias;
-	delete target;
+	//delete target;
+	return target;
 }
 
 /*
  *
  */
-void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output_path, int level)
+PictureList *ResizeVideo_2D_Incremental(PictureList *shot, int removed_seam, char *output_path, int level)
 {
 	time_t start, end;
-	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
-	shot = new PictureList(input_path);	
 	//spyramid = ListPyramid(shot,level+1);
 
 	PictureList *source;
@@ -2480,23 +2483,22 @@ void ResizeVideo_2D_Incremental(char *input_path, int removed_seam, char *output
 	}
 
 	delete [] bias;
-	delete target;
+	//delete target;
+	return target;
 }
 
 /*
  *
  */
-void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *output_path, int level)
+PictureList *ResizeImages_2D_Incremental(PictureList *shot, int removed_seam, char *output_path, int level)
 {
 	time_t start, end;
-	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	Matrix *bias = NULL;
 	videoSize target_size, origin_size;
 
-	shot = new PictureList(input_path);	
 	//spyramid = ListPyramid(shot,level+1);
 
 	PictureList *source;
@@ -2576,16 +2578,16 @@ void ResizeImages_2D_Incremental(char *input_path, int removed_seam, char *outpu
 	}
 
 	delete [] bias;
-	delete target;
+	//delete target;
+	return target;
 }
 
 /*
  *
  */
-void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, int level)
+PictureList *ResizeVideo_Hybrid(PictureList *shot, int removed_seam, char *output_path, int level)
 {
 	time_t start, end;
-	PictureList *shot = NULL;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
@@ -2594,7 +2596,6 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 	Matrix *lr_bias = NULL;
 	videoSize target_size, origin_size;
 
-	shot = new PictureList(input_path);	
 	//spyramid = ListPyramid(shot,level+1);
 
 	PictureList *source;
@@ -2730,7 +2731,8 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
 	}
 
 	delete [] bias;
-	delete target;
+	//delete target;
+	return target;
 }
 
 /*
@@ -2738,38 +2740,74 @@ void ResizeVideo_Hybrid(char *input_path, int removed_seam, char *output_path, i
  */ 
 int main(int argc, char **argv)
 {
-	if (argc<6)
+	if (argc<7)
 	{
-		cout << "Usage: mg_shift_map_3d <input_folder> <number of removed pixel> <output_folder> method level" << endl;
+		cout << "Usage: mg_shift_map_3d <input_folder> <#horizontal seams> <#vertical seams> <output_folder> method level" << endl;
 		return 0;
 		//default parameters
 	}
 
-	int level = atoi(argv[5]); // gpyramid->Levels-1
+	PictureList *shot = new PictureList(argv[1]);	
+	PictureList *target = NULL;
+	int level = atoi(argv[6]); // gpyramid->Levels-1
+	int iHSeams = atoi(argv[2]);
+	int iVSeams = atoi(argv[3]);
 
-	switch (atoi(argv[4]))
+	switch (atoi(argv[5]))
 	{
 		case 0:	// 3D temporal consistent shift-map
 		{
-			ResizeVideo_3D(argv[1],atoi(argv[2]),argv[3],0);
+			if (iHSeams>0)
+			{
+				PictureList *tshot = shot->TransposePictureList();
+				delete shot;
+				shot = ResizeVideo_3D(tshot,iHSeams,argv[4],0);
+				//delete tshot;
+			}
+			target = ResizeVideo_3D(shot->TransposePictureList(),iVSeams,argv[4],0);
 			break;
 		}
 		case 1:	// 2D incremental temporal consistent shift-map
 		{
-			ResizeVideo_2D_Incremental(argv[1],atoi(argv[2]),argv[3],0);
+			if (iHSeams>0)
+			{
+				PictureList *tshot = shot->TransposePictureList();
+				delete shot;
+				shot = ResizeVideo_2D_Incremental(tshot,iHSeams,argv[4],0);
+				//delete tshot;
+			}
+			target = ResizeVideo_2D_Incremental(shot->TransposePictureList(),iVSeams,argv[4],0);
 			break;
 		}
 		case 2: // hybrid 3D & 2D temporal consistent shift-map
 		{
-			ResizeVideo_Hybrid(argv[1],atoi(argv[2]),argv[3],level);
+			if (iHSeams>0)
+			{
+				PictureList *tshot = shot->TransposePictureList();
+				delete shot;
+				shot = ResizeVideo_Hybrid(tshot,iHSeams,argv[4],level);
+				//delete tshot;
+			}
+			target = ResizeVideo_Hybrid(shot->TransposePictureList(),iVSeams,argv[4],level);
 			break;
 		}
 		case 3: // 2D incremental shift-map without temporal consistency
 		{
-			ResizeImages_2D_Incremental(argv[1],atoi(argv[2]),argv[3],0);
+			if (iHSeams>0)
+			{
+				PictureList *tshot = shot->TransposePictureList();
+				delete shot;
+				shot = ResizeImages_2D_Incremental(tshot,iHSeams,argv[4],0);
+				//delete tshot;
+			}
+			target = ResizeImages_2D_Incremental(shot->TransposePictureList(),iVSeams,argv[4],0);
+			break;
 		}
 	}
 	
+	target->Save(argv[4]);
+	//delete shot;
+	delete target;
 	return 1;
 }
 

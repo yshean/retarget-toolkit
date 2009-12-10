@@ -166,6 +166,42 @@ void PictureList::LoadPictureList(const char *foldername, int t_begin, int t_end
 	MaxVal = 255;
 }
 
+PictureList *PictureList::TransposePictureList()
+{
+	int width = this->GetPicture(0)->GetWidth();
+	int height = this->GetPicture(0)->GetHeight();
+	int time = this->GetLength();
+	PictureList *tvid = new PictureList(height,width,time);
+	tvid->SetName(this->GetName());
+
+	Picture *frames = new Picture[time];
+	for (int tt=0; tt<time; tt++)
+	{
+		Picture *frame = new Picture(height,width);
+		frames[tt] = *(frame);
+		delete frame;
+		frames[tt].SetName(this->GetPicture(tt)->GetName());
+	}
+	tvid->SetList(frames,time);
+
+	int x, y, t;
+	pixelType pixel;
+
+	for ( int  i = 0; i < width*height*time; i++ )
+	{
+		t = i / (width*height);
+		x = (i % (width*height)) % width;
+		y = (i % (width*height)) / width;
+		
+		pixel.r = this->GetPixel(x,y,t).r;
+		pixel.g = this->GetPixel(x,y,t).g;
+		pixel.b = this->GetPixel(x,y,t).b;
+		
+		tvid->SetPixel(y,x,t,pixel);
+	}
+	return tvid;
+}
+
 
 /* clear all image buffers */
 void PictureList::ClearAll()

@@ -797,7 +797,7 @@ GCoptimization3DGridGraph::GCoptimization3DGridGraph(SiteID width, SiteID height
 {
 	
 	printf("Create 3D Grid Graph\n");
-	assert( (width > 1) && (height > 1) && (time>1) && (num_labels > 1 ) &&
+	assert( (width >=1) && (height >=1) && (time>=1) && (num_labels > 1 ) &&
 			((num_connected == 6) || (num_connected == 14)));
 
 	m_weightedGraph = 0;

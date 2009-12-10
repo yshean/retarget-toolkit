@@ -45,6 +45,7 @@ class PictureList {
 
     /* throws FileNotFoundException */
     void LoadPictureList(const char *foldername, int t_begin=-1, int t_end=-1);
+	PictureList *TransposePictureList();
 
     /* throws IndexOutOfBoundsException */
     void SetPixel(int x, int y, int l, pixelType c);
