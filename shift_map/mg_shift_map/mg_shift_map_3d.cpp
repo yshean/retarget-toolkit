@@ -1638,13 +1638,13 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		GCoptimization *gc;
 		if (target_size.time>1)
 			gc = new GCoptimization3DGridGraph(target_size.width,
-																		  target_size.height,
-																		  target_size.time,
-																		  num_labels);
+											   target_size.height,
+											   target_size.time,
+											   num_labels);
 		else
 			gc = new GCoptimizationGridGraph(target_size.width,
-																		target_size.height,
-																		num_labels);
+											 target_size.height,
+											 num_labels);
 
 
 		// TODO: replace the hardcode of gradient threoshold
@@ -2763,8 +2763,11 @@ int main(int argc, char **argv)
 				delete shot;
 				shot = ResizeVideo_3D(tshot,iHSeams,argv[4],0);
 				//delete tshot;
+				tshot = shot->TransposePictureList();
+				delete shot;
+				shot = tshot;
 			}
-			target = ResizeVideo_3D(shot->TransposePictureList(),iVSeams,argv[4],0);
+			target = ResizeVideo_3D(shot,iVSeams,argv[4],0);
 			break;
 		}
 		case 1:	// 2D incremental temporal consistent shift-map
@@ -2775,8 +2778,11 @@ int main(int argc, char **argv)
 				delete shot;
 				shot = ResizeVideo_2D_Incremental(tshot,iHSeams,argv[4],0);
 				//delete tshot;
+				tshot = shot->TransposePictureList();
+				delete shot;
+				shot = tshot;
 			}
-			target = ResizeVideo_2D_Incremental(shot->TransposePictureList(),iVSeams,argv[4],0);
+			target = ResizeVideo_2D_Incremental(shot,iVSeams,argv[4],0);
 			break;
 		}
 		case 2: // hybrid 3D & 2D temporal consistent shift-map
@@ -2787,8 +2793,11 @@ int main(int argc, char **argv)
 				delete shot;
 				shot = ResizeVideo_Hybrid(tshot,iHSeams,argv[4],level);
 				//delete tshot;
+				tshot = shot->TransposePictureList();
+				delete shot;
+				shot = tshot;
 			}
-			target = ResizeVideo_Hybrid(shot->TransposePictureList(),iVSeams,argv[4],level);
+			target = ResizeVideo_Hybrid(shot,iVSeams,argv[4],level);
 			break;
 		}
 		case 3: // 2D incremental shift-map without temporal consistency
@@ -2799,8 +2808,11 @@ int main(int argc, char **argv)
 				delete shot;
 				shot = ResizeImages_2D_Incremental(tshot,iHSeams,argv[4],0);
 				//delete tshot;
+				tshot = shot->TransposePictureList();
+				delete shot;
+				shot = tshot;
 			}
-			target = ResizeImages_2D_Incremental(shot->TransposePictureList(),iVSeams,argv[4],0);
+			target = ResizeImages_2D_Incremental(shot,iVSeams,argv[4],0);
 			break;
 		}
 	}
