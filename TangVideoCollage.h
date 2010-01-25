@@ -3,14 +3,11 @@
 #include "VideoCollage.h"
 #include "ImageImportance.h"
 #include "ImageQuality.h"
-<<<<<<< .mine
+ 
 #include "SobelImageImportance.h"
 #include "SobelImageQuality.h"
-=======
-#include "SobelImageQuality.h"
-#include "SobelImageImportance.h"
 #include "Collage.h"
->>>>>>> .r136
+
 /************************ Tang Wang Video Collage Paper ***************************/
 
 /******************************** VCSolution **************************************/
@@ -50,7 +47,7 @@ struct VCSolution
 
 public class TangVideoCollage : public VideoCollage
 {
-public:
+public: 
 	// remember to set:
 	// - _sequence : input video
 	// - _imageQuality : Quality Assessment algorithm
@@ -83,16 +80,9 @@ protected:
 
 	// select the keyframe of the pan / tilt SubShot
 	virtual void KeyFrameSelection2(SubShot* subShot, int* key);
-<<<<<<< .mine
+ 
 };
-
-// test tang video collage
-// @param: filename of shotinfo & filename of sequence
-void TestTangVideoCollage(char* sequencename, char* shotname);=======
-};
-
-
-// test tang video collage
-// @param: filename of shotinfo & filename of sequence
-void TestTangVideoCollage(char* sequencename, char* shotname);
->>>>>>> .r136
+	// test tang video collage
+	// @param: filename of shotinfo & filename of sequence
+	void TestTangVideoCollage(char* sequencename, char* shotname);
+ 
