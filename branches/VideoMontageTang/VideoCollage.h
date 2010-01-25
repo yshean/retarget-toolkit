@@ -27,8 +27,9 @@ public:
 public class VideoCollage
 {
 public:
-	VideoCollage()
+	VideoCollage(VideoSequence* sequence)
 	{		
+		_sequence = sequence;
 	}
 	~VideoCollage(void){}
 protected:

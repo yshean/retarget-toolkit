@@ -150,7 +150,7 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 	solution->length = index;
  	return solution;
 }
-<<<<<<< .mine
+ 
 void TestTangVideoCollage(char* sequencename, char* shotname)
 {
 	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
@@ -160,16 +160,4 @@ void TestTangVideoCollage(char* sequencename, char* shotname)
 
 	VideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
 	collage->GetCollage();	
-}=======
-
-
-void TestTangVideoCollage(char* sequencename, char* shotname)
-{
-	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
-	ShotInfo* shotInfo = LoadShotFromFile(shotname);
-	ImageImportance* imageImportance = new SobelImageImportance();
-	ImageQuality* imageQuality = new SobelImageQuality();
-
-	VideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
-	collage->GetCollage();	
-}>>>>>>> .r136
+} 
