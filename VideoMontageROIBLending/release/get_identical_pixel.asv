@@ -1,0 +1,8 @@
+% take 2 images, slide them over each other and measure the number
+% of pixels which are identical
+function [id_pixel] = get_identical_pixel(img1, img2)
+[height, width, channel] = size(img1);
+for i = 1:1:width
+    for h = 1:1:height
+        
+end
