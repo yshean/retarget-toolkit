@@ -1,5 +1,0 @@
-% count number of occurence of 'element' in matrix
-function count = countElement(matrix, element)
-    [height, width, channel] = size(matrix);
-    
-return;
