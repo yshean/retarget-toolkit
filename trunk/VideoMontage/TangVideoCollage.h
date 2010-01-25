@@ -3,7 +3,9 @@
 #include "VideoCollage.h"
 #include "ImageImportance.h"
 #include "ImageQuality.h"
-
+#include "SobelImageQuality.h"
+#include "SobelImageImportance.h"
+#include "Collage.h"
 /************************ Tang Wang Video Collage Paper ***************************/
 
 /******************************** VCSolution **************************************/
@@ -36,7 +38,7 @@ CV_INLINE VCROI vcROI(bool label, int x, int y, int width, int height)
 // contain list of frame and correspond ROI	
 struct VCSolution
 {	
-	IplImage* frameList;
+	IplImage** frameList;
 	VCROI* roiList;
 	int length;
 };
@@ -48,7 +50,7 @@ public:
 	// - _sequence : input video
 	// - _imageQuality : Quality Assessment algorithm
 	// - _imageImportance: Saliency Assessment algorithm
-	TangVideoCollage(void);
+	TangVideoCollage(ImageQuality* imageQuality, ImageImportance* imageImportance, VideoSequence* sequence, ShotInfo* shotInfo);
 	~TangVideoCollage(void);
 
 public:
@@ -59,9 +61,14 @@ public:
 protected:
 	ImageQuality* _imageQuality;
 	ImageImportance* _imageImportance;
+	ShotInfo* _shotInfo;
 
+	
 protected:
 	virtual VCSolution* GetSolution(ShotInfo* shotInfo);
+	// couting the number of frame in solution 
+	// by counting subshot, some subshot may return 2 frames
+	int GetSolutionFrameCount(ShotInfo* shotInfo);
 
 	// Get frame with max A(Ik) + Q(Ik) from frame #start to frame #end
 	int GetMostRelevanceFrame(int start, int end);
@@ -72,3 +79,8 @@ protected:
 	// select the keyframe of the pan / tilt SubShot
 	virtual void KeyFrameSelection2(SubShot* subShot, int* key);
 };
+
+
+// test tang video collage
+// @param: filename of shotinfo & filename of sequence
+void TestTangVideoCollage(char* sequencename, char* shotname);

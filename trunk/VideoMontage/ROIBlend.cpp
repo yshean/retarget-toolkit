@@ -361,6 +361,9 @@ void ROIBlend::TestBlendMultiple(char **fileList, int count, int para1, int para
 		for(int i = 0; i < count; i++)
 		{
 			IplImage* image = cvLoadImage(fileList[i]);
+			if(image == 0)
+				printf("error");
+				
 			imageList[i] = image;
 			int height = image->height;
 			if(height < minHeight) minHeight = height;		
@@ -501,6 +504,12 @@ void TestBlendImages()
 {
 	IplImage* image1 = cvLoadImage("test1.jpg");
 	IplImage* image2 = cvLoadImage("test2.jpg");
+	if(image1 == 0 || image2 == 0)
+	{
+		printf("can not find test1.jpg and test2.jpg");
+		exit(-1);
+	}
+
 	//ROIBlend* roiBlend = new ROIBlend(0.9, 2.0); // dummy parameters
 	ROIBlend* roiBlend = new ROIBlend();
 
