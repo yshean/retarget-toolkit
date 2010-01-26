@@ -147,34 +147,6 @@ double smoothFEFn(int p1, int p2, int l1, int l2, void *data)
 	else if (f1>f2 && x1==x2 && y1<y2 && l1==0 && l2==1)	cost=0;
 	else if (f1>f2 && x1==x2 && y1<y2 && l1==1 && l2==0)	cost=MAX_COST_VALUE;
 
-	//if (l1==l2)		cost=0;
-	//// same frame
-	//// horizontal
-	//else if (f1==f2 && x1==x2 && y1>y2 && l1==1 && l2==0)	cost=gradXY[f1].LR
-
-	//.Get(x2+1,y2+1);		//gradXY->Get(x2+1,y2+1);
-	//else if (f1==f2 && x1==x2 && y1>y2 && l1==0 && l2==1)	cost=MAX_COST_VALUE;
-	//// diagonal */*
-	//else if (f1==f2 && x1>x2 && y1<y2 && l1==0 && l2==1)	cost=0;
-	//else if (f1==f2 && x1>x2 && y1<y2 && l1==1 && l2==0)	cost=MAX_COST_VALUE;
-	//// diagonal *\*
-	//else if (f1==f2 && x1>x2 && y1>y2 && l1==0 && l2==1)	cost=MAX_COST_VALUE;
-	//else if (f1==f2 && x1>x2 && y1>y2 && l1==1 && l2==0)	cost=0;
-	//
-	//// diff frame
-	//// diagonal *\*
-	//else if (f1>f2 && x1==x2 && y1<y2 && l1==0 && l2==1)	cost=0;
-	//else if (f1>f2 && x1==x2 && y1<y2 && l1==1 && l2==0)	cost=MAX_COST_VALUE;
-	//// diagonal */*
-	//else if (f1>f2 && x1==x2 && y1>y2 && l1==1 && l2==0)	cost=0;
-	//else if (f1>f2 && x1==x2 && y1>y2 && l1==0 && l2==1)	cost=MAX_COST_VALUE;
-
-	//delete [] LR;
-	//delete [] pLU;
-	//delete [] nLU;
-	//delete [] temp_pLU;
-	//delete [] temp_nLU;
-
 //printf("smoothFn: computing cost between (%d,%d,%d) and (%d,%d,%d) with labels %d and %d : %d\n",f1,y1,x1,f2,y2,x2,l1,l2,cost);
 	return cost;
 }
@@ -278,8 +250,6 @@ PictureList *removeManifold(GCoptimization *gc, PictureList *src)
 	Picture *frames = new Picture[time];
 	for (int tt = 0; tt< time; tt++)
 	{
-		//frames[tt] = *(new Picture(width-1,height));
-		//frames[tt].SetName(src->GetPicture(tt)->GetName());
 		frames[tt] = *(new Picture(width-1,height));
 		str = src->GetPicture(tt)->GetName();
 		pos = str.find("seam_");
@@ -315,59 +285,10 @@ PictureList *removeManifold(GCoptimization *gc, PictureList *src)
 		else if ( i == width*height*time-1 )
 			result->SetPixel(x-1,y,t,pixel);
 	}
-	delete [] src;
+	delete src;
 	return result;
 
 }
-
-//PictureList *drawManifold(GCoptimization *gc, PictureList *src)
-//{
-//	int width = src->GetPicture(0)->GetWidth();
-//	int height = src->GetPicture(0)->GetHeight();
-//	int time = src->GetLength();
-//	PictureList *result = new PictureList(width,height,time);
-//	result->SetName(src->GetName());
-//	
-//	Picture *frames = new Picture[time];
-//	for (int tt = 0; tt< time; tt++)
-//	{
-//		//frames[tt] = *(new Picture(width,height));
-//		//frames[tt].SetName(src->GetPicture(tt)->GetName());
-//		frames[tt] = *(new Picture(width,height));
-//		char target_name[512] = "seam_";
-//		strcat(target_name,src->GetPicture(tt)->GetName());
-//		frames[tt].SetName(target_name);
-//	}
-//	result->SetList(frames,time);
-//	
-//	int x, y, t;
-//	pixelType pixel;
-//	for ( int  i = 0; i < width*height*time; i++ )
-//	{
-//		t = i / (width*height);
-//		x = (i % (width*height)) % width;
-//		y = (i % (width*height)) / width;
-//		
-//		if ( i < width*height*time-1 && gc->whatLabel(i)==0 && gc->whatLabel(i+1)==1 )
-//		{
-//			//printf("Found Seam\n");
-//			pixel.r = 255;
-//			pixel.g = 0;
-//			pixel.b = 0;
-//		}
-//		else{
-//			//printf("SaveRetargetPicture: GetPixel(%d,%d)\n",x+gc->whatLabel(i),y);
-//			pixel.r = src->GetPixel(x,y,t).r;
-//			pixel.g = src->GetPixel(x,y,t).g;
-//			pixel.b = src->GetPixel(x,y,t).b;
-//		}
-//		result->SetPixel(x,y,t,pixel);
-//	}
-//
-//	//delete src;
-//	return result;
-//}
-
 
 void drawManifold(GCoptimization *gc, PictureList *src)
 {
@@ -413,8 +334,6 @@ void SaveRetargetVideo(int *labels, PictureList *src,int width, int height, int 
 	Picture *frames = new Picture[time];
 	for (int tt = 0; tt< time; tt++)
 	{
-		//frames[tt] = *(new Picture(width,height));
-		//frames[tt].SetName(src->GetPicture(tt)->GetName());
 		frames[tt] = *(new Picture(width,height));
 		char target_name[512] = "seam_";
 		strcat(target_name,src->GetPicture(tt)->GetName());
@@ -455,7 +374,7 @@ void SaveRetargetVideo(int *labels, PictureList *src,int width, int height, int 
 // in this version, set data and smoothness terms using arrays
 // grid neighborhood structure is assumed
 //
-GCoptimization/*PictureList*/ *VideoSeamGraph_GraphCut(PictureList *src, int num_labels, int *data, int method)
+GCoptimization *VideoSeamGraph_GraphCut(PictureList *src, int num_labels, int *data, int method)
 {
 	int width = src->GetPicture(0)->GetWidth();
 	int height = src->GetPicture(0)->GetHeight();
@@ -514,7 +433,6 @@ GCoptimization/*PictureList*/ *VideoSeamGraph_GraphCut(PictureList *src, int num
 			gc->setSmoothCost(&smoothBEFn, &toSmoothBEFn);		// set the weights of the seam graph		
 		}
 
-		
 		printf("gc->setSmoothCost(&smoothFn, &toSmoothFn)\n");		
  		gc->expansion(1);
 		printf("gc->expansion\n");
@@ -531,11 +449,6 @@ GCoptimization/*PictureList*/ *VideoSeamGraph_GraphCut(PictureList *src, int num
 		{
 			delete [] toSmoothBEFn.gradient;
 		}
-		
-		//src = drawManifold(gc, src);
-		//src = removeManifold(gc, src);
-		
-		//delete gc;
 	}
 	catch (GCException e){
 		e.Report();
@@ -552,7 +465,6 @@ PictureList *Transpose_Video( PictureList *src )
 	int time = src->GetLength();
 	PictureList *tvid = new PictureList(height,width,time);
 	tvid->SetName(src->GetName());
-
 	Picture *frames = new Picture[time];
 	for (int tt=0; tt<time; tt++)
 	{
@@ -560,7 +472,6 @@ PictureList *Transpose_Video( PictureList *src )
 		frames[tt].SetName(src->GetPicture(tt)->GetName());
 	}
 	tvid->SetList(frames,time);
-
 	int x, y, t;
 	pixelType pixel;
 
@@ -576,6 +487,7 @@ PictureList *Transpose_Video( PictureList *src )
 		
 		tvid->SetPixel(y,x,t,pixel);
 	}
+	delete src;
 	return tvid;
 }
 
@@ -592,7 +504,7 @@ int main(int argc, char **argv)
 	int pym_level = atoi(argv[6]);					// specify no. of pyramid levels
 	int list_level;						// 0 <= list_level < pym_level
 
-	time_t start, end;
+//	time_t start, end;
 
 	if (argc<6)
 	{
@@ -600,56 +512,15 @@ int main(int argc, char **argv)
 		return 0;
 		//default parameters
 		/*
-		argv[1] = "..\\VideoInPPM\\";
+		argv[1] = "..\\VideoInPPM\\";	// video source
 		argv[2] = "2";					// num of vertical manifold to remove
 		argv[3] = "0";					// num of horizontal manifold to remove
-		argv[4] = "..\\VideoOutPPM\\";
-		argv[5] = "1";			//0 backward energy		1 forward energy
+		argv[4] = "..\\VideoOutPPM\\";	// output
+		argv[5] = "1";					// 0 backward energy		1 forward energy
+		argv[6] = "2";					// number of level of pyramid
 		*/
 	}
 
-	//// load input video
-	//cout << "Creating gaussian pyramid for input video" << endl;
-	//src = new PictureList(argv[1]);
-	//vpyramid = ListPyramid(src,3);
-	//src = &(vpyramid->Lists[0]);
-
-	//num_labels = 2;
-
-	//for( int s=1; s<=atoi(argv[2]); s++ )
-	//{
-	//	printf("v seam #%d\n",s);
-	//	width = src->GetPicture(0)->GetWidth();
-	//	height = src->GetPicture(0)->GetHeight();
-	//	time = src->GetLength();		
-	//	data = CalcDataCost(width,height,time,num_labels);
-	//	src = VideoSeamGraph_GraphCut(src,num_labels,data,atoi(argv[5]));
-	//	delete data;
-	//}
-	//
-	//src = Transpose_Video(src);
-
-	//for( int s=1; s<=atoi(argv[3]); s++ )
-	//{
-	//	printf("h seam #%d\n",s);
-	//	width = src->GetPicture(0)->GetWidth();
-	//	height = src->GetPicture(0)->GetHeight();
-	//	time = src->GetLength();		
-	//	data = CalcDataCost(width,height,time,num_labels);
-	//	src = VideoSeamGraph_GraphCut(src,num_labels,data,atoi(argv[5]));
-	//	delete data;
-	//}
-	//
-	//src = Transpose_Video(src);
-
-	//SaveRetargetVideo(src, argv[4]);
-	//
-	//delete [] vpyramid->Lists;
-	//delete vpyramid;
-	////delete src;
-	//
-	//system("Pause");
-	//return 1;
 		// load input video
 	cout << "Creating gaussian pyramid for input video" << endl;
 	src = new PictureList(argv[1]);
@@ -660,10 +531,10 @@ int main(int argc, char **argv)
 	{
 		printf("\t\t>>> v seam #%d\n",s);
 		list_level = pym_level - 1;
-		time( &start );
+//		time( &start );
 		lpyramid = ListPyramid(src, pym_level);
-		time( &end );
-		cout << "compute L Pyramid: " << difftime( end, start ) << " seconds" << endl;
+//		time( &end );
+//		cout << "compute L Pyramid: " << difftime( end, start ) << " seconds" << endl;
 
 		delete src;
 		
@@ -675,29 +546,24 @@ int main(int argc, char **argv)
 			src_width = src->GetMaxWidth();
 			src_height = src->GetMaxHeight();
 			src_time = src->GetLength();	
-			time( &start );
+//			time( &start );
 			data = CalcDataCost(gc,src_width,src_height,src_time,num_labels);
-			time( &end );
-			cout << "CalcDataCost list_level " << list_level << ": " << difftime( end, start ) << " seconds" << endl;
+//			time( &end );
+//			cout << "CalcDataCost list_level " << list_level << ": " << difftime( end, start ) << " seconds" << endl;
 			delete gc;
-			time( &start );
+//			time( &start );
 			gc = VideoSeamGraph_GraphCut(src,num_labels,data,atoi(argv[5]));
-			time( &end );
-			cout << "VideoSeamGraph_GraphCut list_level " << list_level << ": " << difftime( end, start ) << " seconds" << endl;
+//			time( &end );
+//			cout << "VideoSeamGraph_GraphCut list_level " << list_level << ": " << difftime( end, start ) << " seconds" << endl;
 			delete data;
 
 			list_level--;
 		}
 		delete lpyramid;
 		
-		//src = removeManifold(gc, src);
-		
 		drawManifold(gc, src);
-		
 		SaveRetargetVideo(src, argv[4]);
-
 		src = removeManifold(gc, src);
-		
 		SaveRetargetVideo(src, argv[4]);
 
 		delete gc;
@@ -706,51 +572,50 @@ int main(int argc, char **argv)
 	
 	if ( atoi(argv[3]) > 0 )			// if the number of hseams to be removed<=0, then skip hseam removal step.
 	{
-		//21OCT: COMMENT OUT FIRST AS FUNCTION TO SAVE BOTH THE SEAM AND OUTPUT INTO FOLDER IS NOT IMPLEMENTED YET
-		//src = Transpose_Video(src);
+		src = Transpose_Video(src);
+		for( int s=1; s<=atoi(argv[3]); s++ )
+		{
+			printf("\t\t>>> h seam #%d\n",s);
+			list_level = pym_level - 1;
+			lpyramid = ListPyramid(src, pym_level);
+			delete src;
+			// Refines the seam from the previous level. Continue to refine until the original video size.
+			while ( list_level>=0 )				
+			{
+				printf("\t\tcurrent list_level is %d\n", list_level);
+				src = &(lpyramid->Lists[list_level]);
+				src_width = src->GetMaxWidth();
+				src_height = src->GetMaxHeight();
+				src_time = src->GetLength();	
+				data = CalcDataCost(gc,src_width,src_height,src_time,num_labels);
+				delete gc;
+				gc = VideoSeamGraph_GraphCut(src,num_labels,data,atoi(argv[5]));
+				delete data;
 
-		//for( int s=1; s<=atoi(argv[3]); s++ )
-		//{
-		//	printf("\t\t>>> h seam #%d\n",s);
-		//	list_level = pym_level - 1;
-		//	lpyramid = ListPyramid(src, pym_level);
-		//	delete src;
-		//	// Refines the seam from the previous level. Continue to refine until the original video size.
-		//	while ( list_level>=0 )				
-		//	{
-		//		printf("\t\tcurrent list_level is %d\n", list_level);
-		//		src = &(lpyramid->Lists[list_level]);
-		//		width = src->GetMaxWidth();
-		//		height = src->GetMaxHeight();
-		//		time = src->GetLength();
-		//		data = CalcDataCost(gc,width,height,time,num_labels);
-		//		delete gc;
-		//		gc = VideoSeamGraph_GraphCut(src,num_labels,data,atoi(argv[5]));
-		//		delete data;
+				list_level--;
+			}
+			delete lpyramid;
+			
+			drawManifold(gc, src);
+			if (s==atoi(argv[3]))	
+				src = Transpose_Video(src);
+			SaveRetargetVideo(src, argv[4]);
+			if (s==atoi(argv[3]))	
+				src = Transpose_Video(src);
+			src = removeManifold(gc, src);
+			if (s==atoi(argv[3]))	
+				src = Transpose_Video(src);
+			SaveRetargetVideo(src, argv[4]);
 
-		//		list_level--;
-		//	}
-		//	delete lpyramid;
-		//	
-		//	//if (s<atoi(argv[3]))
-		//		src = removeManifold(gc, src);
-		//	//else
-		//	//	drawManifold(gc, src);
-		//	
-		//	delete gc;
-		//	gc = NULL;
-		//}
-		//delete gc;
+			delete gc;
+			gc=NULL;
+		}
 
-		//src = Transpose_Video(src);
-	}
-
-	SaveRetargetVideo(src, argv[4]);
-
-	delete src;
+		delete src;
 	
 	//system("Pause");
 	return 0;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
