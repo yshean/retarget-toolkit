@@ -32,6 +32,7 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include<fstream>
 
 #include "../Common/picture.h"
 #include "../Common/utils.h"
@@ -1861,7 +1862,7 @@ Picture *Combine_SubbandImgs(Picture *src, Picture *band_img, imageSize &target_
 }
 
 Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound, 
-						   imageSize &target_size, int *&labels, bool banded)
+						   imageSize &target_size, int *&labels, bool banded, fstream &fileResult)
 {
 	int num_pixels = target_size.width*target_size.height;
 	Picture *result = NULL;
@@ -1918,10 +1919,16 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 				{
 					subband[subband_idx] = x+lbound;
 					subband_idx++;
+					char cY[256]; // or what else, or use outer char array
+					sprintf(cY,"%d",y+1);
+					char cX[256];
+					sprintf(cX,"%d",x+lbound+1);
+					fileResult << cY << " " << cX << " ";
 					break;
 				}
 			}
 		}
+		fileResult << "\n";
 
 		/* generate retargeted subband image */
 		result = GenerateRetargetPicture(labels, img, 
@@ -1946,7 +1953,7 @@ Picture *SingleImg_SeamCut(Picture *img, int *&subband, int idx, int lbound,
 
 Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband, 
 						 int idx, int lbound, imageSize &target_size, 
-						 int *&pre_labels, bool tconsistency, bool banded)
+						 int *&pre_labels, bool tconsistency, bool banded, fstream &fileResult)
 {
 	// set up the needed data to pass to function for the data costs
 	//gradient2D *gradient = Diff_2D(cur_frame);
@@ -2035,10 +2042,16 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 				{
 					subband[subband_idx] = x+lbound;
 					subband_idx++;
+					char cY[256]; // or what else, or use outer char array
+					sprintf(cY,"%d",y+1);
+					char cX[256];
+					sprintf(cX,"%d",x+lbound+1);
+					fileResult << cY << " " << cX << " ";
 					break;
 				}
 			}
 		}
+		fileResult << "\n";
 
 		/* generate retargeted subband image */
 		result = GenerateRetargetPicture(labels, cur_frame, 
@@ -2075,7 +2088,7 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
  *
  */
 PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, double ratio, 
-						 char *name,  Matrix *&bias, bool tconsistency, bool banded, bool saved)
+						 char *name,  Matrix *&bias, bool tconsistency, bool banded, bool saved, fstream &fileResult)
 {
 	imageSize target_size;
 	Matrix *new_bias = NULL;
@@ -2104,7 +2117,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 	int *labels = new int[target_size.width*target_size.height];
 	
 	Picture *retargeted_band_img = SingleImg_SeamCut(band_img,band,0,lbound,
-													 target_size,labels,banded);
+													 target_size,labels,banded,fileResult);
 	if (!banded)
 		retargeted_band_img->SetName(src->GetPicture(0)->GetName());
 	Picture *combined_img;
@@ -2213,7 +2226,7 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 		//retargeted_band_img = SingleImg_SeamCut(band_img,band,t*src->GetMaxHeight(),lbound,
 		//										  target_size,labels,band_bias);
 		retargeted_band_img = PairImg_SeamCut(band_img,pre_band_img,band,t*src->GetMaxHeight(),
-											  lbound,target_size,labels,tconsistency,banded);
+											  lbound,target_size,labels,tconsistency,banded,fileResult);
 
 		//ubound--;
 		retargeted_band_img->SetName(src->GetPicture(t)->GetName());
@@ -2297,7 +2310,8 @@ PictureList *Refine_Seam(int *&band, PictureList *src, videoSize &origin_size, d
 /*
  *
  */
-PictureList *ResizeVideo_3D(PictureList *shot, int removed_seam, char *output_path, int level)
+PictureList *ResizeVideo_3D(PictureList *shot, int removed_seam, 
+							char *output_path, int level, fstream &fileResult)
 {
 	time_t start, end;
 	listPyramidType *spyramid = NULL;
@@ -2395,7 +2409,8 @@ PictureList *ResizeVideo_3D(PictureList *shot, int removed_seam, char *output_pa
 /*
  *
  */
-PictureList *ResizeVideo_2D_Incremental(PictureList *shot, int removed_seam, char *output_path, int level)
+PictureList *ResizeVideo_2D_Incremental(PictureList *shot, int removed_seam, 
+										char *output_path, int level, fstream &fileResult)
 {
 	time_t start, end;
 	listPyramidType *spyramid = NULL;
@@ -2457,7 +2472,7 @@ PictureList *ResizeVideo_2D_Incremental(PictureList *shot, int removed_seam, cha
 		/* refine seam in higher resolution */
 		time(&start);
 		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
-							 output_path,bias,true,false,saved);
+							 output_path,bias,true,false,saved,fileResult);
 		time(&end);
 		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
@@ -2490,7 +2505,8 @@ PictureList *ResizeVideo_2D_Incremental(PictureList *shot, int removed_seam, cha
 /*
  *
  */
-PictureList *ResizeImages_2D_Incremental(PictureList *shot, int removed_seam, char *output_path, int level)
+PictureList *ResizeImages_2D_Incremental(PictureList *shot, int removed_seam, 
+										 char *output_path, int level, fstream &fileResult)
 {
 	time_t start, end;
 	listPyramidType *spyramid = NULL;
@@ -2551,7 +2567,7 @@ PictureList *ResizeImages_2D_Incremental(PictureList *shot, int removed_seam, ch
 		/* refine seam in higher resolution */
 		time(&start);
 		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
-							 output_path,bias,false,false,saved);
+							 output_path,bias,false,false,saved,fileResult);
 		time(&end);
 		printf("Independent shift-map time is %f\n",difftime(end, start));
 
@@ -2585,7 +2601,8 @@ PictureList *ResizeImages_2D_Incremental(PictureList *shot, int removed_seam, ch
 /*
  *
  */
-PictureList *ResizeVideo_Hybrid(PictureList *shot, int removed_seam, char *output_path, int level)
+PictureList *ResizeVideo_Hybrid(PictureList *shot, int removed_seam, 
+								char *output_path, int level, fstream &fileResult)
 {
 	time_t start, end;
 	listPyramidType *spyramid = NULL;
@@ -2704,7 +2721,7 @@ PictureList *ResizeVideo_Hybrid(PictureList *shot, int removed_seam, char *outpu
 		/* refine seam in higher resolution */
 		time(&start);
 		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
-							 output_path,bias,true,true,saved);
+							 output_path,bias,true,true,saved,fileResult);
 		time(&end);
 		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
 
@@ -2753,6 +2770,11 @@ int main(int argc, char **argv)
 	int iHSeams = atoi(argv[2]);
 	int iVSeams = atoi(argv[3]);
 
+	char strSeamResult[512] = {'\0'};
+	strcat(strSeamResult,argv[4]);
+	strcat(strSeamResult,"result.txt");
+	fstream fileResult(strSeamResult,ios::out);
+
 	switch (atoi(argv[5]))
 	{
 		case 0:	// 3D temporal consistent shift-map
@@ -2761,13 +2783,13 @@ int main(int argc, char **argv)
 			{
 				PictureList *tshot = shot->TransposePictureList();
 				delete shot;
-				shot = ResizeVideo_3D(tshot,iHSeams,argv[4],0);
+				shot = ResizeVideo_3D(tshot,iHSeams,argv[4],0,fileResult);
 				//delete tshot;
 				tshot = shot->TransposePictureList();
 				delete shot;
 				shot = tshot;
 			}
-			target = ResizeVideo_3D(shot,iVSeams,argv[4],0);
+			target = ResizeVideo_3D(shot,iVSeams,argv[4],0,fileResult);
 			break;
 		}
 		case 1:	// 2D incremental temporal consistent shift-map
@@ -2776,13 +2798,13 @@ int main(int argc, char **argv)
 			{
 				PictureList *tshot = shot->TransposePictureList();
 				delete shot;
-				shot = ResizeVideo_2D_Incremental(tshot,iHSeams,argv[4],0);
+				shot = ResizeVideo_2D_Incremental(tshot,iHSeams,argv[4],0,fileResult);
 				//delete tshot;
 				tshot = shot->TransposePictureList();
 				delete shot;
 				shot = tshot;
 			}
-			target = ResizeVideo_2D_Incremental(shot,iVSeams,argv[4],0);
+			target = ResizeVideo_2D_Incremental(shot,iVSeams,argv[4],0,fileResult);
 			break;
 		}
 		case 2: // hybrid 3D & 2D temporal consistent shift-map
@@ -2791,13 +2813,13 @@ int main(int argc, char **argv)
 			{
 				PictureList *tshot = shot->TransposePictureList();
 				delete shot;
-				shot = ResizeVideo_Hybrid(tshot,iHSeams,argv[4],level);
+				shot = ResizeVideo_Hybrid(tshot,iHSeams,argv[4],level,fileResult);
 				//delete tshot;
 				tshot = shot->TransposePictureList();
 				delete shot;
 				shot = tshot;
 			}
-			target = ResizeVideo_Hybrid(shot,iVSeams,argv[4],level);
+			target = ResizeVideo_Hybrid(shot,iVSeams,argv[4],level,fileResult);
 			break;
 		}
 		case 3: // 2D incremental shift-map without temporal consistency
@@ -2806,17 +2828,18 @@ int main(int argc, char **argv)
 			{
 				PictureList *tshot = shot->TransposePictureList();
 				delete shot;
-				shot = ResizeImages_2D_Incremental(tshot,iHSeams,argv[4],0);
+				shot = ResizeImages_2D_Incremental(tshot,iHSeams,argv[4],0,fileResult);
 				//delete tshot;
 				tshot = shot->TransposePictureList();
 				delete shot;
 				shot = tshot;
 			}
-			target = ResizeImages_2D_Incremental(shot,iVSeams,argv[4],0);
+			target = ResizeImages_2D_Incremental(shot,iVSeams,argv[4],0,fileResult);
 			break;
 		}
 	}
 	
+	fileResult.close();
 	target->Save(argv[4]);
 	//delete shot;
 	delete target;
