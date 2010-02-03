@@ -147,7 +147,7 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 			}
 		}
 	}
-	solution->length = index;
+	solution->length = index;	
  	return solution;
 }
  
