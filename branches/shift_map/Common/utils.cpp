@@ -323,8 +323,8 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 				{
 					weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
 					double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-									  abs(grayscale->Get(y+1,x) - grayscale->Get(y+1,x+1)))+
-								  min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
+									  abs(grayscale->Get(y+1,x) - grayscale->Get(y+1,x+1)));
+								 +min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
 									  abs(grayscale->Get(y,x+1) - grayscale->Get(y+1,x+1)));
 					if (diff>=threshold)
 						xdiff->Set(y+1,x+1,diff);
@@ -337,8 +337,8 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 				{
 					weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
 					double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-									  abs(grayscale->Get(y+2,x+1) - grayscale->Get(y+2,x+2)))+
-								  min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
+									  abs(grayscale->Get(y+2,x+1) - grayscale->Get(y+2,x+2)))
+								 +min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
 									  abs(grayscale->Get(y+1,x+2) - grayscale->Get(y+2,x+2)));
 					if (diff>=threshold)
 						ydiff->Set(y+1,x+1,diff);
@@ -372,8 +372,122 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 					{
 						weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
 						double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-										  abs(next->Get(y+1,x+1) - next->Get(y+1,x+2)))+
-									  min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
+										  abs(next->Get(y+1,x+1) - next->Get(y+1,x+2)))
+									 +min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
+										  abs(next->Get(y+1,x+1) - next->Get(y+2,x+1)));
+						if (diff>=threshold)
+							tdiff->Set(y+1,x+1,diff);
+							//tdiff->Set(y+1,x+1,weight*diff);
+						else
+							tdiff->Set(y+1,x+1,0.0);
+					}
+				}
+			} // end for
+
+			dt[t] = *(tdiff);
+			total_dt[t] = 0.0;
+			delete tdiff;
+			delete next;
+		}
+
+		delete grayscale;
+	}
+
+	gradient3D *results = new gradient3D;
+	results->dx = dx;
+	results->dy = dy;
+	results->dt = dt;
+	results->total_dx = total_dx;
+	results->total_dy = total_dy;
+	results->total_dt = total_dt;
+
+	return results;
+}
+
+/*
+ *
+ */
+gradient3D *ScalingNaturality_3D(PictureList *src, double threshold=0.0)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Matrix *dx = new Matrix[src->GetLength()];
+	Matrix *dy = new Matrix[src->GetLength()];
+	Matrix *dt = new Matrix[src->GetLength()];
+	double *total_dx = new double[src->GetLength()];
+	double *total_dy = new double[src->GetLength()];
+	double *total_dt = new double[src->GetLength()];
+
+	double sCenter;
+	for (int t=0; t<src->GetLength(); t++)
+	{
+		//results[t] = *(new Matrix(0,0));
+		// results[t] = *(Gradient(src->GetFrame(t)));
+		Matrix *grayscale = Rgb2Gray(src->GetPicture(t));
+		Matrix *xdiff = new Matrix(src->GetPicture(t)->GetHeight(),
+								   src->GetPicture(t)->GetWidth());
+		Matrix *ydiff = new Matrix(src->GetPicture(t)->GetHeight(),
+								   src->GetPicture(t)->GetWidth());
+		for (int y=0; y<src->GetPicture(t)->GetHeight(); y++)
+		{
+			for (int x=0; x<src->GetPicture(t)->GetWidth(); x++)
+			{
+				if (x>0 && x<src->GetPicture(t)->GetWidth()-1 &&
+					y>0 && y<src->GetPicture(t)->GetHeight()-1)
+				{
+					sCenter = 0.5*(grayscale->Get(y+1,x+1)+grayscale->Get(y+1,x+2));
+					double diff = abs(grayscale->Get(y+1,x+1)-sCenter)
+							     +abs(grayscale->Get(y+1,x+2)-sCenter);
+								 
+					if (diff>=threshold)
+						xdiff->Set(y+1,x+1,diff);
+						//xdiff->Set(y+1,x+1,weight*diff);
+					else
+						xdiff->Set(y+1,x+1,0.0);
+				}
+
+				if (x<src->GetPicture(t)->GetWidth()-1 && 
+					y<src->GetPicture(t)->GetHeight()-1)
+				{
+					sCenter = 0.5*(grayscale->Get(y+1,x+1)+grayscale->Get(y+2,x+1));
+					double diff = abs(grayscale->Get(y+1,x+1)-sCenter)
+								 +abs(grayscale->Get(y+2,x+1)-sCenter);
+
+					if (diff>=threshold)
+						ydiff->Set(y+1,x+1,diff);
+						//ydiff->Set(y+1,x+1,weight*diff);
+					else
+						ydiff->Set(y+1,x+1,0.0);
+				}
+			}
+		} // end for
+
+		
+		dx[t] = *(xdiff);
+		dy[t] = *(ydiff);
+		total_dx[t] = 0.0;
+		total_dy[t] = 0.0;
+		delete xdiff;
+		delete ydiff;
+		
+		double tdt = 0.0;
+		if (t<(src->GetLength()-1))
+		{
+			Matrix *next = Rgb2Gray(src->GetPicture(t+1));
+			Matrix *tdiff = new Matrix(src->GetPicture(t)->GetHeight(),
+									   src->GetPicture(t)->GetWidth());
+			for (int y=0; y<src->GetPicture(t)->GetHeight(); y++)
+			{
+				for (int x=0; x<src->GetPicture(t)->GetWidth(); x++)
+				{
+					if (x<src->GetPicture(t)->GetWidth()-1 &&
+						y<src->GetPicture(t)->GetHeight()-1)
+					{
+						sCenter = 0.5*(grayscale->Get(y+1,x+1)+grayscale->Get(y+1,x+2));
+						double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
+										  abs(next->Get(y+1,x+1) - next->Get(y+1,x+2)))
+									 +min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
 										  abs(next->Get(y+1,x+1) - next->Get(y+2,x+1)));
 						if (diff>=threshold)
 							tdiff->Set(y+1,x+1,diff);
