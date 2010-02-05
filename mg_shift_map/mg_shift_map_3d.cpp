@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////
-// Motion Guided Shift-Map for Video Retargeting
+// Improved Hybrid Shift-Map for Video Retargeting
 //////////////////////////////////////////////////////////////////////////////
 //
 // Its graph labeling formulation:
@@ -128,106 +128,32 @@ struct ForVideoSmoothFn
 	videoSize target_size;
 };
 
-Matrix *CalcNarrownessPrior(gradient2D *gradient, double threshold)
+pixelType SamplingPixel(Picture *frame, int x, int y, int label)
 {
-	Matrix *result = new Matrix(gradient->dx->NumOfRows(),
-								gradient->dx->NumOfCols());
-	for (int y = 1; y <= result->NumOfRows(); y++)
+	pixelType result;
+	double dLeftWeight, dRightWeight;
+	if ((label/SAMPLING_QUANTIZATION)%1!=0)
 	{
-		for (int x = 1; x <= result->NumOfCols(); x++)
-		{
-			int offset = 0;
-			double energy = gradient->dx->Get(y,x);
-			while (energy<threshold)
-			{
-				offset++;
-				if (x-offset>=1 && x-offset<=result->NumOfCols())
-					energy += gradient->dx->Get(y,x-offset);
-				if (x+offset>=1 && x+offset<=result->NumOfCols())
-					energy += gradient->dx->Get(y,x+offset);
-			}
-			result->Set(y,x,double(1/(0.1+offset)));
-			//result->Set(y,x,1.0);
-		}
+		dLeftWeight = 1-label/SAMPLING_QUANTIZATION+
+					  floor(label/SAMPLING_QUANTIZATION);
+		dRightWeight = 1-floor(label/SAMPLING_QUANTIZATION+0.5)+
+					   label/SAMPLING_QUANTIZATION;
 	}
+	else
+	{
+		dLeftWeight = 1;
+		dRightWeight = 0;
+	}
+
+	pixelType pLeft = frame->GetPixel(x+floor(label/SAMPLING_QUANTIZATION),y);
+	pixelType pRight = frame->GetPixel(x+floor(label/SAMPLING_QUANTIZATION+0.5),y);
+
+	result.r = dLeftWeight*pLeft.r+dRightWeight*pRight.r;
+	result.g = dLeftWeight*pLeft.g+dRightWeight*pRight.g;
+	result.b = dLeftWeight*pLeft.b+dRightWeight*pRight.b;
 
 	return result;
 }
-
-Matrix *CopySubband_Bias(Matrix *&bias, int lbound, int ubound, int t)
-{
-	Matrix *result = new Matrix(bias[0].NumOfRows(),ubound-lbound+1);
-
-	for (int y = 0; y < bias[0].NumOfRows(); y++)
-	{
-		for (int x = lbound; x <= ubound; x++)
-		{
-			result->Set(y+1,x-lbound+1,bias[t].Get(y+1,x+1));
-		}
-	}
-
-	return result;
-}
-
-Matrix *CalcSeamBias(Matrix *&mask, int *&band, int width, int height, int time, double sigma)
-{
-	Matrix *result = new Matrix[time];
-	for (int t = 0; t < time; t++)
-	{
-		Matrix *init = new Matrix(height,width);
-		result[t] = *(init);
-		delete init;
-	}
-
-	int band_idx = 0;
-	for (int t = 0; t < time; t++)
-	{
-		for (int y = 0; y < height; y++)
-		{
-			for (int x = 0; x < width; x++)
-			{
-				double weight = mask[t].Get(y+1,x+1);
-				weight += simpleGauss(x,sigma,band[band_idx]);
-				result[t].Set(y+1,x+1,weight);
-			}
-			band_idx++;
-		}
-	}
-
-	delete [] mask;
-	return result;
-}
-
-Matrix *DownsamlingBias(Matrix *bias, int time, double ratio)
-{
-	Matrix *lr_bias = new Matrix[time];
-
-	for (int t = 0; t < time; t++)
-	{
-		Matrix *frame_bias = new Matrix(floor((double)(bias[t].NumOfRows()/ratio)),
-									    floor((double)(bias[t].NumOfCols()/ratio)));
-		//Matrix *frame_bias = new Matrix(bias[t].NumOfRows(),
-		//							    bias[t].NumOfCols());
-		frame_bias->LoadZero();
-		for (int y = 0; y < bias[t].NumOfRows(); y++)
-			for (int x = 0; x < bias[t].NumOfCols(); x++)
-			{
-                int lr_y = floor((double)y/ratio);
-				int lr_x = floor((double)x/ratio);
-				if (lr_y>=floor((double)(bias[t].NumOfRows()/ratio)))
-					lr_y--;
-				if (lr_x>=floor((double)(bias[t].NumOfCols()/ratio)))
-					lr_x--;
-				if (bias[t].Get(y+1,x+1)>0 && frame_bias->Get(lr_y+1,lr_x+1)==0)
-					frame_bias->Set(lr_y+1,lr_x+1,1.0);
-			}
-		lr_bias[t] = *(frame_bias);
-		delete frame_bias;
-	}
-
-	return lr_bias;
-}
-
 
 double PairwiseColorDiff(intensityType &p1, intensityType &p2, double threshold)
 {
@@ -895,9 +821,15 @@ double VideoDataFn(int p, int l, void *data)
 	// pixel arrangement
 	if (x==0 && l!=0)
 		return 100000*MAX_COST_VALUE;
-	if (x==myData->target_size.width-1 && 
-		l!=abs(myData->src->GetPicture(0)->GetWidth()-myData->target_size.width))
-		return 100000*MAX_COST_VALUE;	
+	if (x==myData->target_size.width-1 && l==0)
+		return 100000*MAX_COST_VALUE;
+
+	// data term for scaling
+	if (l==2)
+	{
+		sCenter = 0.5*();
+		cost = 
+	}
 
 	return cost;
 }
@@ -1458,7 +1390,6 @@ void SaveRetargetPicture(int *labels, PictureList *src,int width, int height, ch
 PictureList *GenerateRetargetResult(int *labels, PictureList *src, int width, 
 									int height, char *name, bool save)
 {
-	int cur_idx = 0;
 	PictureList *result = new PictureList(width,height,src->GetLength());
 	for (int t = 0; t < src->GetLength(); t++)
 	{
@@ -1467,58 +1398,25 @@ PictureList *GenerateRetargetResult(int *labels, PictureList *src, int width,
 		strcat(target_name,name);
 		strcat(target_name,src->GetPicture(t)->GetName());
 		frame->SetName(src->GetPicture(t)->GetName());
-
-		Picture *map = new Picture(width,height);
-		char map_name[512] = {'\0'};
-		strcat(map_name,name);
-		strcat(map_name,"shift_");
-		strcat(map_name,src->GetPicture(t)->GetName());
-		map->SetName(src->GetPicture(t)->GetName());
 	
 		int x, y;
 		pixelType pixel;
-		intensityType map_pix;
-		int *frame_labels = new int[width*height];
-		int frame_idx = 0;
 		for ( int  i = 0; i < width*height; i++ )
 		{
 			x = i % width;
 			y = i / width;
 			//printf("SaveRetargetPicture: GetPixel(%d,%d)\n",x+gc->whatLabel(i),y);
-			pixel.r = src->GetPicture(t)->GetPixel(x+labels[cur_idx],y).r;
-			pixel.g = src->GetPicture(t)->GetPixel(x+labels[cur_idx],y).g;
-			pixel.b = src->GetPicture(t)->GetPixel(x+labels[cur_idx],y).b;
+			pixel = SamplingPixel(src->GetPicture(t),x,y,labels[i]);
 			frame->SetPixel(x,y,pixel);
-
-			map_pix.r = labels[cur_idx]*255;
-			map_pix.g = labels[cur_idx]*255;
-			map_pix.b = labels[cur_idx]*255;
-			map->SetPixelIntensity(x,y,map_pix);
-
-			frame_labels[frame_idx] = labels[cur_idx];
-			frame_idx++;
-			cur_idx++;
 		}
 
 		result->SetPicture(t,frame);
 		if (save)
 		{
 			frame->Save(target_name);
-			map->Save(map_name);
-
-			char seam_name[512] = {'\0'};
-			strcat(seam_name,name);
-			strcat(seam_name,"seam_");
-			strcat(seam_name,src->GetPicture(t)->GetName());
-			if (src->GetMaxWidth()>width)
-				SaveSeamImage(frame_labels,frame,seam_name,0);
-			else
-				SaveSeamImage(frame_labels,frame,seam_name,1);
 		}
 
 		delete frame;
-		delete map;
-		delete [] frame_labels;
 	}
 
 	return result;
@@ -1623,13 +1521,11 @@ int *GridGraph_GraphCut(listPyramidType *src, int level, videoSize &target_size,
  * Function to find the optimal single seam
  */
 PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target_size, videoSize &up_size,
-							   int num_labels, char *target_path, int *&band, int *&lr_band, Matrix *&bias, bool saved)
+							   int num_labels, char *target_path, int *&band, int *&lr_band, bool saved)
 {
 	// set up the needed data to pass to function for the data costs
-	Matrix *new_bias;
 	gradient3D *gradient = Diff_3D(src,0.0);
-	gradient3D *naturality = Naturality_3D(src,5.0);
-
+	gradient3D *naturality = Naturality_3D(src,0.0);
 
 	int num_pixels = target_size.width*target_size.height*target_size.time;
 	int *labels = new int[num_pixels];   // stores result of optimization
@@ -1648,8 +1544,6 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 											 num_labels);
 
 
-		// TODO: replace the hardcode of gradient threoshold
-		// for shot boundary
 		// data terms comes from function pointer
 		ForVideoDataFn toDataFn;
 		toDataFn.src = src;
@@ -1683,36 +1577,6 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 		lr_band = UpsamplingShiftMap(labels,target_size,1.0,target_size);											 
 		band = UpsamplingShiftMap(labels,target_size,ratio,up_size);											 
 		//delete [] result;		
-
-		if (target_size.width>src->GetMaxWidth())
-		{
-			new_bias = new Matrix[target_size.time];
-			for (int t = 0; t < target_size.time; t++)
-			{
-				Matrix *frame_bias = new Matrix(target_size.height,
-												target_size.width);
-				for (int y = 0; y < target_size.height; y++)
-				{
-					int bidx = t*target_size.height+y;
-					for (int x = 0; x < lr_band[bidx]-1; x++)
-					{
-						frame_bias->Set(y+1,x+1,bias[t].Get(y+1,x+1));
-					}
-					for (int x = lr_band[bidx]; x < src->GetMaxWidth(); x++)
-					{
-						frame_bias->Set(y+1,x+2,bias[t].Get(y+1,x+1));
-					}
-					frame_bias->Set(y+1,lr_band[bidx],1.0);
-					frame_bias->Set(y+1,lr_band[bidx]+1,1.0);
-				}
-				new_bias[t] = *(frame_bias);
-				delete frame_bias;
-			}
-
-			if (bias != NULL)
-				delete [] bias;
-			bias = new_bias;
-		}
 
 		// update_
 		result = GenerateRetargetResult(labels, src, 
@@ -1796,29 +1660,6 @@ Picture *Subband_Picture(Picture *ref, int *&subband, int idx, double ratio,
 	delete [] labels;
 	labels = subband_labels;
 	//result->Save("subband_img.ppm");
-	return result;
-}
-
-/*
- * Function to generate and save retargeted image
- * using shift-map labels
- */
-Picture *GenerateRetargetPicture(int *labels, Picture *src,int width, int height)
-{
-	Picture *result = new Picture(width,height);
-	
-	int x, y;
-	pixelType pixel;
-	for ( int  i = 0; i < width*height; i++ )
-	{
-		x = i % width;
-		y = i / width;
-		//printf("SaveRetargetPicture: GetPixel(%d,%d)\n",x+gc->whatLabel(i),y);
-		pixel = src->GetPixel(x+labels[i],y);
-		result->SetPixel(x,y,pixel);
-	}
-
-	result->Save("0_cut.ppm");
 	return result;
 }
 
@@ -2601,145 +2442,61 @@ PictureList *ResizeImages_2D_Incremental(PictureList *shot, int removed_seam,
 /*
  *
  */
-PictureList *ResizeVideo_Hybrid(PictureList *shot, int removed_seam, 
-								char *output_path, int level, fstream &fileResult)
+PictureList *ResizeVideo_Hybrid(PictureList *shot, int width, 
+								char *output_path, int level)
 {
 	time_t start, end;
 	listPyramidType *spyramid = NULL;
 	int num_labels;
 	int *band = NULL;	// store shift labels of every pixel
 	int *lr_band = NULL;
-	Matrix *bias = NULL;
-	Matrix *lr_bias = NULL;
 	videoSize target_size, origin_size;
 
 	//spyramid = ListPyramid(shot,level+1);
 
 	PictureList *source;
 	PictureList *target = shot;
-	while (removed_seam != 0)
-	{	
-		bool saved = false;
-		//if (removed_seam==1 || removed_seam==-1)
-			saved = true;
-			
-		if (level>0)
-		{
-			spyramid = ListPyramid(target,level+1);
-			delete target;
-			source = &(spyramid->Lists[level]);
-			target = &(spyramid->Lists[0]);
-		}
-		else
-			source = target;
-
-		num_labels = 2;
-		if (removed_seam>0)
-			target_size.width = source->GetMaxWidth()-1;
-		if (removed_seam<0)
-			target_size.width = source->GetMaxWidth()+1;
-		target_size.height = source->GetMaxHeight();
-		target_size.time = source->GetLength();
-		if (removed_seam>0)
-			origin_size.width = target->GetMaxWidth()-1;
-		if (removed_seam<0)
-			origin_size.width = target->GetMaxWidth()+1;
-		origin_size.height = target->GetMaxHeight();
-		origin_size.time = target->GetLength();
-
-		//if (lr_bias!=NULL)
-        //      delete [] lr_bias;
-        if (bias==NULL)
-        {
-			bias = new Matrix[origin_size.time];
-            for (int t = 0; t < origin_size.time; t++)
-            {
-				Matrix *init = new Matrix(target->GetMaxHeight(),
-										  target->GetMaxWidth(),0.0);
-                bias[t] = *(init);
-                delete init;
-            }
-			lr_bias = new Matrix[target_size.time];
-            for (int t = 0; t < target_size.time; t++)
-            {
-				Matrix *init = new Matrix(source->GetMaxHeight(),
-										  source->GetMaxWidth(),0.0);
-                lr_bias[t] = *(init);
-                delete init;
-            }
-        }
-		else
-		{
-			lr_bias = DownsamlingBias(bias,target_size.time,pow(2.0,level));
-		}
-
-		/* graph cut in low resolution */
-		time(&start);
-		source = GridGraph_SeamCut(source,pow(2.0,level),target_size,origin_size,
-								   num_labels,output_path,band,lr_band,lr_bias,saved);
-		time(&end);
-		printf("3D shift-map time is %f\n",difftime(end, start));
-		delete [] lr_bias;
-
-		// DEBUG: observe interpolated map
-		/*
-		Picture *upsampled_map = NULL;
-		for (int t = 0; t < origin_size.time; t++)
-		{
-			upsampled_map = new Picture(origin_size.width,origin_size.height);
-			for (int y = 0; y < origin_size.height; y++)
-			{
-				for (int x = 0; x < origin_size.width; x++)
-				{
-					pixelType pix;
-					if (x<band[t*origin_size.height+y])
-					{
-						pix = target->GetPicture(t)->GetPixel(x,y);
-					}
-					if (x==band[t*origin_size.height+y])
-					{
-						pix.r = 255;
-						pix.g = 255;
-						pix.b = 255;
-					}
-					if (x>band[t*origin_size.height+y])
-					{
-						pix = target->GetPicture(t)->GetPixel(x+1,y);
-					}
-					upsampled_map->SetPixel(x,y,pix);
-				}
-			}
-			char map_name[512] = {'\0'};
-			strcat(map_name,output_path);
-			strcat(map_name,"upsampled_");
-			strcat(map_name,target->GetPicture(t)->GetName());
-			upsampled_map->Save(map_name);
-			delete upsampled_map;
-		}
-		*/
-
-		/* refine seam in higher resolution */
-		time(&start);
-		target = Refine_Seam(band,target,origin_size,pow(2.0,level),
-							 output_path,bias,true,true,saved,fileResult);
-		time(&end);
-		printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
-
-
-		if (removed_seam>0)
-			removed_seam--;
-		if (removed_seam<0)
-			removed_seam++;
-		delete [] band;
-		delete [] lr_band;
-		if (level>0)
-		{
-			delete [] spyramid->Lists;
-			delete spyramid;
-			spyramid = NULL;
-		}
-		delete source;
+	if (level>0)
+	{
+		spyramid = ListPyramid(target,level+1);
+		delete target;
+		source = &(spyramid->Lists[level]);
+		target = &(spyramid->Lists[0]);
 	}
+	else
+		source = target;
+
+	int iVSeams = shot->GetMaxWidth()-width;
+	num_labels = SAMPLING_QUANTIZATION*iVSeams+1;
+	target_size.width = source->GetMaxWidth()-iVSeams;
+	target_size.height = source->GetMaxHeight();
+	target_size.time = source->GetLength();
+	origin_size.width = target->GetMaxWidth()-iVSeams;
+	origin_size.height = target->GetMaxHeight();
+	origin_size.time = target->GetLength();
+
+	time(&start);
+	source = GridGraph_SeamCut(shot,pow(2.0,level),target_size,origin_size,
+							   num_labels,output_path,band,lr_band,true);
+	time(&end);
+	printf("3D shift-map time is %f\n",difftime(end, start));
+
+	/* refine seam in higher resolution */
+	time(&start);
+	target = Refine_Seam(band,target,origin_size,pow(2.0,level),
+						 output_path,bias,true,true,saved);
+	time(&end);
+	printf("Incremental 2D shift-map time is %f\n",difftime(end, start));
+
+	delete [] band;
+	delete [] lr_band;
+	if (level>0)
+	{
+		delete [] spyramid->Lists;
+		delete spyramid;
+		spyramid = NULL;
+	}
+	delete source;
 
 	if (level>0)
 	{
@@ -2750,6 +2507,7 @@ PictureList *ResizeVideo_Hybrid(PictureList *shot, int removed_seam,
 	delete [] bias;
 	//delete target;
 	return target;
+
 }
 
 /*
@@ -2759,7 +2517,7 @@ int main(int argc, char **argv)
 {
 	if (argc<7)
 	{
-		cout << "Usage: mg_shift_map_3d <input_folder> <#horizontal seams> <#vertical seams> <output_folder> method level" << endl;
+		cout << "Usage: mg_shift_map_3d <input_folder> <#height> <#width> <output_folder> method level" << endl;
 		return 0;
 		//default parameters
 	}
@@ -2767,79 +2525,31 @@ int main(int argc, char **argv)
 	PictureList *shot = new PictureList(argv[1]);	
 	PictureList *target = NULL;
 	int level = atoi(argv[6]); // gpyramid->Levels-1
-	int iHSeams = atoi(argv[2]);
-	int iVSeams = atoi(argv[3]);
+	int iHeight = atoi(argv[2]);
+	int iWidth = atoi(argv[3]);
 
 	char strSeamResult[512] = {'\0'};
 	strcat(strSeamResult,argv[4]);
-	strcat(strSeamResult,"result.txt");
-	fstream fileResult(strSeamResult,ios::out);
 
 	switch (atoi(argv[5]))
 	{
-		case 0:	// 3D temporal consistent shift-map
-		{
-			if (iHSeams>0)
-			{
-				PictureList *tshot = shot->TransposePictureList();
-				delete shot;
-				shot = ResizeVideo_3D(tshot,iHSeams,argv[4],0,fileResult);
-				//delete tshot;
-				tshot = shot->TransposePictureList();
-				delete shot;
-				shot = tshot;
-			}
-			target = ResizeVideo_3D(shot,iVSeams,argv[4],0,fileResult);
-			break;
-		}
-		case 1:	// 2D incremental temporal consistent shift-map
-		{
-			if (iHSeams>0)
-			{
-				PictureList *tshot = shot->TransposePictureList();
-				delete shot;
-				shot = ResizeVideo_2D_Incremental(tshot,iHSeams,argv[4],0,fileResult);
-				//delete tshot;
-				tshot = shot->TransposePictureList();
-				delete shot;
-				shot = tshot;
-			}
-			target = ResizeVideo_2D_Incremental(shot,iVSeams,argv[4],0,fileResult);
-			break;
-		}
 		case 2: // hybrid 3D & 2D temporal consistent shift-map
 		{
 			if (iHSeams>0)
 			{
 				PictureList *tshot = shot->TransposePictureList();
 				delete shot;
-				shot = ResizeVideo_Hybrid(tshot,iHSeams,argv[4],level,fileResult);
+				shot = ResizeVideo_Hybrid(tshot,iHeight,argv[4],level);
 				//delete tshot;
 				tshot = shot->TransposePictureList();
 				delete shot;
 				shot = tshot;
 			}
-			target = ResizeVideo_Hybrid(shot,iVSeams,argv[4],level,fileResult);
-			break;
-		}
-		case 3: // 2D incremental shift-map without temporal consistency
-		{
-			if (iHSeams>0)
-			{
-				PictureList *tshot = shot->TransposePictureList();
-				delete shot;
-				shot = ResizeImages_2D_Incremental(tshot,iHSeams,argv[4],0,fileResult);
-				//delete tshot;
-				tshot = shot->TransposePictureList();
-				delete shot;
-				shot = tshot;
-			}
-			target = ResizeImages_2D_Incremental(shot,iVSeams,argv[4],0,fileResult);
+			target = ResizeVideo_Hybrid(shot,iWidth,argv[4],level);
 			break;
 		}
 	}
 	
-	fileResult.close();
 	target->Save(argv[4]);
 	//delete shot;
 	delete target;

@@ -100,6 +100,8 @@ typedef struct {
 #define PICTURE_FRAME_EXT "ppm"
 #define VIDEO_FRAME_EXT "ppm"
 
+#define SAMPLING_QUANTIZATION 5
+
 double Gaussian(double x, double mean);
 double Intensity(pixelType p);
 double ColorContrast(Video *src, int x, int y, int t);
@@ -139,6 +141,7 @@ gradient2D *Naturality_2D(Picture *src, double threshold=0.0);
 gradient2D *Diff_2D(Picture *src, double threshold=0.0);
 gradient3D *Naturality_3D(PictureList *src, double threshold=0.0);
 gradient3D *Diff_3D(PictureList *src, double threshold=0.0);
+gradient3D *ScalingNaturality_3D(PictureList *src, double threshold=0.0);
 Matrix *Contrast_3D(Video *src, gradient3D *gradient);
 
 listPyramidType *ListPyramid(PictureList *src, int levels);
