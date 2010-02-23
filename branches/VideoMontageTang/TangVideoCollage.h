@@ -74,6 +74,9 @@ protected:
 	
 protected:
 	virtual VCSolution* GetSolution(ShotInfo* shotInfo);
+	
+	// this solution is only to get a list of frame
+	virtual VideoSequence* GetSolution2(ShotInfo* shotInfo);
 	// couting the number of frame in solution 
 	// by counting subshot, some subshot may return 2 frames
 	int GetSolutionFrameCount(ShotInfo* shotInfo);
