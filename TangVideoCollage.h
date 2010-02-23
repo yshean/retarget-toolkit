@@ -34,7 +34,7 @@ CV_INLINE VCROI vcROI(bool label, int x, int y, int width, int height)
 	roi.size.width = width;
 	roi.size.height = height;
 	return roi;
-}
+} 
 
 // a solution to the video collage
 // contain list of frame and correspond ROI	
@@ -60,6 +60,12 @@ public:
 	// Return an image represents the whole video sequence
 	virtual IplImage* GetCollage();
 
+	// get list of frame selected as candidates for the collage
+	VideoSequence* GetSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence );
+
+	// get list of frame selected as candiates and then save to disk
+	void SaveSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence, char* filename);
+
 protected:
 	ImageQuality* _imageQuality;
 	ImageImportance* _imageImportance;
@@ -80,9 +86,15 @@ protected:
 
 	// select the keyframe of the pan / tilt SubShot
 	virtual void KeyFrameSelection2(SubShot* subShot, int* key);
+
+public:
+
  
 };
 	// test tang video collage
 	// @param: filename of shotinfo & filename of sequence
 	void TestTangVideoCollage(char* sequencename, char* shotname);
  
+	// test tang video collage - process the list and then save selected frame to disk
+	// @param: file name of shotinf & filename of sequence
+	void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename);

@@ -104,6 +104,44 @@ int TangVideoCollage::GetSolutionFrameCount(ShotInfo* shotInfo)
 	return count;
 }
 
+VideoSequence* TangVideoCollage::GetSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence)
+{	 	 
+	VideoSequence* result = new VideoSequence();
+	result->frameList = new vector<char*>();
+	for(int i = 0; i < shotInfo->shotCount; i++)
+	{
+		Shot shot = shotInfo->shotList[i];
+		for(int j = 0; j < shot.subShotCount; j++)
+		{
+			SubShot subShot = shot.subShotList[j];
+			int* selectedShot = (int*)malloc(2 * sizeof(int)); 
+			switch(subShot.shotType)
+			{
+			case VCSHOT_PAN:
+			case VCSHOT_TILT:
+				{				 
+					KeyFrameSelection2(&subShot, selectedShot);	
+					result->frameList->push_back((*(sequence->frameList))[*selectedShot]);
+					result->frameList->push_back((*(sequence->frameList))[*(selectedShot + 1)]);	
+				}
+				break;
+			case VCSHOT_STATIC:
+			case VCSHOT_ZOOM:
+				{
+					printf("\nProcessing STATIC/ZOOM Shot %i SubShot %i ...", i, j);
+					KeyFrameSelection1(&subShot, selectedShot);
+					result->frameList->push_back((*(sequence->frameList))[*selectedShot]);
+				}
+				break;
+			default:
+				printf("unknown subshot type");
+				break;
+			}
+		}
+	}	 
+ 	return result;
+}
+
 VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 {
 	VCSolution* solution = new VCSolution();	
@@ -151,6 +189,12 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
  	return solution;
 }
  
+
+void TangVideoCollage::SaveSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence, char* filename)
+{
+	VideoSequence* result_seq = GetSelectedFrames(shotInfo, sequence);
+	SaveVideoSequenceToFile(result_seq, filename);
+}
 void TestTangVideoCollage(char* sequencename, char* shotname)
 {
 	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
@@ -161,3 +205,14 @@ void TestTangVideoCollage(char* sequencename, char* shotname)
 	VideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
 	collage->GetCollage();	
 } 
+
+void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename)
+{
+	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
+	ShotInfo* shotInfo = LoadShotFromFile(shotname);
+	ImageImportance* imageImportance = new SobelImageImportance();
+	ImageQuality* imageQuality = new SobelImageQuality();
+
+	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
+	collage->SaveSelectedFrames(shotInfo, sequence, filename);
+}
