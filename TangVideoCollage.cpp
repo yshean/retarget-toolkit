@@ -104,10 +104,18 @@ int TangVideoCollage::GetSolutionFrameCount(ShotInfo* shotInfo)
 	return count;
 }
 
-VideoSequence* TangVideoCollage::GetSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence)
-{	 	 
-	VideoSequence* result = new VideoSequence();
-	result->frameList = new vector<char*>();
+
+
+
+
+VideoSequence* TangVideoCollage::GetSolution2(ShotInfo* shotInfo)
+{
+	VideoSequence* solution = new VideoSequence();
+	solution->frameList = new vector<char*>();
+	
+	int count = GetSolutionFrameCount(shotInfo);
+	 
+	int index = 0;
 	for(int i = 0; i < shotInfo->shotCount; i++)
 	{
 		Shot shot = shotInfo->shotList[i];
@@ -119,18 +127,27 @@ VideoSequence* TangVideoCollage::GetSelectedFrames(ShotInfo* shotInfo, VideoSequ
 			{
 			case VCSHOT_PAN:
 			case VCSHOT_TILT:
-				{				 
-					KeyFrameSelection2(&subShot, selectedShot);	
-					result->frameList->push_back((*(sequence->frameList))[*selectedShot]);
-					result->frameList->push_back((*(sequence->frameList))[*(selectedShot + 1)]);	
+				{
+				printf("\nProcessing PAN/TILT Shot %i SubShot %i ...", i, j);
+				KeyFrameSelection2(&subShot, selectedShot);	
+				IplImage* image1 = LoadFrame(_sequence, *selectedShot);
+				IplImage* image2 = LoadFrame(_sequence, *(selectedShot + 1));
+				
+				solution->frameList->push_back((*(_sequence->frameList))[*selectedShot]);
+				solution->frameList->push_back((*(_sequence->frameList))[*(selectedShot + 1)]);
+				/*solution->frameList[index] = image1;
+				solution->frameList[index + 1] = image2;*/
+				index += 2;
 				}
 				break;
 			case VCSHOT_STATIC:
 			case VCSHOT_ZOOM:
 				{
-					printf("\nProcessing STATIC/ZOOM Shot %i SubShot %i ...", i, j);
-					KeyFrameSelection1(&subShot, selectedShot);
-					result->frameList->push_back((*(sequence->frameList))[*selectedShot]);
+				printf("\nProcessing STATIC/ZOOM Shot %i SubShot %i ...", i, j);
+				KeyFrameSelection1(&subShot, selectedShot);
+				IplImage* image = LoadFrame(_sequence, *selectedShot);
+				solution->frameList->push_back((*(_sequence->frameList))[*selectedShot]);
+				index++;
 				}
 				break;
 			default:
@@ -138,9 +155,12 @@ VideoSequence* TangVideoCollage::GetSelectedFrames(ShotInfo* shotInfo, VideoSequ
 				break;
 			}
 		}
-	}	 
- 	return result;
+	}
+	 
+ 	return solution;
 }
+
+
 
 VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 {
@@ -190,11 +210,13 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 }
  
 
-void TangVideoCollage::SaveSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence, char* filename)
-{
-	VideoSequence* result_seq = GetSelectedFrames(shotInfo, sequence);
-	SaveVideoSequenceToFile(result_seq, filename);
-}
+
+
+
+
+
+
+
 void TestTangVideoCollage(char* sequencename, char* shotname)
 {
 	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
@@ -206,13 +228,13 @@ void TestTangVideoCollage(char* sequencename, char* shotname)
 	collage->GetCollage();	
 } 
 
-void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename)
-{
-	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
-	ShotInfo* shotInfo = LoadShotFromFile(shotname);
-	ImageImportance* imageImportance = new SobelImageImportance();
-	ImageQuality* imageQuality = new SobelImageQuality();
 
-	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
-	collage->SaveSelectedFrames(shotInfo, sequence, filename);
-}
+
+
+
+
+
+
+
+
+
