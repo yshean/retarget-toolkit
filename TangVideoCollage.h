@@ -90,8 +90,9 @@ protected:
 	// select the keyframe of the pan / tilt SubShot
 	virtual void KeyFrameSelection2(SubShot* subShot, int* key);
 
-public:
 
+public:
+	 
  
 };
 	// test tang video collage
@@ -100,4 +101,4 @@ public:
  
 	// test tang video collage - process the list and then save selected frame to disk
 	// @param: file name of shotinf & filename of sequence
-	void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename);
+	// void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename);
