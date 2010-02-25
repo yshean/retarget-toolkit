@@ -14,15 +14,17 @@ LayoutFrame* CreateLayoutFrame(int x, int y, int width, int height)
 }
 
  // resize the frame (inner frames are also resized)
-void ResizeLayout(LayoutFrame* frame, double ratio)
+void ResizeLayout(LayoutFrame* frame, double ratio, bool is_inside)
 {
 	frame->size.width *= ratio;
 	frame->size.height *= ratio;
+	frame->position.x *= ratio;
+	frame->position.y *= ratio;
 	int size = frame->innerFrames->size();
 
 	for(int i = 0; i < size; i++)
 	{	
-		ResizeLayout( (*(frame->innerFrames))[i], ratio);
+		ResizeLayout( (*(frame->innerFrames))[i], ratio, true);
 	}
 }
 
@@ -30,14 +32,14 @@ void ResizeLayout(LayoutFrame* frame, double ratio)
 void ResizeToWidth(LayoutFrame* frame, int width)
 {
 	double ratio = (double) width / (double)frame->size.width;
-	ResizeLayout(frame, ratio);
+	ResizeLayout(frame, ratio, false);
 }
 
 // resize to a specific height (inner frames are also resized)
 void ResizeToHeight(LayoutFrame* frame, int height)
 {
 	double ratio = (double) height / (double)frame->size.height;
-	ResizeLayout(frame, ratio);
+	ResizeLayout(frame, ratio, false);
 }
 
 
@@ -85,15 +87,15 @@ LayoutFrame* Align2FramesHorizontal(LayoutFrame* frame1, LayoutFrame* frame2)
 	return frame;
 }
 
-// move layout (inner frames are also moved)
+// move layout (inner frames are also moved since location is relative)
 void MoveLayout(LayoutFrame* frame, int x, int y)
 {
-	int size = frame->innerFrames->size();
-	for(int i = 0; i < size; i++)
-	{
-		(*(frame->innerFrames))[i]->position.x += x - frame->position.x;
-		(*(frame->innerFrames))[i]->position.y += y - frame->position.y;
-	}
+	//int size = frame->innerFrames->size();
+	//for(int i = 0; i < size; i++)
+	//{
+	//	(*(frame->innerFrames))[i]->position.x += x - frame->position.x;
+	//	(*(frame->innerFrames))[i]->position.y += y - frame->position.y;
+	//}
 	frame->position.x = x;
 	frame->position.y = y;
 }
@@ -105,15 +107,36 @@ double GetArea(LayoutFrame* frame)
 }
 
 void DrawFrame(LayoutFrame* frame, IplImage* image, int x, int y)
-{
-	cvDrawRect(image, 
+{		
+	int size = frame->innerFrames->size();
+	if(size > 0)
+	{
+	for(int i = 0; i < size; i++)
+	{
+		DrawFrame((*(frame->innerFrames))[i], image, frame->position.x + x, frame->position.y + y);
+	}
+	}
+	else
+	{
+		cvDrawRect(image, 
 		cvPoint(x + frame->position.x, y + frame->position.y), 
 		cvPoint(x + frame->position.x + frame->size.width, y + frame->position.y + frame->size.height), 
 		cvScalar(255,0,0));
-
-	int size = frame->innerFrames->size();
-	for(int i = 0; i < size; i++)
-	{
-		DrawFrame((*(frame->innerFrames))[i], image, frame->position.x, frame->position.y);
 	}
+}
+
+void AddToFrameHorizontal(LayoutFrame* frame, LayoutFrame* addedFrame)
+{
+	ResizeToHeight(addedFrame, frame->size.height);
+	MoveLayout(addedFrame, frame->size.width, 0);
+	frame->innerFrames->push_back(addedFrame);
+	frame->size.width += addedFrame->size.width;
+}
+
+void AddToFrameVertical(LayoutFrame* frame, LayoutFrame* addedFrame)
+{
+	ResizeToWidth(addedFrame, frame->size.width);
+	MoveLayout(addedFrame, 0, frame->size.height);
+	frame->innerFrames->push_back(addedFrame);
+	frame->size.height += addedFrame->size.height;
 }

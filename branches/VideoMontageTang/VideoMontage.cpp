@@ -29,10 +29,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	//CollagePastingAlgo* algo = new CollagePastingAlgo();
 	//algo->GetCollageArrangement(sizeSequence);
 
-	// TestCollageLayout();
+	TestCollageLayout();
 
 	
-	TestTangSaveSelectedFrame("PinBall.seq", "PinBall.shot", "SelectedFrame.seq");
+	//TestTangSaveSelectedFrame("PinBall.seq", "PinBall.shot", "SelectedFrame.seq");
 	return 0;
 }
 
