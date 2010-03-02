@@ -3,11 +3,11 @@
 #include "VideoCollage.h"
 #include "ImageImportance.h"
 #include "ImageQuality.h"
- 
+
 #include "SobelImageImportance.h"
 #include "SobelImageQuality.h"
 #include "Collage.h"
-
+#include "CollageLayout.h"
 /************************ Tang Wang Video Collage Paper ***************************/
 
 /******************************** VCSolution **************************************/
@@ -61,8 +61,8 @@ public:
 	virtual IplImage* GetCollage();
 
 	// get list of frame selected as candidates for the collage
-	VideoSequence* GetSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence );
-
+	// VideoSequence* GetSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence );
+	
 	// get list of frame selected as candiates and then save to disk
 	void SaveSelectedFrames(ShotInfo* shotInfo, VideoSequence* sequence, char* filename);
 
@@ -74,9 +74,11 @@ protected:
 	
 protected:
 	virtual VCSolution* GetSolution(ShotInfo* shotInfo);
-	
+public:	
 	// this solution is only to get a list of frame
 	virtual VideoSequence* GetSolution2(ShotInfo* shotInfo);
+
+protected:
 	// couting the number of frame in solution 
 	// by counting subshot, some subshot may return 2 frames
 	int GetSolutionFrameCount(ShotInfo* shotInfo);
@@ -92,7 +94,7 @@ protected:
 
 
 public:
-	 
+	IplImage* GetFinalCollage(ShotInfo* shotInfo, VideoSequence* selectedFrames);
  
 };
 	// test tang video collage
@@ -102,3 +104,6 @@ public:
 	// test tang video collage - process the list and then save selected frame to disk
 	// @param: file name of shotinf & filename of sequence
 	// void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename);
+
+	// load selected frames and shotinfo
+	void TestTangVideoCollageLayout(char* sequencename, char* shotname);

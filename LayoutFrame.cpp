@@ -60,6 +60,8 @@ LayoutFrame* Align2FramesVertical(LayoutFrame* frame1, LayoutFrame* frame2)
 	// add 2 frames to outer frame
 	frame->innerFrames->push_back(frame1);
 	frame->innerFrames->push_back(frame2);
+	frame1->outerFrame = frame;
+	frame2->outerFrame = frame;
 	// set width & height
 	frame->size.width = frame1->size.width;
 	frame->size.height = frame1->size.height + frame2->size.height;
@@ -81,6 +83,8 @@ LayoutFrame* Align2FramesHorizontal(LayoutFrame* frame1, LayoutFrame* frame2)
 	// add 2 frames to outer frame
 	frame->innerFrames->push_back(frame1);
 	frame->innerFrames->push_back(frame2);
+	frame1->outerFrame = frame;
+	frame2->outerFrame = frame;
 	// set width & height
 	frame->size.width = frame1->size.width + frame2->size.width;
 	frame->size.height = frame1->size.height;
@@ -130,6 +134,7 @@ void AddToFrameHorizontal(LayoutFrame* frame, LayoutFrame* addedFrame)
 	ResizeToHeight(addedFrame, frame->size.height);
 	MoveLayout(addedFrame, frame->size.width, 0);
 	frame->innerFrames->push_back(addedFrame);
+	addedFrame->outerFrame = frame;
 	frame->size.width += addedFrame->size.width;
 }
 
@@ -138,5 +143,39 @@ void AddToFrameVertical(LayoutFrame* frame, LayoutFrame* addedFrame)
 	ResizeToWidth(addedFrame, frame->size.width);
 	MoveLayout(addedFrame, 0, frame->size.height);
 	frame->innerFrames->push_back(addedFrame);
+	addedFrame->outerFrame = frame;
 	frame->size.height += addedFrame->size.height;
+}
+
+CvPoint GetLayoutCanvasPosition(LayoutFrame* frame)
+{
+	if(frame->outerFrame != 0)
+	{
+		CvPoint point = GetLayoutCanvasPosition(frame->outerFrame);
+		return cvPoint(point.x + frame->position.x, point.y + frame->position.y);
+	}
+	else
+	{
+		return cvPoint(frame->position.x, frame->position.y);
+	}
+}
+
+void DrawImage(LayoutFrame* frame, IplImage* image, IplImage* canvas)
+{
+	IplImage* resize_image = cvCreateImage(cvSize((int)frame->size.width, (int)frame->size.height), image->depth, image->nChannels);
+	cvResize(image, resize_image);
+	DrawImage(resize_image, canvas, GetLayoutCanvasPosition(frame));
+}
+
+// draw an image to canvas
+void DrawImage(IplImage* image, IplImage* canvas, CvPoint position)
+{
+	int width = image->width;
+	int height = image->height;
+	for(int i = 0; i < width; i++)
+		for(int j = 0; j < height; j++)
+		{
+			CvScalar value = cvGet2D(image, j, i);
+			cvSet2D(canvas, j + position.y, i + position.x, value);
+		}
 }
