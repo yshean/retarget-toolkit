@@ -16,7 +16,8 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	////TestLoadSaveSequence();
 	_chdir("Clips/PinBallJPEG");	
-	//// TestTangVideoCollage("PinBall.seq", "PinBall.shot");
+	// TestTangVideoCollage("PinBall.seq", "PinBall.shot");
+	TestTangVideoCollageLayout("collageFrame.seq", "PinBall.shot");
 	//
 	//vector<CvSize*>* sizeSequence = new vector<CvSize*>();	
 	//for(int i = 0; i < 20; i++)
@@ -29,8 +30,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	//CollagePastingAlgo* algo = new CollagePastingAlgo();
 	//algo->GetCollageArrangement(sizeSequence);
 
-	TestCollageLayout();
-
+	//TestCollageLayout();
+	//TestTangeCollage();
 	
 	//TestTangSaveSelectedFrame("PinBall.seq", "PinBall.shot", "SelectedFrame.seq");
 	return 0;

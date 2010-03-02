@@ -17,6 +17,7 @@ public:
 	// create a rectangle layout - assuming that all frames are listed horizontally
 	LayoutFrame* CreateRectLayout(vector<LayoutFrame*>* layoutList, CvRect size);
  
+
 public:
 	// get average size of the layout in list
 	double GetAverageSize(vector<LayoutFrame*>* layoutList);

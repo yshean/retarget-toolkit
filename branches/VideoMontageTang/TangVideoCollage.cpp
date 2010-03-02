@@ -209,13 +209,68 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
  	return solution;
 }
  
+IplImage* TangVideoCollage::GetFinalCollage(ShotInfo* shotInfo, VideoSequence* selectedFrames)
+{ 
+	int size = selectedFrames->frameList->size();
+	ImageImportance* importance = new SobelImageImportance();
+	vector<double>* saliencyList = new vector<double>();
+	vector<LayoutFrame*>* layoutList = new vector<LayoutFrame*>();
+	double total_saliency = 0;
+	
+	// get sequence image information
+	IplImage* first_image = LoadFrame(selectedFrames, 0);
+	int depth = first_image->depth;
+	int nChannels = first_image->nChannels;
+
+	// process each frame
+	for(int i = 0; i < size; i++)
+	{
+		IplImage* frame = LoadFrame(selectedFrames, i);
+		double saliency = importance->GetImageImportance(frame);
+		layoutList->push_back(CreateLayoutFrame(0, 0, frame->width, frame->height));
+		saliencyList->push_back(saliency);
+		total_saliency += saliency;
+	}
+	// resize each frame layout
+	for(int i = 0; i < size; i++)
+	{
+		ResizeLayout((*layoutList)[i], 10 * (*saliencyList)[i] / total_saliency, false);
+	}
+	// get collage
+	CollageLayout* collageLayout = new CollageLayout();
+	LayoutFrame* rectLayout = collageLayout->CreateRectLayout(layoutList, cvRect(0, 0, 1000, 200));
+	
+	IplImage* canvas = cvCreateImage(cvSize(rectLayout->size.width, rectLayout->size.height), depth, nChannels);
+	// draw image
+	for(int i = 0; i < size; i++)
+	{
+		DrawImage((*layoutList)[i], LoadFrame(selectedFrames, i), canvas);
+	}	
+	return canvas;
+}
 
 
 
 
 
 
+void TestTangVideoCollageLayout(char* sequencename, char* shotname)
+{
+	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
+	ShotInfo* shotInfo = LoadShotFromFile(shotname);
+	ImageImportance* imageImportance = new SobelImageImportance();
+	ImageQuality* imageQuality = new SobelImageQuality();
+	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
+	IplImage* collage_image = collage->GetFinalCollage(shotInfo, sequence);
 
+ 
+	cvNamedWindow("test");
+	while(1)
+	{
+		cvShowImage("test", collage_image);
+		cvWaitKey(100);
+	}
+}
 
 void TestTangVideoCollage(char* sequencename, char* shotname)
 {
@@ -224,8 +279,10 @@ void TestTangVideoCollage(char* sequencename, char* shotname)
 	ImageImportance* imageImportance = new SobelImageImportance();
 	ImageQuality* imageQuality = new SobelImageQuality();
 
-	VideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
-	collage->GetCollage();	
+	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
+	VideoSequence* result = collage->GetSolution2(shotInfo);
+	SaveVideoSequenceToFile(result, "collageFrame.seq");
+	
 } 
 
 

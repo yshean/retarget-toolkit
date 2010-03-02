@@ -21,6 +21,7 @@ struct LayoutFrame
 	dPoint position; 
 	dSize size;
 	vector<LayoutFrame*>* innerFrames;
+	LayoutFrame* outerFrame;
 };
 
 LayoutFrame* CreateLayoutFrame(int x, int y, int width, int height);
@@ -54,7 +55,16 @@ LayoutFrame* Align2FramesHorizontal(LayoutFrame* frame1, LayoutFrame* frame2);
 // get area = width * height
 double GetArea(LayoutFrame* frame);
 
+// get real layout position in canvas
+CvPoint GetLayoutCanvasPosition(LayoutFrame* frame);
+
 // **** DRAWING functions *************
 
 // draw frame and inner frames into image, x and y are outer frame position
 void DrawFrame(LayoutFrame* frame, IplImage* image, int x, int y);
+
+// draw an image to an layout to the canvas
+void DrawImage(LayoutFrame* frame, IplImage* image, IplImage* canvas);
+
+// draw an image to canvas
+void DrawImage(IplImage* image, IplImage* canvas, CvPoint position);
