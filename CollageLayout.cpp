@@ -13,12 +13,12 @@ LayoutFrame* CollageLayout::CreateLayoutCollage(std::vector<LayoutFrame*> *layou
 }
 
 
-LayoutFrame* CollageLayout::CreateRectLayout(vector<LayoutFrame*>* layoutList, CvRect size)
+void CollageLayout::CreateRectLayout(vector<LayoutFrame*>* layoutList, LayoutFrame* rectLayout)
 {
 	int length = layoutList->size();	
 	int current_width = 0;
 
-	LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, size.width, 0);
+	// LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, size.width, 0);
 	LayoutFrame* row = CreateLayoutFrame(0, 0, 0, 200);
 	
 	for(int i = 0; i < length; i++)
@@ -26,18 +26,17 @@ LayoutFrame* CollageLayout::CreateRectLayout(vector<LayoutFrame*>* layoutList, C
 		LayoutFrame* frame = (*layoutList)[i];
 		current_width += frame->size.width;
 		
-		if(current_width > size.width)
+		if(current_width > rectLayout->size.width)
 		{	
 			// exceed, create new row
 			current_width = frame->size.width;
-			ResizeToWidth(row, size.width);
+			ResizeToWidth(row, rectLayout->size.width);
 			AddToFrameVertical(rectLayout, row);
 			row = CreateLayoutFrame(0, 0, 0, 200);
 		}		
 		AddToFrameHorizontal(row, frame);
 	}
-	AddToFrameVertical(rectLayout, row);
-	return rectLayout;
+	AddToFrameVertical(rectLayout, row); 
 }
 
 
@@ -114,8 +113,8 @@ void TestCollageLayout()
 	//{
 	//	frame = Align2FramesHorizontal(frame, (*combinedList)[i]);
 	//}
-	 
-	LayoutFrame* frame = collageLayout->CreateRectLayout(combinedList, cvRect(0, 0, 300, 500));
+	 LayoutFrame* frame = CreateLayoutFrame(0, 0, 300, 0);
+	collageLayout->CreateRectLayout(combinedList, frame);
 
 	IplImage* image = cvCreateImage(cvSize(frame->size.width + 2, frame->size.height + 2), IPL_DEPTH_8U, 3);	
 	cvFillImage(image, 0); 

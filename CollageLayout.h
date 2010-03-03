@@ -15,7 +15,8 @@ public:
 	LayoutFrame* CreateLayoutCollage(vector<LayoutFrame*>* layoutList);
 
 	// create a rectangle layout - assuming that all frames are listed horizontally
-	LayoutFrame* CreateRectLayout(vector<LayoutFrame*>* layoutList, CvRect size);
+	// set rectLayout.width for initial width
+	void CreateRectLayout(vector<LayoutFrame*>* layoutList, LayoutFrame* rectLayout);
  
 
 public:

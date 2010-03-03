@@ -160,8 +160,6 @@ VideoSequence* TangVideoCollage::GetSolution2(ShotInfo* shotInfo)
  	return solution;
 }
 
-
-
 VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 {
 	VCSolution* solution = new VCSolution();	
@@ -207,10 +205,10 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
 	}
 	solution->length = index;	
  	return solution;
-}
- 
-IplImage* TangVideoCollage::GetFinalCollage(ShotInfo* shotInfo, VideoSequence* selectedFrames)
-{ 
+} 
+
+vector<LayoutFrame*>* TangVideoCollage::GetRectCollageLayout(ShotInfo* shotInfo, VideoSequence* selectedFrames, LayoutFrame* rectLayout)
+{	
 	int size = selectedFrames->frameList->size();
 	ImageImportance* importance = new SobelImageImportance();
 	vector<double>* saliencyList = new vector<double>();
@@ -218,9 +216,9 @@ IplImage* TangVideoCollage::GetFinalCollage(ShotInfo* shotInfo, VideoSequence* s
 	double total_saliency = 0;
 	
 	// get sequence image information
-	IplImage* first_image = LoadFrame(selectedFrames, 0);
-	int depth = first_image->depth;
-	int nChannels = first_image->nChannels;
+	//IplImage* first_image = LoadFrame(selectedFrames, 0);
+	//int depth = first_image->depth;
+	//int nChannels = first_image->nChannels;
 
 	// process each frame
 	for(int i = 0; i < size; i++)
@@ -237,9 +235,46 @@ IplImage* TangVideoCollage::GetFinalCollage(ShotInfo* shotInfo, VideoSequence* s
 		ResizeLayout((*layoutList)[i], 10 * (*saliencyList)[i] / total_saliency, false);
 	}
 	// get collage
-	CollageLayout* collageLayout = new CollageLayout();
-	LayoutFrame* rectLayout = collageLayout->CreateRectLayout(layoutList, cvRect(0, 0, 1000, 200));
-	
+	CollageLayout* collageLayout = new CollageLayout();	
+	collageLayout->CreateRectLayout(layoutList, rectLayout);
+	 
+	return layoutList; 
+}
+
+IplImage* TangVideoCollage::GetFinalCollage(vector<LayoutFrame*>* layoutList, LayoutFrame* rectLayout, VideoSequence* selectedFrames)
+{ 
+	int size = selectedFrames->frameList->size();
+	//ImageImportance* importance = new SobelImageImportance();
+	//vector<double>* saliencyList = new vector<double>();
+	//vector<LayoutFrame*>* layoutList = new vector<LayoutFrame*>();
+	//double total_saliency = 0;
+	//
+	// get sequence image information
+	IplImage* first_image = LoadFrame(selectedFrames, 0);
+	int depth = first_image->depth;
+	int nChannels = first_image->nChannels;
+
+	//// process each frame
+	//for(int i = 0; i < size; i++)
+	//{
+	//	IplImage* frame = LoadFrame(selectedFrames, i);
+	//	double saliency = importance->GetImageImportance(frame);
+	//	layoutList->push_back(CreateLayoutFrame(0, 0, frame->width, frame->height));
+	//	saliencyList->push_back(saliency);
+	//	total_saliency += saliency;
+	//}
+	//// resize each frame layout
+	//for(int i = 0; i < size; i++)
+	//{
+	//	ResizeLayout((*layoutList)[i], 10 * (*saliencyList)[i] / total_saliency, false);
+	//}
+	//// get collage
+	//CollageLayout* collageLayout = new CollageLayout();
+	//LayoutFrame* rectLayout = collageLayout->CreateRectLayout(layoutList, cvRect(0, 0, 1000, 200));
+	////
+	//LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, 1000, 0);
+	//vector<LayoutFrame*>* layoutList = GetRectCollageLayout(shotInfo, selectedFrames, rectLayout);
+	// 
 	IplImage* canvas = cvCreateImage(cvSize(rectLayout->size.width, rectLayout->size.height), depth, nChannels);
 	// draw image
 	for(int i = 0; i < size; i++)
@@ -249,9 +284,54 @@ IplImage* TangVideoCollage::GetFinalCollage(ShotInfo* shotInfo, VideoSequence* s
 	return canvas;
 }
 
+//SubShot* TangVideoCollage::GetClickedSubShot(int x, int y, vector<LayoutFrame*>* layoutList)
+//{
+//	int clickedLayoutIndex = GetClickedLayout(x, y, layoutList);
+//	
+//}
 
 
 
+
+ 
+//void TangVideoCollage::UpdateCollage(
+//		VideoSequence* sequence,
+//		ShotInfo* shotInfo, 
+//		vector<LayoutFrame*>* layoutList, 
+//		SubShot* subShot, int selectedLayout,
+//		IplImage* collage,
+//		int* currentFrameIndex)
+//{
+//	
+//	if(*currentFrameIndex < subShot->end)
+//	{
+//		(*currentFrameIndex)++;
+//		DrawImage((*layoutList)[selectedLayout], LoadFrame(sequence, *currentFrameIndex), collage);
+//	}
+//	
+//	
+//}
+
+
+void collageClicked(int event_type, int x, int y, int flags, void* param)
+  {
+    switch(event_type){ 
+      case CV_EVENT_LBUTTONUP:
+        printf("Left button up\n");
+        break;
+	}
+  
+}
+void TestPlayableCollageLayout(char* sequencename, char* shotname, char* selectedFrameName)
+{
+	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
+	VideoSequence* selectedFrames = LoadSequenceFromFile(selectedFrameName);
+	ShotInfo* shotInfo = LoadShotFromFile(shotname);
+
+	int mouseParam;
+	cvNamedWindow("Collage");
+	cvSetMouseCallback("Collage", collageClicked,&mouseParam);
+}
 
 
 void TestTangVideoCollageLayout(char* sequencename, char* shotname)
@@ -261,7 +341,11 @@ void TestTangVideoCollageLayout(char* sequencename, char* shotname)
 	ImageImportance* imageImportance = new SobelImageImportance();
 	ImageQuality* imageQuality = new SobelImageQuality();
 	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);
-	IplImage* collage_image = collage->GetFinalCollage(shotInfo, sequence);
+	
+	
+	LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, 1000, 0);
+	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(shotInfo, sequence, rectLayout);
+	IplImage* collage_image = collage->GetFinalCollage(layoutList, rectLayout, sequence);
 
  
 	cvNamedWindow("test");
