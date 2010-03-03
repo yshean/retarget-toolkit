@@ -17,7 +17,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	////TestLoadSaveSequence();
 	_chdir("Clips/PinBallJPEG");	
 	// TestTangVideoCollage("PinBall.seq", "PinBall.shot");
-	TestTangVideoCollageLayout("collageFrame.seq", "PinBall.shot");
+	// changed 3Mar10: TestTangVideoCollageLayout("collageFrame.seq", "PinBall.shot");
+	TestPlayableCollageLayout("PinBall.seq", "PinBall.shot", "collageFrame.seq");
+	
 	//
 	//vector<CvSize*>* sizeSequence = new vector<CvSize*>();	
 	//for(int i = 0; i < 20; i++)

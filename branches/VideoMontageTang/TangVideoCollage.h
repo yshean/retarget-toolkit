@@ -8,6 +8,7 @@
 #include "SobelImageQuality.h"
 #include "Collage.h"
 #include "CollageLayout.h"
+#include "AnimatedCollage.h"
 /************************ Tang Wang Video Collage Paper ***************************/
 
 /******************************** VCSolution **************************************/
@@ -106,13 +107,17 @@ public:
 	
 	 
 };
+	
 	// test tang video collage
 	// @param: filename of shotinfo & filename of sequence
 	void TestTangVideoCollage(char* sequencename, char* shotname);
- 
-	// test tang video collage - process the list and then save selected frame to disk
-	// @param: file name of shotinf & filename of sequence
-	// void TestTangSaveSelectedFrame(char* sequencename, char* shotname, char* filename);
-
+ 	
 	// load selected frames and shotinfo
 	void TestTangVideoCollageLayout(char* sequencename, char* shotname);
+	
+	// mouse event handle used by TestPlayableCollageLayout
+	void collageClicked(int event_type, int x, int y, int flags, void* param);
+
+	// playable collage
+	void TestPlayableCollageLayout(char* sequencename, char* shotname, char* selectedFrameName);
+

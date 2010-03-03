@@ -313,24 +313,53 @@ IplImage* TangVideoCollage::GetFinalCollage(vector<LayoutFrame*>* layoutList, La
 //}
 
 
-void collageClicked(int event_type, int x, int y, int flags, void* param)
-  {
-    switch(event_type){ 
-      case CV_EVENT_LBUTTONUP:
-        printf("Left button up\n");
-        break;
-	}
-  
-}
 void TestPlayableCollageLayout(char* sequencename, char* shotname, char* selectedFrameName)
 {
+	// loading data
 	VideoSequence* sequence = LoadSequenceFromFile(sequencename);
 	VideoSequence* selectedFrames = LoadSequenceFromFile(selectedFrameName);
-	ShotInfo* shotInfo = LoadShotFromFile(shotname);
+	ShotInfo* shotInfo = LoadShotFromFile(shotname);	
 
-	int mouseParam;
+	// get collage part
+	ImageImportance* imageImportance = new SobelImageImportance();
+	ImageQuality* imageQuality = new SobelImageQuality();
+	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);	
+	
+	LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, 1000, 0);
+	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(shotInfo, selectedFrames, rectLayout);
+	IplImage* collage_image = collage->GetFinalCollage(layoutList, rectLayout, selectedFrames);
+
+	// setup window and mouse event
+	int* mouseParam = new int();
+	*mouseParam = -1;
+	*(mouseParam + 1) = -1;
+
 	cvNamedWindow("Collage");
-	cvSetMouseCallback("Collage", collageClicked,&mouseParam);
+	cvSetMouseCallback("Collage", collageClicked, mouseParam);	
+	
+	AnimatedCollage* animation = new AnimatedCollage(shotInfo, sequence, 
+		selectedFrames, layoutList);
+	while(1)
+	{
+		animation->UpdateCollage(collage_image, *mouseParam, *(mouseParam + 1) );		
+		cvShowImage("Collage", collage_image);
+		cvWaitKey(100);
+	}
+
+}
+
+void collageClicked(int event_type, int x, int y, int flags, void* param)
+  {
+	  printf("mouse");
+    switch(event_type){ 
+      case CV_EVENT_LBUTTONUP:   
+		  printf("mouse");
+	    // update mouse position
+		int* position = (int*)param;
+		*position = x;
+		*(position + 1) = y;
+        break;
+	} 
 }
 
 
@@ -369,7 +398,7 @@ void TestTangVideoCollage(char* sequencename, char* shotname)
 	
 } 
 
-
+ 
 
 
 

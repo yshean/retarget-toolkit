@@ -2,12 +2,13 @@
 #include "AnimatedCollage.h"
 
 AnimatedCollage::AnimatedCollage(ShotInfo* shotInfo, VideoSequence* sequence, 
-		VideoSequence* selectedFrame, vector<LayoutFrame*>* layoutList)
+		VideoSequence* selectedFrames, vector<LayoutFrame*>* layoutList)
 {
 	_shotInfo = shotInfo;
 	_sequence = sequence;
-	_selectedFrame = selectedFrame;
+	_selectedFrames = selectedFrames;
 	_layoutList = layoutList;
+	_isAnimated = false;
 }
 
 AnimatedCollage::~AnimatedCollage(void)
@@ -27,6 +28,7 @@ int AnimatedCollage::GetClickedLayoutIndex(int x, int y)
 			return i;
 		}
 	}
+	return -1;
 }
 
 SubShot* AnimatedCollage::GetChosenSubShot(int selectedFrame)
@@ -40,7 +42,7 @@ SubShot* AnimatedCollage::GetChosenSubShot(int selectedFrame)
 			SubShot* subShotList = current_shot.subShotList;
 			SubShot current_subshot = subShotList[j];
 			if(current_subshot.start <= selectedFrame && current_subshot.end >= selectedFrame)
-				return &current_subshot;
+				return &subShotList[j];
 		}		
 	}
 }
@@ -59,11 +61,65 @@ int AnimatedCollage::GetFrameIndex(char* filename)
 	return -1;
 }
 
-SubShot* AnimatedCollage::GetClickedSubShot(int x, int y)
-{
-	int layoutIndex = GetClickedLayoutIndex(x, y);
-	char* filename = (*(_selectedFrame->frameList))[layoutIndex];
+SubShot* AnimatedCollage::GetClickedSubShot(int layoutIndex)
+{	 
+	char* filename = (*(_selectedFrames->frameList))[layoutIndex];
 	int frameIndex = GetFrameIndex(filename);
 	SubShot* chosenSubShot = GetChosenSubShot(frameIndex);
 	return chosenSubShot;
 }
+
+void AnimatedCollage::DrawNextFrame(IplImage* collage)
+{
+	// update currentFrame
+	if(_currentFrame < _subShot->end)
+		_currentFrame++;
+	else
+		_currentFrame = _subShot->start;
+	
+	DrawImage(_currentLayoutFrame, LoadFrame(_sequence, _currentFrame), collage);
+}
+
+void AnimatedCollage::UpdateCollage(IplImage* collage, int x, int y)
+{
+	if(x != _current_x || y != _current_y)
+	{
+		// update mouse position
+		_current_x = x;
+		_current_y = y;
+		// mouse changed
+		int layoutIndex = GetClickedLayoutIndex(x, y);
+		if(layoutIndex == -1)
+		{
+			_isAnimated = false;
+		}
+		else
+		{
+			if(layoutIndex != _layoutIndex)
+			{
+				printf("Layout Updating");
+				// update layoutIndex
+				_layoutIndex = layoutIndex;
+				// update new subshot
+				_subShot = GetClickedSubShot(layoutIndex);			 
+				// reset currentFrame
+				_currentFrame = _subShot->start;
+				// update currentLayoutFrame
+				_currentLayoutFrame = (*_layoutList)[layoutIndex];
+				// turn on animation
+				_isAnimated = true;
+			}
+			else
+			{
+				// same layout is clicked, stop animation
+				_isAnimated = !_isAnimated;
+			}
+		}
+	}
+	if(_isAnimated)
+	{
+		// draw next frame to collage
+		DrawNextFrame(collage);
+	}
+}
+
