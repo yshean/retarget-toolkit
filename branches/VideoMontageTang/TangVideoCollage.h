@@ -91,11 +91,20 @@ protected:
 
 	// select the keyframe of the pan / tilt SubShot
 	virtual void KeyFrameSelection2(SubShot* subShot, int* key);
-
+	
+		
 
 public:
-	IplImage* GetFinalCollage(ShotInfo* shotInfo, VideoSequence* selectedFrames);
+	// Get collage layout
+	vector<LayoutFrame*>* GetRectCollageLayout(ShotInfo* shotInfo, VideoSequence* selectedFrames, LayoutFrame* rectLayout);
+	// Get final collage picture
+	IplImage* GetFinalCollage(vector<LayoutFrame*>* layoutList, LayoutFrame* rectLayout, VideoSequence* selectedFrames);
+	
+	// Get final collage
+	// IplImage* GetFinalCollage(ShotInfo* shotInfo, VideoSequence* selectedFrames);	
  
+	
+	 
 };
 	// test tang video collage
 	// @param: filename of shotinfo & filename of sequence
