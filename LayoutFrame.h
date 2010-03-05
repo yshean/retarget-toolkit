@@ -46,6 +46,19 @@ void ResizeToWidth(LayoutFrame* frame, int width);
 // resize to a specific height (inner frames are also resized)
 void ResizeToHeight(LayoutFrame* frame, int height);
 
+// general method to put frame inside outerFrame,
+// position & size of frame will determine whether outerFrame 
+// should be resized. Overlap inside frames is allowed.
+void PutLayoutInside(LayoutFrame* outerFrame, LayoutFrame* frame);
+
+// place frame2 next to frame1 frame1.x + frame1.width = frame2.x && frame2.y = frame1.y
+// NOTE no resize is done
+void PlaceNextTo(LayoutFrame* frame1, LayoutFrame* frame2);
+
+// place frame2 below frame1, frame1.y + frame1.height = frame.y && frame2.x = frame1.x
+// NOTE no resize is done
+void PlaceBelow(LayoutFrame* frame1, LayoutFrame* frame2);
+
 // stack 2 frames above each other into one
 LayoutFrame* Align2FramesVertical(LayoutFrame* frame1, LayoutFrame* frame2);
 
