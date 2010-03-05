@@ -207,7 +207,7 @@ VCSolution* TangVideoCollage::GetSolution(ShotInfo* shotInfo)
  	return solution;
 } 
 
-vector<LayoutFrame*>* TangVideoCollage::GetRectCollageLayout(ShotInfo* shotInfo, VideoSequence* selectedFrames, LayoutFrame* rectLayout)
+vector<LayoutFrame*>* TangVideoCollage::GetRectCollageLayout(LayoutArrangement* arranger, ShotInfo* shotInfo, VideoSequence* selectedFrames, LayoutFrame* rectLayout)
 {	
 	int size = selectedFrames->frameList->size();
 	ImageImportance* importance = new SobelImageImportance();
@@ -234,9 +234,11 @@ vector<LayoutFrame*>* TangVideoCollage::GetRectCollageLayout(ShotInfo* shotInfo,
 	{
 		ResizeLayout((*layoutList)[i], 10 * (*saliencyList)[i] / total_saliency, false);
 	}
+
 	// get collage
-	CollageLayout* collageLayout = new CollageLayout();	
-	collageLayout->CreateRectLayout(layoutList, rectLayout);
+	//CollageLayout* collageLayout = new CollageLayout(arranger);	
+	//collageLayout->CreateRectLayout(layoutList, rectLayout);
+	arranger->CreateRectLayout(layoutList, rectLayout);
 	 
 	return layoutList; 
 }
@@ -326,7 +328,8 @@ void TestPlayableCollageLayout(char* sequencename, char* shotname, char* selecte
 	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);	
 	
 	LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, 1000, 0);
-	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(shotInfo, selectedFrames, rectLayout);
+	LayoutArrangement* arranger = new LayoutResizeArrangement();
+	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(arranger, shotInfo, selectedFrames, rectLayout);
 	IplImage* collage_image = collage->GetFinalCollage(layoutList, rectLayout, selectedFrames);
 
 	// setup window and mouse event
@@ -373,7 +376,8 @@ void TestTangVideoCollageLayout(char* sequencename, char* shotname)
 	
 	
 	LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, 1000, 0);
-	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(shotInfo, sequence, rectLayout);
+	LayoutArrangement* arranger = new LayoutResizeArrangement();
+	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(arranger, shotInfo, sequence, rectLayout);
 	IplImage* collage_image = collage->GetFinalCollage(layoutList, rectLayout, sequence);
 
  

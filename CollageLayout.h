@@ -4,12 +4,13 @@
 
 #include <cv.h>
 #include <highgui.h>
+#include "LayoutArrangement.h"
 
 // create collage layout from list of frame
 class CollageLayout
 {
 public:
-	CollageLayout(void);
+	CollageLayout(LayoutArrangement* arranger);
 
 	// create a collage of layout from list of layout
 	LayoutFrame* CreateLayoutCollage(vector<LayoutFrame*>* layoutList);
@@ -24,7 +25,8 @@ public:
 	double GetAverageSize(vector<LayoutFrame*>* layoutList);
 	// group layout with small size together
 	vector<LayoutFrame*>* GetCombinedLayoutList(vector<LayoutFrame*>* layoutList);
-
+protected:
+	LayoutArrangement* _arranger;
 };
 
 void TestCollageLayout();
