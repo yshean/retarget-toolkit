@@ -328,8 +328,22 @@ void TestPlayableCollageLayout(char* sequencename, char* shotname, char* selecte
 	TangVideoCollage* collage = new TangVideoCollage(imageQuality, imageImportance, sequence, shotInfo);	
 	
 	LayoutFrame* rectLayout = CreateLayoutFrame(0, 0, 1000, 0);
-	LayoutArrangement* arranger = new LayoutResizeArrangement();
+	
+	// LayoutArrangement* arranger = new LayoutResizeArrangement();
+	LayoutArrangement* arranger = new LayoutSequentialArrangement();
 	vector<LayoutFrame*>* layoutList = collage->GetRectCollageLayout(arranger, shotInfo, selectedFrames, rectLayout);
+	
+	// ** folowing code is to test whether the layout is correct by displaying only rectangle
+	//rectLayout->size.width += 100;	 
+	//cvNamedWindow("Test");
+	//IplImage* test_image = cvCreateImage(cvSize(rectLayout->size.width, rectLayout->size.height), IPL_DEPTH_8U, 3);
+	//DrawFrame(rectLayout, test_image, 0, 0);
+	//while(1)
+	//{
+	//	cvShowImage("Test", test_image);
+	//	cvWaitKey(100);
+	//}
+	
 	IplImage* collage_image = collage->GetFinalCollage(layoutList, rectLayout, selectedFrames);
 
 	// setup window and mouse event

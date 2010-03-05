@@ -179,3 +179,33 @@ void DrawImage(IplImage* image, IplImage* canvas, CvPoint position)
 			cvSet2D(canvas, j + position.y, i + position.x, value);
 		}
 }
+
+// place frame2 next to frame1  
+// NOTE no resize is done
+void PlaceNextTo(LayoutFrame* frame1, LayoutFrame* frame2)
+{
+	frame2->position.x = frame1->position.x + frame1->size.width;
+	frame2->position.y = frame1->position.y;
+}
+
+// place frame2 below frame1
+// NOTE no resize is done
+void PlaceBelow(LayoutFrame* frame1, LayoutFrame* frame2)
+{
+	frame2->position.y = frame1->position.y + frame1->size.height;
+	frame2->position.x = frame1->position.x;
+}
+
+void PutLayoutInside(LayoutFrame* outerFrame, LayoutFrame* frame)
+{
+	if(frame->position.x + frame->size.width > outerFrame->size.width)
+	{
+		outerFrame->size.width = frame->position.x + frame->size.width;
+	}
+	if(frame->position.y + frame->size.height > outerFrame->size.height)
+	{
+		outerFrame->size.height = frame->position.y + frame->size.height;
+	}
+	outerFrame->innerFrames->push_back(frame);
+	frame->outerFrame = outerFrame;
+}
