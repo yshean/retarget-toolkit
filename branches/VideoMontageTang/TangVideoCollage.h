@@ -97,7 +97,7 @@ protected:
 
 public:
 	// Get collage layout
-	vector<LayoutFrame*>* GetRectCollageLayout(ShotInfo* shotInfo, VideoSequence* selectedFrames, LayoutFrame* rectLayout);
+	vector<LayoutFrame*>* GetRectCollageLayout(LayoutArrangement* arranger, ShotInfo* shotInfo, VideoSequence* selectedFrames, LayoutFrame* rectLayout);
 	// Get final collage picture
 	IplImage* GetFinalCollage(vector<LayoutFrame*>* layoutList, LayoutFrame* rectLayout, VideoSequence* selectedFrames);
 	

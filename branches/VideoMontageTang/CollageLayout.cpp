@@ -1,8 +1,9 @@
 #include "StdAfx.h"
 #include "CollageLayout.h"
 
-CollageLayout::CollageLayout(void)
+CollageLayout::CollageLayout(LayoutArrangement* arranger)
 {
+	_arranger = arranger;
 }
 
 LayoutFrame* CollageLayout::CreateLayoutCollage(std::vector<LayoutFrame*> *layoutList)
@@ -102,8 +103,8 @@ void TestCollageLayout()
 		frameList->push_back(frame);
 	}
  
-
-	CollageLayout* collageLayout = new CollageLayout();
+	LayoutArrangement* arranger = new LayoutResizeArrangement();
+	CollageLayout* collageLayout = new CollageLayout(arranger);
 	vector<LayoutFrame*>* combinedList = collageLayout->GetCombinedLayoutList(frameList);
 
 	// put all frames into 1 big frame to see the test result
