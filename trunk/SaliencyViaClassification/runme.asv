@@ -1,0 +1,40 @@
+% perform classification to detect saliency
+
+
+% using adaptive K-mean
+
+image = imread('boat.jpg');
+
+% =============================
+% GROUP INFORMATION: 
+% group: each group(index, 1) will store number of elments in the group
+% 'index'
+% =============================
+% PATCH INFORMATION: patch_group
+% each patch_group(index, 1) will store number of group the patch 'index'
+% belong to
+
+patch_size = 4;
+overlap = 1;
+
+A = random_sampling(image, patch_size, overlap); % A is a list of patch col
+
+% classification 
+[group, patch_group] = adaptiveKmean(A, 10);
+
+% assign the saliency based on number of item in group
+d = size(group);
+group_saliency = 1 ./ group;
+
+% accumulate saliency to patch
+image_size = size(image);
+saliency = zeros(image_size(1), image_size(2));
+d2 = size(A);
+for i = 1:d2(2)
+    % get saliency of this patch
+    
+    
+    [x,y] = PatchPosition(i, patch_size, overlap, image_size);
+    % 
+    saliency(y:y+patch_size-1, x:x+patch_size-1) = 
+end
