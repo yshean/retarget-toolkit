@@ -58,9 +58,13 @@ namespace Eye_Tracker_Component_C_Sharp_NET
 
         // @Chau:
         private EyeTrackerDisplay eyeDisplay;
-        private Timer eyeDisplayTimer;
         private double ratio = 0.9;
         private int zoomX;
+        private DisplayVideoPlayer _player;
+        private bool _useImage;
+        private bool _isTracking;
+        private String _videoStatus = "Stop";
+
         private BackgroundWorker backgroundWorker1;
         private Button loadLensBtn;
         private OpenFileDialog openFileDialog1;
@@ -73,6 +77,9 @@ namespace Eye_Tracker_Component_C_Sharp_NET
         private BackgroundWorker backgroundWorker2;
         private RadioButton documentLensCheck;
         private RadioButton circleLensCheck;
+        private Button loadVideoBtn;
+        private Label videoStatusLbl;
+        private Timer videoStatusTimer;
         private int zoomY;
 
 
@@ -89,6 +96,7 @@ namespace Eye_Tracker_Component_C_Sharp_NET
 			//
             //eyeDisplay = new EyeTrackerDisplay();
             eyeDisplay = new EyeTrackerDisplay(20, 50, 10);
+            _player = new DisplayVideoPlayer(eyeDisplay);
             //eyeDisplay.PreProcessLensCircle(20, 30, 5);
             
             // ElasticPresentationFramework.LensCreator test;
@@ -136,6 +144,8 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.trackStopButton = new System.Windows.Forms.Button();
             this.trackStartButton = new System.Windows.Forms.Button();
+            this.loadImage = new System.Windows.Forms.Button();
+            this.loadVideoBtn = new System.Windows.Forms.Button();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
@@ -143,21 +153,21 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             this.useManualIp = new System.Windows.Forms.CheckBox();
             this.label6 = new System.Windows.Forms.Label();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.loadImage = new System.Windows.Forms.Button();
-            this.makeLensBtn = new System.Windows.Forms.Button();
-            this.eyeDisplayTimer = new System.Windows.Forms.Timer(this.components);
-            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
-            this.loadLensBtn = new System.Windows.Forms.Button();
-            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.heightTextBox = new System.Windows.Forms.MaskedTextBox();
-            this.radiusTextBox = new System.Windows.Forms.MaskedTextBox();
-            this.deviationTextBox = new System.Windows.Forms.MaskedTextBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
-            this.backgroundWorker2 = new System.ComponentModel.BackgroundWorker();
-            this.circleLensCheck = new System.Windows.Forms.RadioButton();
             this.documentLensCheck = new System.Windows.Forms.RadioButton();
+            this.circleLensCheck = new System.Windows.Forms.RadioButton();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
+            this.deviationTextBox = new System.Windows.Forms.MaskedTextBox();
+            this.radiusTextBox = new System.Windows.Forms.MaskedTextBox();
+            this.heightTextBox = new System.Windows.Forms.MaskedTextBox();
+            this.loadLensBtn = new System.Windows.Forms.Button();
+            this.makeLensBtn = new System.Windows.Forms.Button();
+            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.backgroundWorker2 = new System.ComponentModel.BackgroundWorker();
+            this.videoStatusLbl = new System.Windows.Forms.Label();
+            this.videoStatusTimer = new System.Windows.Forms.Timer(this.components);
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.axTetTrackStatus)).BeginInit();
             this.groupBox2.SuspendLayout();
@@ -302,6 +312,7 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             this.groupBox3.Controls.Add(this.trackStopButton);
             this.groupBox3.Controls.Add(this.trackStartButton);
             this.groupBox3.Controls.Add(this.loadImage);
+            this.groupBox3.Controls.Add(this.loadVideoBtn);
             this.groupBox3.Location = new System.Drawing.Point(188, 535);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(112, 145);
@@ -312,7 +323,7 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             // trackStopButton
             // 
             this.trackStopButton.Enabled = false;
-            this.trackStopButton.Location = new System.Drawing.Point(16, 64);
+            this.trackStopButton.Location = new System.Drawing.Point(16, 50);
             this.trackStopButton.Name = "trackStopButton";
             this.trackStopButton.Size = new System.Drawing.Size(75, 23);
             this.trackStopButton.TabIndex = 5;
@@ -328,6 +339,26 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             this.trackStartButton.TabIndex = 4;
             this.trackStartButton.Text = "St&art";
             this.trackStartButton.Click += new System.EventHandler(this.trackStartButton_Click);
+            // 
+            // loadImage
+            // 
+            this.loadImage.Location = new System.Drawing.Point(16, 76);
+            this.loadImage.Name = "loadImage";
+            this.loadImage.Size = new System.Drawing.Size(75, 23);
+            this.loadImage.TabIndex = 1;
+            this.loadImage.Text = "LoadImage";
+            this.loadImage.UseVisualStyleBackColor = true;
+            this.loadImage.Click += new System.EventHandler(this.loadImage_Click);
+            // 
+            // loadVideoBtn
+            // 
+            this.loadVideoBtn.Location = new System.Drawing.Point(16, 102);
+            this.loadVideoBtn.Name = "loadVideoBtn";
+            this.loadVideoBtn.Size = new System.Drawing.Size(75, 23);
+            this.loadVideoBtn.TabIndex = 6;
+            this.loadVideoBtn.Text = "Load Video";
+            this.loadVideoBtn.UseVisualStyleBackColor = true;
+            this.loadVideoBtn.Click += new System.EventHandler(this.loadVideoBtn_Click);
             // 
             // label3
             // 
@@ -348,7 +379,7 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             // 
             // label5
             // 
-            this.label5.Location = new System.Drawing.Point(20, 543);
+            this.label5.Location = new System.Drawing.Point(20, 433);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(152, 96);
             this.label5.TabIndex = 7;
@@ -404,100 +435,15 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Lens";
             // 
-            // loadImage
+            // documentLensCheck
             // 
-            this.loadImage.Location = new System.Drawing.Point(16, 102);
-            this.loadImage.Name = "loadImage";
-            this.loadImage.Size = new System.Drawing.Size(75, 23);
-            this.loadImage.TabIndex = 1;
-            this.loadImage.Text = "LoadImage";
-            this.loadImage.UseVisualStyleBackColor = true;
-            this.loadImage.Click += new System.EventHandler(this.loadImage_Click);
-            // 
-            // makeLensBtn
-            // 
-            this.makeLensBtn.Location = new System.Drawing.Point(6, 98);
-            this.makeLensBtn.Name = "makeLensBtn";
-            this.makeLensBtn.Size = new System.Drawing.Size(75, 23);
-            this.makeLensBtn.TabIndex = 0;
-            this.makeLensBtn.Text = "Make Lens";
-            this.makeLensBtn.UseVisualStyleBackColor = true;
-            this.makeLensBtn.Click += new System.EventHandler(this.makeLensBtn_Click);
-            // 
-            // eyeDisplayTimer
-            // 
-            this.eyeDisplayTimer.Tick += new System.EventHandler(this.eyeDisplayTimer_Tick);
-            // 
-            // backgroundWorker1
-            // 
-            this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker1_DoWork);
-            // 
-            // loadLensBtn
-            // 
-            this.loadLensBtn.Location = new System.Drawing.Point(87, 98);
-            this.loadLensBtn.Name = "loadLensBtn";
-            this.loadLensBtn.Size = new System.Drawing.Size(75, 23);
-            this.loadLensBtn.TabIndex = 2;
-            this.loadLensBtn.Text = "Load Lens";
-            this.loadLensBtn.UseVisualStyleBackColor = true;
-            this.loadLensBtn.Click += new System.EventHandler(this.loadLensBtn_Click);
-            // 
-            // openFileDialog1
-            // 
-            this.openFileDialog1.FileName = "openFileDialog1";
-            // 
-            // heightTextBox
-            // 
-            this.heightTextBox.Location = new System.Drawing.Point(83, 72);
-            this.heightTextBox.Name = "heightTextBox";
-            this.heightTextBox.Size = new System.Drawing.Size(100, 20);
-            this.heightTextBox.TabIndex = 6;
-            // 
-            // radiusTextBox
-            // 
-            this.radiusTextBox.Location = new System.Drawing.Point(83, 46);
-            this.radiusTextBox.Name = "radiusTextBox";
-            this.radiusTextBox.Size = new System.Drawing.Size(100, 20);
-            this.radiusTextBox.TabIndex = 5;
-            // 
-            // deviationTextBox
-            // 
-            this.deviationTextBox.Location = new System.Drawing.Point(83, 19);
-            this.deviationTextBox.Name = "deviationTextBox";
-            this.deviationTextBox.Size = new System.Drawing.Size(100, 20);
-            this.deviationTextBox.TabIndex = 4;
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(22, 19);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(55, 13);
-            this.label1.TabIndex = 6;
-            this.label1.Text = "Deviation:";
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(22, 46);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(43, 13);
-            this.label7.TabIndex = 7;
-            this.label7.Text = "Radius:";
-            // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(24, 72);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(41, 13);
-            this.label8.TabIndex = 8;
-            this.label8.Text = "Height:";
-            // 
-            // backgroundWorker2
-            // 
-            this.backgroundWorker2.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker2_DoWork);
-            this.backgroundWorker2.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker2_RunWorkerCompleted);
+            this.documentLensCheck.AutoSize = true;
+            this.documentLensCheck.Location = new System.Drawing.Point(190, 46);
+            this.documentLensCheck.Name = "documentLensCheck";
+            this.documentLensCheck.Size = new System.Drawing.Size(74, 17);
+            this.documentLensCheck.TabIndex = 10;
+            this.documentLensCheck.Text = "Document";
+            this.documentLensCheck.UseVisualStyleBackColor = true;
             // 
             // circleLensCheck
             // 
@@ -511,20 +457,106 @@ namespace Eye_Tracker_Component_C_Sharp_NET
             this.circleLensCheck.Text = "Circle";
             this.circleLensCheck.UseVisualStyleBackColor = true;
             // 
-            // documentLensCheck
+            // label8
             // 
-            this.documentLensCheck.AutoSize = true;
-            this.documentLensCheck.Location = new System.Drawing.Point(190, 46);
-            this.documentLensCheck.Name = "documentLensCheck";
-            this.documentLensCheck.Size = new System.Drawing.Size(74, 17);
-            this.documentLensCheck.TabIndex = 10;
-            this.documentLensCheck.Text = "Document";
-            this.documentLensCheck.UseVisualStyleBackColor = true;
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(24, 72);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(41, 13);
+            this.label8.TabIndex = 8;
+            this.label8.Text = "Height:";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(22, 46);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(43, 13);
+            this.label7.TabIndex = 7;
+            this.label7.Text = "Radius:";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(22, 19);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(55, 13);
+            this.label1.TabIndex = 6;
+            this.label1.Text = "Deviation:";
+            // 
+            // deviationTextBox
+            // 
+            this.deviationTextBox.Location = new System.Drawing.Point(83, 19);
+            this.deviationTextBox.Name = "deviationTextBox";
+            this.deviationTextBox.Size = new System.Drawing.Size(100, 20);
+            this.deviationTextBox.TabIndex = 4;
+            // 
+            // radiusTextBox
+            // 
+            this.radiusTextBox.Location = new System.Drawing.Point(83, 46);
+            this.radiusTextBox.Name = "radiusTextBox";
+            this.radiusTextBox.Size = new System.Drawing.Size(100, 20);
+            this.radiusTextBox.TabIndex = 5;
+            // 
+            // heightTextBox
+            // 
+            this.heightTextBox.Location = new System.Drawing.Point(83, 72);
+            this.heightTextBox.Name = "heightTextBox";
+            this.heightTextBox.Size = new System.Drawing.Size(100, 20);
+            this.heightTextBox.TabIndex = 6;
+            // 
+            // loadLensBtn
+            // 
+            this.loadLensBtn.Location = new System.Drawing.Point(87, 98);
+            this.loadLensBtn.Name = "loadLensBtn";
+            this.loadLensBtn.Size = new System.Drawing.Size(75, 23);
+            this.loadLensBtn.TabIndex = 2;
+            this.loadLensBtn.Text = "Load Lens";
+            this.loadLensBtn.UseVisualStyleBackColor = true;
+            this.loadLensBtn.Click += new System.EventHandler(this.loadLensBtn_Click);
+            // 
+            // makeLensBtn
+            // 
+            this.makeLensBtn.Location = new System.Drawing.Point(6, 98);
+            this.makeLensBtn.Name = "makeLensBtn";
+            this.makeLensBtn.Size = new System.Drawing.Size(75, 23);
+            this.makeLensBtn.TabIndex = 0;
+            this.makeLensBtn.Text = "Make Lens";
+            this.makeLensBtn.UseVisualStyleBackColor = true;
+            this.makeLensBtn.Click += new System.EventHandler(this.makeLensBtn_Click);
+            // 
+            // backgroundWorker1
+            // 
+            this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker1_DoWork);
+            // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.FileName = "openFileDialog1";
+            // 
+            // backgroundWorker2
+            // 
+            this.backgroundWorker2.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker2_DoWork);
+            this.backgroundWorker2.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker2_RunWorkerCompleted);
+            // 
+            // videoStatusLbl
+            // 
+            this.videoStatusLbl.AutoSize = true;
+            this.videoStatusLbl.Location = new System.Drawing.Point(185, 683);
+            this.videoStatusLbl.Name = "videoStatusLbl";
+            this.videoStatusLbl.Size = new System.Drawing.Size(29, 13);
+            this.videoStatusLbl.TabIndex = 8;
+            this.videoStatusLbl.Text = "Stop";
+            // 
+            // videoStatusTimer
+            // 
+            this.videoStatusTimer.Enabled = true;
+            this.videoStatusTimer.Tick += new System.EventHandler(this.videoStatusTimer_Tick);
             // 
             // MainForm
             // 
             this.AutoScaleBaseSize = new System.Drawing.Size(5, 13);
-            this.ClientSize = new System.Drawing.Size(611, 692);
+            this.ClientSize = new System.Drawing.Size(611, 699);
+            this.Controls.Add(this.videoStatusLbl);
             this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.useManualIp);
@@ -831,6 +863,7 @@ namespace Eye_Tracker_Component_C_Sharp_NET
 			
 				// Start tracking gaze data
 				tetClient.StartTracking();
+                _isTracking = true;
 			}
 			catch (Exception ex) 
 			{
@@ -842,7 +875,12 @@ namespace Eye_Tracker_Component_C_Sharp_NET
 		{
 			try 
 			{
-				if (tetClient.IsTracking) tetClient.StopTracking();
+                if (tetClient.IsTracking)
+                {
+                    tetClient.StopTracking();
+                    _isTracking = false;
+                }
+
 			}
 			catch (Exception ex) 
 			{
@@ -865,9 +903,7 @@ namespace Eye_Tracker_Component_C_Sharp_NET
 		private void tetClientEvents_OnTrackingStopped(int hr)
 		{
 			// Hide the square form when tracking stops
-            //gazeForm.Hide();
-            
-            eyeDisplayTimer.Enabled = false;
+            //gazeForm.Hide();          
 
 			if (hr != (int)TetHResults.ITF_S_OK) MessageBox.Show(string.Format("Error {0} occured while tracking.", hr), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}
@@ -975,24 +1011,32 @@ namespace Eye_Tracker_Component_C_Sharp_NET
 
         }
 
-        private void eyeDisplayTimer_Tick(object sender, EventArgs e)
-        {
-            eyeDisplay.Display(zoomX, zoomY);
-        }
+    
 
         private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
         {
             while (true)
             {
+                if (!_isTracking)
+                    break;
+                if (_useImage == false)
+                {
+                    _player.PlayNext();
+                    _videoStatus = "Playing Frame #" + _player.GetCurrentFrame();
+                }
                 eyeDisplay.Display(zoomX, zoomY);
             }
         }
 
         private void loadImage_Click(object sender, EventArgs e)
         {            
-            openFileDialog1.ShowDialog();
-            String filename = openFileDialog1.FileName;
-            eyeDisplay.LoadImageW(filename);
+            DialogResult result = openFileDialog1.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                String filename = openFileDialog1.FileName;
+                eyeDisplay.LoadImageW(filename);
+                _useImage = true;
+            }
         }
 
         private void makeLensBtn_Click(object sender, EventArgs e)
@@ -1027,6 +1071,23 @@ namespace Eye_Tracker_Component_C_Sharp_NET
         {
             this.Cursor = Cursors.Default;
         }
+
+        private void loadVideoBtn_Click(object sender, EventArgs e)
+        {
+            DialogResult result = openFileDialog1.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                String filename = openFileDialog1.FileName;
+                _player.LoadVideo(filename);
+                _useImage = false;
+            }
+        }
+
+        private void videoStatusTimer_Tick(object sender, EventArgs e)
+        {
+            videoStatusLbl.Text = _videoStatus;
+        }
+
 
 	}
 }
