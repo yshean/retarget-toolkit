@@ -1,0 +1,41 @@
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\bin\Debug\sample.exe
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\bin\Debug\sample.pdb
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\bin\Debug\Interop.TetComp.dll
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\bin\Debug\AxInterop.TetComp.dll
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\ResolveAssemblyReference.cache
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\Interop.TetComp.dll
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\AxInterop.TetComp.dll
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\EyetrackerComponentsNet.csproj.ResolveComReference.cache
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\Eye_Tracker_Component_C_Sharp_NET.GazeForm.resources
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\Eye_Tracker_Component_C_Sharp_NET.MainForm.resources
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\EyetrackerComponentsNet.csproj.GenerateResource.Cache
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\sample.exe
+C:\Program Files\Tobii\SDK\Samples\EyetrackerComponents.Net\obj\Debug\sample.pdb
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\sample.exe
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\sample.pdb
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\bin\Debug\sample.exe
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\bin\Debug\sample.pdb
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\bin\Debug\Interop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\bin\Debug\AxInterop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\ResolveAssemblyReference.cache
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\Interop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\AxInterop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\EyetrackerComponentsNet.csproj.ResolveComReference.cache
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\Eye_Tracker_Component_C_Sharp_NET.GazeForm.resources
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\Eye_Tracker_Component_C_Sharp_NET.MainForm.resources
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\EyetrackerComponents.Net\obj\Debug\EyetrackerComponentsNet.csproj.GenerateResource.Cache
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\sample.exe
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\sample.pdb
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\bin\Debug\sample.exe
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\bin\Debug\sample.pdb
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\bin\Debug\ElasticPresentationFramework.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\bin\Debug\ElasticPresentationFramework.pdb
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\bin\Debug\Interop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\bin\Debug\AxInterop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\ResolveAssemblyReference.cache
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\Interop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\AxInterop.TetComp.dll
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\EyetrackerComponentsNet.csproj.ResolveComReference.cache
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\Eye_Tracker_Component_C_Sharp_NET.GazeForm.resources
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\Eye_Tracker_Component_C_Sharp_NET.MainForm.resources
+C:\Documents and Settings\kidphys\My Documents\Visual Studio 2005\Projects\ZoomingTobii\obj\Debug\EyetrackerComponentsNet.csproj.GenerateResource.Cache

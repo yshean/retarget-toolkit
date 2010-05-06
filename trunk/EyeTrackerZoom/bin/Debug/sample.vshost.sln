@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB9-8B4A-11D0-8D11-00A0C91BC942}") = "sample.vshost.exe", "sample.vshost.exe", "{62EAAC16-5CF2-45D9-A5D0-FBDFD0CF3B40}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Default = Debug|Default
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{62EAAC16-5CF2-45D9-A5D0-FBDFD0CF3B40}.Debug|Default.ActiveCfg = Debug
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
