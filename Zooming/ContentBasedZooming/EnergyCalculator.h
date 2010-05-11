@@ -1,6 +1,7 @@
 #pragma once
 #include <cv.h>
 
+
 namespace Zooming
 {
 	public class EnergyCalculator
