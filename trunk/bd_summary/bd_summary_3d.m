@@ -123,6 +123,7 @@ while (scaling_factor*upsample_factor<1)
     
     diff = 100; old_diff = 0;
     while (diff>converge_thresh)
+        tic;
         old_target_patches = target_patches;        
         target_patches = extract_3d_patches(targets,patch_size,R);        
         
@@ -138,19 +139,24 @@ while (scaling_factor*upsample_factor<1)
             old_source_matches = source_matches;
             old_target_matches = target_matches;
         end
+        fprintf('Time spent: %f secs.\n',toc);
  
+        tic;
         if (~exist('old_source_matches') || ~exist('old_target_matches'))
             [source_matches,target_matches] = nn_match(source_patches,target_patches);
         else
             [source_matches,target_matches] = nn_match(source_patches,target_patches,old_source_matches,old_target_matches);
         end
+        fprintf('Time spent: %f secs.\n',toc);
         
+        tic;
         new_targets = cell(3,1);
         new_targets{1} = zeros(size(targets{1}));
         new_targets{2} = zeros(size(targets{2}));
         new_targets{3} = zeros(size(targets{3}));
         new_targets = bidirect_update_3d(new_targets,patch_size,complete_weight,cohere_weight,ones(size(source_patches.features,1),1),...
                                          source_patches,source_matches,target_patches,target_matches);
+        fprintf('Time spent: %f secs.\n',toc);
         
         old_diff = diff;
         diff = 0;
