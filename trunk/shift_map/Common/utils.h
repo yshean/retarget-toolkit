@@ -99,16 +99,26 @@ typedef struct {
 #define MAX_COST_VALUE 10000.0//10000.0
 #define PICTURE_FRAME_EXT "ppm"
 #define VIDEO_FRAME_EXT "ppm"
+#define COLOR_WEIGHT 1.0
+#define GRADIENT_WEIGHT 2.0
+#define SHIFT_QUANTIZATION 0.1
 
 double Gaussian(double x, double mean);
 double Intensity(pixelType p);
 double ColorContrast(Video *src, int x, int y, int t);
 double GradientContrast(gradient3D *gradient, int time,int x, int y, int t);
+pixelType Interpolate_2D(pixelType &p1, pixelType &p2, double weight);
+pixelType Interpolate_2D(Picture *src, double x, double y);
+double Color_Diff(pixelType &p1, pixelType &p2, double thresh=0.0);
+double Gradient_Diff_2D(gradient2D *gradient, int x1, int y1, int x2, int y2);
+double Gradient_Diff_3D(gradient3D *gradient, int x1, int y1, int t1, int x2, int y2, int t2);
 
 int Convolve_Pixel(Picture *src, int x, int y, int kernel[][3]);
+intensityType Convolve_Pixel_RGB(Picture *src, int y, int x, int kernel[][3]);
 Picture *DrawImage(Picture *I1, Picture *I2, Matrix *M, bool UseMultiresolutionSpline);
 Matrix *Register(Picture *I1, Picture *I2, pointType InitialPoints[2][4]);
 
+Picture *Sharpening(Picture *src);
 Picture *Reduce(Picture *src);
 Picture *Expand(Picture *src);
 Picture *Laplacian(Picture *g1, Picture *g0);
@@ -135,6 +145,7 @@ Matrix *FrameDifference(Picture *left, Picture *right, double &total_dt, double 
 
 gradient2D *Gradient(Picture *src);
 gradient3D *Gradient_3D(Video *src, double threshold=0.0);
+gradient3D *Gradient_3D(PictureList *src, double threshold=0.0);
 gradient2D *Naturality_2D(Picture *src, double threshold=0.0);
 gradient2D *Diff_2D(Picture *src, double threshold=0.0);
 gradient3D *Naturality_3D(PictureList *src, double threshold=0.0);

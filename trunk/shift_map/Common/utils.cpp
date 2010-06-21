@@ -70,6 +70,44 @@ int Convolve_Pixel(Picture *src, int y, int x, int kernel[][3])
 	return conv;
 }
 
+/* Returns the convolution value of the pixel Source(x,y)
+ * with the given kernel
+ */
+intensityType Convolve_Pixel_RGB(Picture *src, int y, int x, int kernel[][3])
+{
+	intensityType conv;
+	int width = src->GetWidth();
+	int height = src->GetHeight();
+
+	//these loops are a bit complicted since I need to access pixels all around the called pixel
+	conv.r = 0;
+	conv.g = 0;
+	conv.b = 0;
+	for(int xx = 0; xx < 3; xx++)
+	{
+		for(int yy = 0; yy < 3; yy++)
+		{
+			if (x+xx-1>=0 && x+xx-1<width 
+				&& y+yy-1>=0 && y+yy-1<height)
+			{
+				conv.r += src->GetPixelIntensity(x + xx - 1, y + yy - 1).r * kernel[xx][yy];
+				conv.g += src->GetPixelIntensity(x + xx - 1, y + yy - 1).g * kernel[xx][yy];
+				conv.b += src->GetPixelIntensity(x + xx - 1, y + yy - 1).b * kernel[xx][yy];
+			} else
+			{
+				int bound_x = min(max(x+xx-1,0),width-1);
+				int bound_y = min(max(y+yy-1,0),height-1);
+				intensityType tmp = src->GetPixelIntensity(bound_x, bound_y);
+				conv.r += tmp.r * kernel[xx][yy];
+				conv.g += tmp.g * kernel[xx][yy];
+				conv.b += tmp.b * kernel[xx][yy];
+			}
+		}
+	}
+
+	return conv;
+}
+
 /* Calculate the gradient magnitude of the source image
  * using Prewitt Method
  */
@@ -187,11 +225,178 @@ gradient3D *Gradient_3D(Video *src, double threshold)
 /* Calculate the spatial temporal gradient magnitude of 
  * the source image using Prewitt Method
  */
+gradient3D *Gradient_3D(PictureList *src, double threshold)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Matrix *dx = new Matrix[src->GetLength()];
+	Matrix *dy = new Matrix[src->GetLength()];
+	Matrix *dt = new Matrix[src->GetLength()];
+	double *total_dx = new double[src->GetLength()];
+	double *total_dy = new double[src->GetLength()];
+	double *total_dt = new double[src->GetLength()];
+
+	gradient2D *frame_gradient = NULL;
+	for (int t=0; t<src->GetLength(); t++)
+	{
+		//results[t] = *(new Matrix(0,0));
+		// results[t] = *(Gradient(src->GetFrame(t)));
+		if (frame_gradient)
+			delete frame_gradient;
+
+		frame_gradient = Gradient(src->GetPicture(t));
+		dx[t] = *(frame_gradient->dx);
+		dy[t] = *(frame_gradient->dy);
+		total_dx[t] = frame_gradient->total_dx;
+		total_dy[t] = frame_gradient->total_dy;
+		
+		double tdt = 0.0;
+		if (t>0 && t<(src->GetLength()-1))
+		{			
+			//results[t] += *(FrameDifference(src->GetFrame(t-1),src->GetFrame(t+1)));
+			dt[t] = *(FrameDifference(src->GetPicture(t-1),src->GetPicture(t+1),tdt,threshold));
+			total_dt[t] = tdt;
+		}
+		else
+		{
+			int lower_t = max(t-1,0);
+			int upper_t = min(t+1,src->GetLength()-1);
+			//results[t] += *(FrameDifference(src->GetFrame(lower_t),src->GetFrame(upper_t)));
+			dt[t] = *(FrameDifference(src->GetPicture(lower_t),src->GetPicture(upper_t),tdt,threshold));
+			total_dt[t] = tdt;
+		}
+	}
+
+	gradient3D *results = new gradient3D;
+	results->dx = dx;
+	results->dy = dy;
+	results->dt = dt;
+	results->total_dx = total_dx;
+	results->total_dy = total_dy;
+	results->total_dt = total_dt;
+
+	return results;
+}
+
+pixelType Interpolate_2D(pixelType &p1, pixelType &p2, double weight)
+{
+	pixelType result;
+	result.r = weight*p1.r+(1-weight)*p2.r;
+	result.g = weight*p1.g+(1-weight)*p2.g;
+	result.b = weight*p1.b+(1-weight)*p2.b;
+
+	return result;
+
+}
+pixelType Interpolate_2D(Picture *src, double x, double y)
+{
+	double sLWeight, sRWeight;
+	if (floor(x) != ceil(x))
+	{
+		sLWeight = 1.0-x+floor(x);
+		sRWeight = 1.0-ceil(x)+x;
+	}
+	else
+	{
+		sLWeight = 1.0;
+		sRWeight = 0.0;
+	}
+
+	double sTWeight, sBWeight;
+	if (floor(y) != ceil(y))
+	{
+		sTWeight = 1.0-y+floor(y);
+		sBWeight = 1.0-ceil(y)+y;
+	}
+	else
+	{
+		sTWeight = 1.0;
+		sBWeight = 0.0;
+	}
+
+	pixelType p1;
+	p1.r = sLWeight*(src->GetPixel(floor(x),floor(y)).r)+
+		   sRWeight*(src->GetPixel(ceil(x),floor(y)).r);
+	p1.g = sLWeight*(src->GetPixel(floor(x),floor(y)).g)+
+		   sRWeight*(src->GetPixel(ceil(x),floor(y)).g);
+	p1.b = sLWeight*(src->GetPixel(floor(x),floor(y)).b)+
+		   sRWeight*(src->GetPixel(ceil(x),floor(y)).b);
+	pixelType p2;
+	p2.r = sLWeight*(src->GetPixel(floor(x),ceil(y)).r)+
+		   sRWeight*(src->GetPixel(ceil(x),ceil(y)).r);
+	p2.g = sLWeight*(src->GetPixel(floor(x),ceil(y)).g)+
+		   sRWeight*(src->GetPixel(ceil(x),ceil(y)).g);
+	p2.b = sLWeight*(src->GetPixel(floor(x),ceil(y)).b)+
+		   sRWeight*(src->GetPixel(ceil(x),ceil(y)).b);
+
+	pixelType result;
+	result.r = sTWeight*p1.r+sBWeight*p2.r;
+	result.g = sTWeight*p1.g+sBWeight*p2.g;
+	result.b = sTWeight*p1.b+sBWeight*p2.b;
+
+	/*
+	result.r = 0.0;
+	result.r += ((double)(ceil(x)-x))*((double)(ceil(y)-y))*(src->GetPixel(floor(x),floor(y)).r);
+	result.r += ((double)(x-floor(x)))*((double)(ceil(y)-y))*(src->GetPixel(ceil(x),floor(y)).r);
+	result.r += ((double)(ceil(x)-x))*((double)(y-floor(y)))*(src->GetPixel(floor(x),ceil(y)).r);
+	result.r += ((double)(x-floor(x)))*((double)(y-floor(y)))*(src->GetPixel(ceil(x),ceil(y)).r);
+	result.g = 0.0;
+	result.g += ((double)(ceil(x)-x))*((double)(ceil(y)-y))*(src->GetPixel(floor(x),floor(y)).g);
+	result.g += ((double)(x-floor(x)))*((double)(ceil(y)-y))*(src->GetPixel(ceil(x),floor(y)).g);
+	result.g += ((double)(ceil(x)-x))*((double)(y-floor(y)))*(src->GetPixel(floor(x),ceil(y)).g);
+	result.g += ((double)(x-floor(x)))*((double)(y-floor(y)))*(src->GetPixel(ceil(x),ceil(y)).g);
+	result.b = 0.0;
+	result.b += ((double)(ceil(x)-x))*((double)(ceil(y)-y))*(src->GetPixel(floor(x),floor(y)).b);
+	result.b += ((double)(x-floor(x)))*((double)(ceil(y)-y))*(src->GetPixel(ceil(x),floor(y)).b);
+	result.b += ((double)(ceil(x)-x))*((double)(y-floor(y)))*(src->GetPixel(floor(x),ceil(y)).b);
+	result.b += ((double)(x-floor(x)))*((double)(y-floor(y)))*(src->GetPixel(ceil(x),ceil(y)).b);
+	*/
+
+	return result;
+}
+
+double Color_Diff(pixelType &p1, pixelType &p2, double thres)
+{
+	double result = 0.0;
+	result += pow((double)(p1.r-p2.r),2.0);
+	result += pow((double)(p1.g-p2.g),2.0);
+	result += pow((double)(p1.b-p2.b),2.0);
+
+	result = (result>thres) ? result : 0.0;
+	return result;
+}
+
+double Gradient_Diff_2D(gradient2D *gradient, int x1, int y1, int x2, int y2)
+{
+	double result = 0.0;
+	result += pow((double)(gradient->dx->Get(y1+1,x1+1)-gradient->dx->Get(y2+1,x2+1)),2.0);
+	result += pow((double)(gradient->dy->Get(y1+1,x1+1)-gradient->dy->Get(y2+1,x2+1)),2.0);
+
+	return result;
+}
+
+double Gradient_Diff_3D(gradient3D *gradient, int x1, int y1, int t1,
+						int x2, int y2, int t2)
+{
+	double result = 0.0;
+	result += pow((double)(gradient->dx[t1].Get(y1+1,x1+1)-gradient->dx[t2].Get(y2+1,x2+1)),2.0);
+	result += pow((double)(gradient->dy[t1].Get(y1+1,x1+1)-gradient->dy[t2].Get(y2+1,x2+1)),2.0);
+	result += pow((double)(gradient->dt[t1].Get(y1+1,x1+1)-gradient->dt[t2].Get(y2+1,x2+1)),2.0);
+
+	return result;
+}
+
+/* Calculate the spatial temporal gradient magnitude of 
+ * the source image using Prewitt Method
+ */
 gradient2D *Naturality_2D(Picture *src, double threshold)
 {
 #ifdef USE_TRACEBACK
 	Trace->Add(__FILE__, __LINE__);
 #endif
+	gradient2D *gradient = Gradient(src);
+
 	Matrix *dx = new Matrix(src->GetHeight(),src->GetWidth());
 	Matrix *dy = new Matrix(src->GetHeight(),src->GetWidth());
 	double total_dx = 0.0;
@@ -199,15 +404,20 @@ gradient2D *Naturality_2D(Picture *src, double threshold)
 
 	//results[t] = *(new Matrix(0,0));
 	// results[t] = *(Gradient(src->GetFrame(t)));
-	Matrix *grayscale = Rgb2Gray(src);
 	for (int y=0; y<src->GetHeight(); y++)
 	{
 		for (int x=0; x<src->GetWidth(); x++)
 		{
 			if (x>0 && x<src->GetWidth()-1)
 			{
-				double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-								  abs(grayscale->Get(y+1,x) - grayscale->Get(y+1,x+1)));
+				double rColorDiff = Color_Diff(src->GetPixel(x,y),
+											   src->GetPixel(x+1,y));
+				double lColorDiff = Color_Diff(src->GetPixel(x-1,y),
+											   src->GetPixel(x,y));
+				double rGradientDiff = Gradient_Diff_2D(gradient,x,y,x+1,y);
+				double lGradientDiff = Gradient_Diff_2D(gradient,x-1,y,x,y);
+				double diff = min(COLOR_WEIGHT*rColorDiff+GRADIENT_WEIGHT*rGradientDiff,
+								  COLOR_WEIGHT*lColorDiff+GRADIENT_WEIGHT*lGradientDiff); 
 				if (diff>=threshold)
 					dx->Set(y+1,x+1,diff);
 				else
@@ -216,8 +426,14 @@ gradient2D *Naturality_2D(Picture *src, double threshold)
 
 			if (x<src->GetWidth()-1 && y<src->GetHeight()-1)
 			{
-				double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-								  abs(grayscale->Get(y+2,x+1) - grayscale->Get(y+2,x+2)));
+				double tColorDiff = Color_Diff(src->GetPixel(x,y),
+											   src->GetPixel(x+1,y));
+				double dColorDiff = Color_Diff(src->GetPixel(x,y+1),
+											   src->GetPixel(x+1,y+1));
+				double tGradientDiff = Gradient_Diff_2D(gradient,x,y,x+1,y);
+				double dGradientDiff = Gradient_Diff_2D(gradient,x,y+1,x+1,y+1);
+				double diff = min(COLOR_WEIGHT*tColorDiff+GRADIENT_WEIGHT*tGradientDiff,
+								  COLOR_WEIGHT*dColorDiff+GRADIENT_WEIGHT*dGradientDiff);
 				if (diff>=threshold)
 					dy->Set(y+1,x+1,diff);
 				else
@@ -225,8 +441,6 @@ gradient2D *Naturality_2D(Picture *src, double threshold)
 			}
 		}
 	} // end for
-
-	delete grayscale;
 
 	gradient2D *results = new gradient2D;
 	results->dx = dx;
@@ -296,6 +510,8 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 #ifdef USE_TRACEBACK
 	Trace->Add(__FILE__, __LINE__);
 #endif
+	gradient3D *gradient = Gradient_3D(src);
+
 	Matrix *dx = new Matrix[src->GetLength()];
 	Matrix *dy = new Matrix[src->GetLength()];
 	Matrix *dt = new Matrix[src->GetLength()];
@@ -309,7 +525,6 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 	{
 		//results[t] = *(new Matrix(0,0));
 		// results[t] = *(Gradient(src->GetFrame(t)));
-		Matrix *grayscale = Rgb2Gray(src->GetPicture(t));
 		Matrix *xdiff = new Matrix(src->GetPicture(t)->GetHeight(),
 								   src->GetPicture(t)->GetWidth());
 		Matrix *ydiff = new Matrix(src->GetPicture(t)->GetHeight(),
@@ -322,10 +537,15 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 					y>0 && y<src->GetPicture(t)->GetHeight()-1)
 				{
 					weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
-					double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-									  abs(grayscale->Get(y+1,x) - grayscale->Get(y+1,x+1)))+
-								  min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
-									  abs(grayscale->Get(y,x+1) - grayscale->Get(y+1,x+1)));
+					double rColorDiff = Color_Diff(src->GetPicture(t)->GetPixel(x,y),
+												   src->GetPicture(t)->GetPixel(x+1,y));
+
+					double lColorDiff = Color_Diff(src->GetPicture(t)->GetPixel(x-1,y),
+												   src->GetPicture(t)->GetPixel(x,y));
+					double rGradientDiff = Gradient_Diff_3D(gradient,x,y,t,x+1,y,t);
+					double lGradientDiff = Gradient_Diff_3D(gradient,x-1,y,t,x,y,t);
+					double diff = min(COLOR_WEIGHT*rColorDiff+GRADIENT_WEIGHT*rGradientDiff,
+									  COLOR_WEIGHT*lColorDiff+GRADIENT_WEIGHT*lGradientDiff);
 					if (diff>=threshold)
 						xdiff->Set(y+1,x+1,diff);
 						//xdiff->Set(y+1,x+1,weight*diff);
@@ -336,10 +556,15 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 				if (x<src->GetPicture(t)->GetWidth()-1 && y<src->GetPicture(t)->GetHeight()-1)
 				{
 					weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
-					double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-									  abs(grayscale->Get(y+2,x+1) - grayscale->Get(y+2,x+2)))+
-								  min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
-									  abs(grayscale->Get(y+1,x+2) - grayscale->Get(y+2,x+2)));
+					double tColorDiff = Color_Diff(src->GetPicture(t)->GetPixel(x,y),
+												   src->GetPicture(t)->GetPixel(x+1,y));
+
+					double dColorDiff = Color_Diff(src->GetPicture(t)->GetPixel(x,y+1),
+												   src->GetPicture(t)->GetPixel(x+1,y+1));
+					double tGradientDiff = Gradient_Diff_3D(gradient,x,y,t,x+1,y,t);
+					double dGradientDiff = Gradient_Diff_3D(gradient,x,y+1,t,x+1,y+1,t);
+					double diff = min(COLOR_WEIGHT*tColorDiff+GRADIENT_WEIGHT*tGradientDiff,
+									  COLOR_WEIGHT*dColorDiff+GRADIENT_WEIGHT*dGradientDiff);
 					if (diff>=threshold)
 						ydiff->Set(y+1,x+1,diff);
 						//ydiff->Set(y+1,x+1,weight*diff);
@@ -360,7 +585,6 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 		double tdt = 0.0;
 		if (t<(src->GetLength()-1))
 		{
-			Matrix *next = Rgb2Gray(src->GetPicture(t+1));
 			Matrix *tdiff = new Matrix(src->GetPicture(t)->GetHeight(),
 									   src->GetPicture(t)->GetWidth());
 			for (int y=0; y<src->GetPicture(t)->GetHeight(); y++)
@@ -371,10 +595,14 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 						y<src->GetPicture(t)->GetHeight()-1)
 					{
 						weight = simpleGauss(x,sigma,src->GetPicture(t)->GetWidth()/2);
-						double diff = min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+1,x+2)),
-										  abs(next->Get(y+1,x+1) - next->Get(y+1,x+2)))+
-									  min(abs(grayscale->Get(y+1,x+1) - grayscale->Get(y+2,x+1)),
-										  abs(next->Get(y+1,x+1) - next->Get(y+2,x+1)));
+						double cColorDiff = Color_Diff(src->GetPicture(t)->GetPixel(x,y),
+													   src->GetPicture(t)->GetPixel(x+1,y));
+						double nColorDiff = Color_Diff(src->GetPicture(t+1)->GetPixel(x,y),
+													   src->GetPicture(t+1)->GetPixel(x+1,y));
+						double cGradientDiff = Gradient_Diff_3D(gradient,x,y,t,x+1,y,t);
+						double nGradientDiff = Gradient_Diff_3D(gradient,x,y,t+1,x+1,y,t+1);
+						double diff = min(COLOR_WEIGHT*cColorDiff+GRADIENT_WEIGHT*cGradientDiff,
+										  COLOR_WEIGHT*nColorDiff+GRADIENT_WEIGHT*nGradientDiff);
 						if (diff>=threshold)
 							tdiff->Set(y+1,x+1,diff);
 							//tdiff->Set(y+1,x+1,weight*diff);
@@ -387,10 +615,12 @@ gradient3D *Naturality_3D(PictureList *src, double threshold)
 			dt[t] = *(tdiff);
 			total_dt[t] = 0.0;
 			delete tdiff;
-			delete next;
 		}
-
-		delete grayscale;
+		else
+		{
+			dt[t] = dt[t-1];
+			total_dt[t] = 0.0;
+		}
 	}
 
 	gradient3D *results = new gradient3D;
@@ -1177,6 +1407,40 @@ Picture *Expand(Picture *src)
     }
 
   return result;
+}
+
+/* Calculate the gradient magnitude of the source image
+ * using Prewitt Method
+ */
+Picture *Sharpening(Picture *src)
+{
+#ifdef USE_TRACEBACK
+	Trace->Add(__FILE__, __LINE__);
+#endif
+	Picture *result = new Picture(src->GetWidth(),src->GetHeight());
+
+  	//Prewitt's gradient edge detector kernels, first the x direction, then the y
+	int kernel[3][3] = 
+	{
+		{ -1, -1, -1 },
+		{ -1, 9, -1 },
+		{ -1, -1, -1 }
+	};
+	
+	intensityType pixel;
+	for( int i = 0; i < src->GetHeight(); i++ )
+	{
+		for( int j = 0; j < src->GetWidth(); j++ )
+		{
+			//get the edges for the x and y directions
+			pixel = Convolve_Pixel_RGB(src,i,j,kernel);
+
+			//add their weights up
+			result->SetPixelIntensity(j,i,pixel);
+		}
+	}
+
+	return result;
 }
 
 /*  returns the Laplacian representation,
