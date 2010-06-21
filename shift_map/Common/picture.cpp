@@ -151,7 +151,7 @@ void Picture::LoadPicture(const char *filename)
   if (!(fl = fopen(filename, "rb")))
     throw FileNotFoundException("Picture", "LoadPicture", filename);
 
-  fgets(buf, 512, fl);
+  //fgets(buf, 512, fl);
   while (!done && !feof(fl)) {
     fgets(buf, 512, fl);
     done = true;
