@@ -82,9 +82,8 @@ struct ForSingleImgSmoothFn
 struct ForPairImgDataFn
 {
 	Picture *src;
-	Matrix *gray;
 	Picture *pre;
-	Matrix *pre_gray;
+	gradient3D *gradient;
 	int *pre_labels;
 	Matrix *bias;
 	bool subbanded;
@@ -101,7 +100,7 @@ struct ForPairImgSmoothFn
 {
 	Picture *src;
 	gradient3D *gradient;
-	gradient2D *naturality;
+	gradient3D *naturality;
 	Matrix *bias;
 	imageSize target_size;
 };
@@ -569,8 +568,14 @@ double PairImgDataFn(int p, int l, void *data)
 		double min_diff;
 		if (cur_match>=0 && cur_match<myData->src->GetWidth())
 		{
-			min_diff = min(abs(myData->gray->Get(y+1,cur_match+1)-myData->gray->Get(y+1,pre_match+1)),
-						   abs(myData->pre_gray->Get(y+1,cur_match+1)-myData->pre_gray->Get(y+1,pre_match+1)));
+			double cColorDiff = Color_Diff(myData->src->GetPixel(cur_match,y),
+										   myData->src->GetPixel(pre_match,y));
+			double pColorDiff = Color_Diff(myData->pre->GetPixel(cur_match,y),
+										   myData->pre->GetPixel(pre_match,y));
+			double cGradientDiff = Gradient_Diff_3D(myData->gradient,cur_match,y,1,pre_match,y,1);
+			double pGradientDiff = Gradient_Diff_3D(myData->gradient,cur_match,y,0,pre_match,y,0);
+			min_diff = min(COLOR_WEIGHT*cColorDiff+GRADIENT_WEIGHT*cGradientDiff,
+						   COLOR_WEIGHT*pColorDiff+GRADIENT_WEIGHT*pGradientDiff);
 		}
 		else
 			min_diff = 100000*MAX_COST_VALUE;
@@ -592,8 +597,14 @@ double PairImgDataFn(int p, int l, void *data)
 		double min_diff;
 		if (cur_match>=0 && cur_match<myData->src->GetWidth())
 		{
-			min_diff = min(abs(myData->gray->Get(y+1,cur_match+1)-myData->gray->Get(y+1,pre_match+1)),
-						   abs(myData->pre_gray->Get(y+1,cur_match+1)-myData->pre_gray->Get(y+1,pre_match+1)));
+			double cColorDiff = Color_Diff(myData->src->GetPixel(cur_match,y),
+										   myData->src->GetPixel(pre_match,y));
+			double pColorDiff = Color_Diff(myData->pre->GetPixel(cur_match,y),
+										   myData->pre->GetPixel(pre_match,y));
+			double cGradientDiff = Gradient_Diff_3D(myData->gradient,cur_match,y,1,pre_match,y,1);
+			double pGradientDiff = Gradient_Diff_3D(myData->gradient,cur_match,y,0,pre_match,y,0);
+			min_diff = min(COLOR_WEIGHT*cColorDiff+GRADIENT_WEIGHT*cGradientDiff,
+						   COLOR_WEIGHT*pColorDiff+GRADIENT_WEIGHT*pGradientDiff);
 			/*
 			intensityType p1 = myData->src->GetPixelIntensity(cur_match,y);
 			intensityType p2 = myData->src->GetPixelIntensity(pre_match,y);
@@ -804,14 +815,14 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 		if (x1==x2)
 		{
 			if (y1<y2 && x1>0)
-				cost += myData->naturality->dy->Get(y1+1,x1);
+				cost += myData->naturality->dy[1].Get(y1+1,x1);
 			if (y2<y1 && x2>0)
-				cost += myData->naturality->dy->Get(y2+1,x2);
+				cost += myData->naturality->dy[1].Get(y2+1,x2);
 		}
 		if (y1==y2 && l1>0 && x1>0)
-			cost += myData->gradient->dx->Get(y1+1,x1);
+			cost += myData->gradient->dx[1].Get(y1+1,x1);
 		if (y1==y2 && l2>0 && x2>0)
-			cost += myData->gradient->dx->Get(y2+1,x2);
+			cost += myData->gradient->dx[1].Get(y2+1,x2);
 
 		/*
 		if (l1>0 && x1>0)
@@ -828,7 +839,7 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 		{
 			if (l1>0)
 			{
-				cost += 1*myData->naturality->dx->Get(y1+1,x1+1);
+				cost += 1*myData->naturality->dx[1].Get(y1+1,x1+1);
 				/* edgeness */
 				//cost += myData->gradient->dx->Get(y2+1,x2+1);
 				/*
@@ -843,7 +854,7 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 			}
 			if (l2>0)
 			{
-				cost += 1*myData->naturality->dx->Get(y2+1,x2+1);
+				cost += 1*myData->naturality->dx[1].Get(y2+1,x2+1);
 				/* edgeness */
 				//cost += myData->gradient->dx->Get(y1+1,x1+1);
 				/*
@@ -861,12 +872,12 @@ double PairImgSmoothFn(int p1, int p2, int l1, int l2, void *data)
 		{
 			if (y1<y2)
 			{
-				cost += myData->naturality->dy->Get(y1+1,x1+1);
+				cost += myData->naturality->dy[1].Get(y1+1,x1+1);
 				//cost += myData->gradient->dy->Get(y1+1,x1+1);
 			}
 			if (y2<y1)
 			{
-				cost += myData->naturality->dy->Get(y2+1,x2+1);
+				cost += myData->naturality->dy[1].Get(y2+1,x2+1);
 				//cost += myData->gradient->dy->Get(y1+1,x1+1);
 			}
 		}
@@ -1628,7 +1639,7 @@ PictureList *GridGraph_SeamCut(PictureList *src, double ratio, videoSize &target
 	// set up the needed data to pass to function for the data costs
 	Matrix *new_bias;
 	gradient3D *gradient = Diff_3D(src,0.0);
-	gradient3D *naturality = Naturality_3D(src,5.0);
+	gradient3D *naturality = Naturality_3D(src,0.0);
 
 
 	int num_pixels = target_size.width*target_size.height*target_size.time;
@@ -1962,11 +1973,9 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 										2);
 	pair->SetPicture(0,pre_frame);
 	pair->SetPicture(1,cur_frame);
-	gradient3D *gradient = Diff_3D(pair);
+	gradient3D *gradient = Gradient_3D(pair);
+	gradient3D *naturality = Naturality_3D(pair);
 	delete pair;
-	gradient2D *naturality = Naturality_2D(cur_frame);
-	Matrix *grayscale = Rgb2Gray(cur_frame);
-	Matrix *pre_grayscale = Rgb2Gray(pre_frame);
 	//Matrix *bias = CalcNarrownessPrior(gradient,1000.0);
 
 	int num_pixels = target_size.width*target_size.height;
@@ -1986,9 +1995,8 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 		{
 			ForPairImgDataFn toDataFn;
 			toDataFn.src = cur_frame;
-			toDataFn.gray = grayscale;
 			toDataFn.pre = pre_frame;
-			toDataFn.pre_gray = pre_grayscale;
+			toDataFn.gradient = gradient;
 			toDataFn.pre_labels = pre_labels;
 			toDataFn.subbanded = banded;
 			toDataFn.subband = subband;
@@ -2066,11 +2074,13 @@ Picture *PairImg_SeamCut(Picture *cur_frame, Picture *pre_frame, int *&subband,
 		delete [] gradient->total_dy;
 		delete [] gradient->total_dt;
 		delete gradient;
-		delete naturality->dx;
-		delete naturality->dy;
+		delete [] naturality->dx;
+		delete [] naturality->dy;
+		delete [] naturality->dt;
+		delete [] naturality->total_dx;
+		delete [] naturality->total_dy;
+		delete [] naturality->total_dt;
 		delete naturality;
-		delete grayscale;
-		delete pre_grayscale;
 		delete gc;
 	}
 	catch (GCException e){
