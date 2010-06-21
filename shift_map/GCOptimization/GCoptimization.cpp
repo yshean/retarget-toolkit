@@ -175,7 +175,7 @@ GCoptimization::EnergyType GCoptimization::compute_energy()
 {
 	if (readyToOptimise())
 	{
-		//printf("%f, %f\n",(this->*m_giveDataEnergyInternal)(),(this->*m_giveSmoothEnergyInternal)());
+		printf("%f, %f\n",(this->*m_giveDataEnergyInternal)(),(this->*m_giveSmoothEnergyInternal)());
 		return( (this->*m_giveDataEnergyInternal)()+ (this->*m_giveSmoothEnergyInternal)());
 	}
 	else{ 
