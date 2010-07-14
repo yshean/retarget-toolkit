@@ -14,9 +14,12 @@ patch_size = 8;
 increment = 4;
 
 A = dense_sampling(image, patch_size, increment);
-D_origin = dense_sampling(resized_image, patch_size, increment);
 
 
+
+h = fspecial('gaussian', 10, 10);      
+image_blur = imfilter(image, h);
+D_origin = dense_sampling(image_blur, patch_size, increment);
 
 num_patch = size(A,2);
 
@@ -33,14 +36,14 @@ for i = 1:1:num_patch
     D = D_origin;
     
     %% suppress similar patch in the Dictionary
-    %     D = dense_sampling(resized_image, patch_size, increment);
-    %     % change D a little bit Jul 2010
-    %     cos = D' * p;
-    %     cos = 1 - cos ./ norm(cos);
-    %     cos = (cos - min(cos)) ./ (max(cos) - min(cos));
-    %     for k = 1:1:size(D,1)
-    %         D(k,:) = D(k,:) .* cos';
-    %     end
+        D = dense_sampling(resized_image, patch_size, increment);
+        % change D a little bit Jul 2010
+        cos = D' * p;
+        cos = 1 - cos ./ norm(cos);
+        cos = (cos - min(cos)) ./ (max(cos) - min(cos));
+        for k = 1:1:size(D,1)
+            D(k,:) = D(k,:) .* cos';
+        end
     
     
     
@@ -51,5 +54,5 @@ end
 
 fprintf('finished');
 % save
-save('Data\boatmanfast_sc20downsampling1level4increment.mat','result');
+save('Data\boatmanfast_sc20blur10level4incrementsupressed.mat','result');
  
