@@ -8,8 +8,8 @@ addpath(genpath('..\..\..\ImageProcessing'));
 
 % setting
 patch_size = 8;
-increment = 2;
-load Data/boatmanlasso20downsampling.mat; % result is loaded
+increment = 4;
+load Data\boatmanfast_sc20downsampling1level4increment.mat; % result is loaded
 image = imread('boatman.jpg');
 
 % get number of patch (hardway)
