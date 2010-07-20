@@ -7,28 +7,35 @@
 /********************************************************
 Implementation of Shift-map algorithm (Peleg ICCV2009)
 
-A width x height image will have width x height number of labels
-Label index is assigned from left to right, then top to bottom
-
-e.g: 4x4 image
-1 2  3  4
-5 6  7  8
-9 10 11 12 
+ 
 ********************************************************/
-
-
-
 
 
 class ShiftMapComputer
 {
 public:
-	ShiftMapComputer(void);
+	ShiftMapComputer();
 	~ShiftMapComputer(void);
+	 
+	void ComputeShiftMap(IplImage* input, IplImage* saliency, CvSize output, CvSize shiftSize);
 
-	IplImage* GetImage(IplImage* input,IplImage* saliency, int width, int height);
+protected:
+	// range of label to search for
+	int _shiftWidth; 
+	int _shiftHeight;
 
-private:
-	void GetRetargetImage(GCoptimizationGridGraph * gc, IplImage* input, IplImage* output);
-	
+	CvSize _inputSize;
+	CvSize _outputSize;
+	CvSize _shiftSize; // range of label to search for
+
+	IplImage* _input;
+
+	GCoptimization* _gc;
+public:
+	IplImage* GetRetargetImage();
+
+	// get retargeted image by graphcut given a interpolation matrix from lower level
+	// only 9 labels surrounding the guess is used.
+	//void GetRetargetImageInitialGuess(IplImage* input, IplImage* saliency, int width, int height, IplImage* intialGuess);
+
 };

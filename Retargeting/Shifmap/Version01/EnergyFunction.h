@@ -20,8 +20,11 @@ struct ForDataFunction
 	// output image
 	int outWidth;
 	int outHeight;
-	// input image
-	int inWidth;	
+	// shift size
+	int shiftWidth;	
+	int shiftHeight;
+	// input
+	int inWidth;
 	int inHeight;
 	IplImage* saliency;
 };
@@ -30,8 +33,11 @@ struct ForSmoothFunction
 {
 	int outWidth;
 	int outHeight;
-	// input image
-	int inWidth;	
+	// shift size
+	int shiftWidth;	
+	int shiftHeight;
+	// input
+	int inWidth;
 	int inHeight;
 	IplImage* image;
 	IplImage* gradient;
@@ -56,4 +62,33 @@ CvPoint GetNeighbor(CvPoint pixel1, CvPoint pixel2, CvPoint label);
 
 bool IsInsideImage(CvPoint point, int width, int height);
 
-bool IsCorrectMap(CvPoint pixel1, CvPoint pixel2, CvPoint label1, CvPoint label2);
+//bool IsCorrectMap(CvPoint pixel1, CvPoint pixel2, CvPoint label1, CvPoint label2);
+
+
+struct ForDataFunctionInitialGuess
+{
+	// output image
+	int outWidth;
+	int outHeight;
+	// input image
+	int inWidth;	
+	int inHeight;
+	IplImage* saliency;
+	IplImage* initialGuess; // initial guess
+};
+
+struct ForSmoothFunctionInitialGuess
+{
+	int outWidth;
+	int outHeight;
+	// input image
+	int inWidth;	
+	int inHeight;
+	IplImage* image;
+	IplImage* gradient;
+	IplImage* initialGuess;
+};
+
+
+//int dataFunctionInitialGuess(int pixel, int label, void *extraData);
+//int smoothFunctionInitialGuess(int pixel1, int pixel2, int label1, int label2, void* extraData);

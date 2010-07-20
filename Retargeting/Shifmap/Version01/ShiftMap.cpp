@@ -17,11 +17,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	point.y = 1;
 	point = GetPoint(50, 25, 10);
  
-	ShiftMapComputer* computer = new ShiftMapComputer();
+	
 	
 	IplImage* input = cvLoadImage("boatman.jpg");
 	IplImage* saliency = cvLoadImage("boatmanS.jpg");
-	IplImage* output = computer->GetImage(input, saliency, 54, 54);
+	ShiftMapComputer* computer = new ShiftMapComputer();
+	computer->ComputeShiftMap(input, saliency, cvSize(54,54), cvSize(54,54));
+	IplImage* output = computer->GetRetargetImage();
 	//IplImage* input = cvLoadImage("a.jpg");
 	//IplImage* saliency = cvLoadImage("aS.jpg");
 	//IplImage* output = computer->GetImage(input, saliency, 10, 10);
