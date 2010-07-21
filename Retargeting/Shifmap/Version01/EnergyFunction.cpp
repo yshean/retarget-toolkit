@@ -15,17 +15,21 @@ int dataFunctionShiftmap(int pixel, int label, void *extraData)
  
 	// position of output pixel
 	CvPoint pixelPoint = GetPoint(pixel, data->outWidth, data->outHeight);
-	// position of mapped point - return (-1,-1) if outside
-	CvPoint origin_label = GetMappedPoint(pixelPoint, label, data->shiftWidth, data->shiftHeight);
-	
+	// position of mapped point - return (-1,-1) if outside	
+	 
+	CvPoint guess = GetLabel(pixelPoint, data->initialGuess);
+	//guess.x += pixelPoint.x;
+	//guess.y += pixelPoint.y;
+	CvPoint origin_label = GetMappedPoint(guess, label, data->shiftWidth, data->shiftHeight);
+
 	if(IsOutside(origin_label, data->inWidth, data->inHeight))
-		return 10000;
+		return 1000000;
 
 	CvScalar value = cvGet2D(data->saliency, origin_label.y, origin_label.x);
 	double saliency = value.val[0] + value.val[1] + value.val[2]; 	
  
 	//printf("energy: %f, pixel %i label %i \n", saliency, pixel, label);
-	return saliency;
+	return saliency  ;
 }
 
 //double smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void* extraData)
@@ -75,15 +79,26 @@ int smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void*
 
 	// position of output pixel
 	CvPoint pixelPoint1 = GetPoint(pixel1, data->outWidth, data->outHeight);
+ 
+	CvPoint guess1 = GetLabel(pixelPoint1, data->initialGuess);
+	
+	
+	//guess1.x += pixelPoint1.x;
+	//guess1.y += pixelPoint1.y;
 	// position of mapped input
-	CvPoint labelPoint1 = GetMappedPoint(pixelPoint1, label1, data->shiftWidth, data->shiftHeight);	 
+	CvPoint labelPoint1 = GetMappedPoint(guess1, label1, data->shiftWidth, data->shiftHeight);	 
 	// position of output pixel
 	CvPoint pixelPoint2 = GetPoint(pixel2, data->outWidth, data->outHeight);	
+ 
+	CvPoint guess2 = GetLabel(pixelPoint2, data->initialGuess);
+	//guess2.x += pixelPoint2.x;
+	//guess2.y += pixelPoint2.y;
 	// position of mapped input
-	CvPoint labelPoint2 = GetMappedPoint(pixelPoint2, label2, data->shiftWidth, data->shiftHeight);
-	
+	CvPoint labelPoint2 = GetMappedPoint(guess2, label2, data->shiftWidth, data->shiftHeight);
+	 
+
 	if(IsOutside(labelPoint1, data->inWidth, data->inHeight) || IsOutside(labelPoint2, data->inWidth, data->inHeight))
-		return 10000; // prevent mapping outside image
+		return 1000000; // prevent mapping outside image
  
 	//return 50;
 	// pre-compute variables:
@@ -104,8 +119,9 @@ int smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void*
 	
   
 	//if(IsCorrectMap(pixelPoint1, pixelPoint2, labelPoint1, labelPoint2))
-	//printf("energy: %f %i %i -> %i %i and %i %i -> %i %i\n", energy, labelPoint1.x, labelPoint1.y, pixelPoint1.x, pixelPoint1.y, labelPoint2.x, labelPoint2.y, pixelPoint2.x, pixelPoint2.y);
-
+	//printf("energy: %f ", energy);
+	//printf("label: %d %d -> %d %d and %i %i -> %i %i f\n", labelPoint1.x, labelPoint1.y, pixelPoint1.x, pixelPoint1.y, labelPoint2.x, labelPoint2.y, pixelPoint2.x, pixelPoint2.y);
+	// 
  
 	return  energy;
 }

@@ -62,7 +62,7 @@ CvPoint GetMappedPointInitialGuess(CvPoint pixel, int label, int width, int heig
 }
 
 // set a label to a label map
-CvPoint SetLabel(CvPoint point, CvPoint shiftLabel, IplImage* labelMap)
+void SetLabel(CvPoint point, CvPoint shiftLabel, IplImage* labelMap)
 {
 	cvSet2D(labelMap, point.y, point.x, cvScalar(shiftLabel.x, shiftLabel.y));
 }
