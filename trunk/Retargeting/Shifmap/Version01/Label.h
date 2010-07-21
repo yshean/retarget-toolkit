@@ -19,7 +19,7 @@ void SetMapDataTerm(IplImage* map, int u, int v, double value);
 CvPoint GetMappedPointInitialGuess(CvPoint pixel, int label, int width, int height, IplImage* initialGuess);
 
 // set a label to a label map
-CvPoint SetLabel(CvPoint point, CvPoint shiftLabel, IplImage* labelMap);
+void SetLabel(CvPoint point, CvPoint shiftLabel, IplImage* labelMap);
 
 // get a label from a label map
 CvPoint GetLabel(CvPoint point, IplImage* labelMap);
