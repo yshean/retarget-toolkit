@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "LinkedBlockList.h"
 #include <stdio.h>
 #include <stdlib.h>

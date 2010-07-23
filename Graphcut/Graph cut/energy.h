@@ -224,8 +224,8 @@ inline void Energy<captype,tcaptype,flowtype>::add_term2(Var x, Var y,
 	   0 B
 	   C 0
 	*/
-
-	// @Chau
+	
+	//@Chau
 	//assert(B + C >= 0); /* check regularity */
 	if (B < 0)
 	{
