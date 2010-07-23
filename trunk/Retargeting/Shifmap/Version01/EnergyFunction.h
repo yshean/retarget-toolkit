@@ -29,6 +29,22 @@ struct ForDataFunction
 	IplImage* saliency; 
 };
 
+// for hierarchical shift-map
+struct ForDataFunctionH
+{
+	// output image
+	int outWidth;
+	int outHeight;
+	// shift size
+	int shiftWidth;	
+	int shiftHeight;
+	// input
+	int inWidth;
+	int inHeight;
+	IplImage* saliency; 
+	IplImage* initialGuess;
+};
+
 struct ForSmoothFunction
 {
 	int outWidth;
@@ -41,10 +57,32 @@ struct ForSmoothFunction
 	int inHeight;
 	IplImage* image;
 	IplImage* gradient;
+}; 
+
+// for hierarchical shift-map
+struct ForSmoothFunctionH
+{
+	int outWidth;
+	int outHeight;
+	// shift size
+	int shiftWidth;	
+	int shiftHeight;
+	// input
+	int inWidth;
+	int inHeight;
+	IplImage* image;
+	IplImage* gradient;
+	// initial guess
+	IplImage* initialGuess;
 };
- 
+
+// straight shiftmap
 int dataFunctionShiftmap(int pixel, int label, void *extraData);
 int smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void* extraData);
+
+// hierarchical shift-map
+int dataFunctionShiftmapH(int pixel, int label, void *extraData);
+int smoothFunctionShiftmapH(int pixel1, int pixel2, int label1, int label2, void* extraData);
 
 bool IsNeighbor(CvPoint point1, CvPoint point2);
 
