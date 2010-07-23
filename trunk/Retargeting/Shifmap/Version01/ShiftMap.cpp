@@ -18,8 +18,8 @@ int _tmain(int argc, _TCHAR* argv[])
  
 
 	
-	IplImage* input = cvLoadImage("boatman.jpg");
-	IplImage* saliency = cvLoadImage("boatmanCS.JPG");
+	IplImage* input = cvLoadImage("boatman3.jpg");
+	IplImage* saliency = cvLoadImage("boatmanCS2.JPG");
   	// reverse the saliency
 	for(int i = 0; i < saliency->width; i++)
 		for(int j = 0; j < saliency->height; j++)
@@ -36,49 +36,66 @@ int _tmain(int argc, _TCHAR* argv[])
 	//	cvShowImage("Test", saliency);
 	//	cvWaitKey(100);
 	//}
-	CvSize outputSize = cvSize(150, 180);
+	CvSize outputSize = cvSize(50,45);
  
 	ShiftMapComputer* computer = new ShiftMapComputer();
  
-	//computer->ComputeShiftMap(input, saliency, cvSize(40, 54), cvSize(54, 54));
+	//computer->ComputeShiftMap(input, saliency, outputSize, outputSize);
 	computer->ComputeFastShiftMap(input, saliency, outputSize);
-	
-	ShiftMapVisualizer* visualizer = new ShiftMapVisualizer();
+	IplImage* labelMap = computer->CalculateLabelMap();
+	IplImage* map = cvCreateImage(cvSize(labelMap->width, labelMap->height), IPL_DEPTH_8U, 3);
+	IplImage* source = cvCreateImage(cvSize(input->width, input->height), IPL_DEPTH_8U, 3);
 
-	IplImage* labelMap1 = computer->GetLabelMap(1);
-	IplImage* origin1 = computer->GetOriginalImage(1);	
-	IplImage* map1 = cvCreateImage(cvSize(labelMap1->width, labelMap1->height), IPL_DEPTH_8U, 3);
-	IplImage* source1 = cvCreateImage(cvSize(origin1->width, origin1->height), IPL_DEPTH_8U, 3);	
-	IplImage* output1 = computer->GetRetargetImage(1);
-	visualizer->Visualize(labelMap1, source1, map1);
+	/*ShiftMapVisualizer* visualizer = new ShiftMapVisualizer();
+	visualizer->Visualize(labelMap, source, map, cvSize(45,45));*/
+	//IplImage* labelMap1 = computer->GetLabelMap(1);
+	//IplImage* origin1 = computer->GetOriginalImage(1);	
+	//IplImage* map1 = cvCreateImage(cvSize(labelMap1->width, labelMap1->height), IPL_DEPTH_8U, 3);
+	//IplImage* source1 = cvCreateImage(cvSize(origin1->width, origin1->height), IPL_DEPTH_8U, 3);	
+	//IplImage* output1 = computer->GetRetargetImage(1);
+	//visualizer->Visualize(labelMap1, source1, map1);
 
-	IplImage* labelMap0 = computer->GetLabelMap(0);
-	IplImage* origin0 = computer->GetOriginalImage(0);	
-	IplImage* map0 = cvCreateImage(cvSize(labelMap0->width, labelMap0->height), IPL_DEPTH_8U, 3);
-	IplImage* source0 = cvCreateImage(cvSize(origin0->width, origin0->height), IPL_DEPTH_8U, 3);	
-	IplImage* output0 = computer->GetRetargetImage(0);
-	visualizer->Visualize(labelMap0, source0, map0);
+	//IplImage* labelMap0 = computer->GetLabelMap(0);
+	//IplImage* origin0 = computer->GetOriginalImage(0);	
+	//IplImage* map0 = cvCreateImage(cvSize(labelMap0->width, labelMap0->height), IPL_DEPTH_8U, 3);
+	//IplImage* source0 = cvCreateImage(cvSize(origin0->width, origin0->height), IPL_DEPTH_8U, 3);	
+	//IplImage* output0 = computer->GetRetargetImage(0);
+	//visualizer->Visualize(labelMap0, source0, map0);
 	 
-	cvNamedWindow("Source1");
-	//cvNamedWindow("Map1");
-	cvNamedWindow("Result1");	
+	cvNamedWindow("Source");
+	cvNamedWindow("Map");
+	cvNamedWindow("Result");	
 	//cvNamedWindow("Source0");
 	//cvNamedWindow("Map0");
 	//cvNamedWindow("Result0");	
 	
-	cvSaveImage("boatman4054.jpg", output0);
+	//cvSaveImage("boatman4054.jpg", output0);
+	
+	//IplImage* result = computer->CalculateRetargetImage();
+	////
+
+	//while(1)
+	//{
+	//	cvShowImage("Result", result);
+	//	cvShowImage("Source", source);
+	//	cvShowImage("Map", map);
+	//	cvWaitKey(100);
+	//}
+	//
+	
+	int index = computer->GetLevelCount();
 	vector<IplImage*>* result = new vector<IplImage*>(0);
-	for(int i = 0; i < 3;i++)
+	for(int i = 0; i <= index;i++)
 	{
 		IplImage* image = computer->GetRetargetImage(i);
 		result->push_back(image);
 	}
-	int index = 2;
+	
 	while(1)
 	{
 
-		cvShowImage("Source1", (*(computer->_imageList))[index]);
-		cvShowImage("Result1", (*result)[index]);
+		cvShowImage("Source", (*(computer->_imageList))[index]);
+		cvShowImage("Result", (*result)[index]);
 		//cvShowImage("Source1", source1);
 		//cvShowImage("Map1", map1);
 		//cvShowImage("Result1", output1);
