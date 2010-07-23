@@ -18,12 +18,12 @@ void SetMapDataTerm(IplImage* map, int u, int v, double value);
 
 // width & height are default to be 3 (so 9 labels in total)
 // however just leave them here for flexibility
-CvPoint GetMappedPointInitialGuess(int pixel, int label, CvSize output, CvSize shiftSize, IplImage* initialGuess);
+CvPoint GetMappedPointInitialGuess(int pixel, int label, CvSize output, CvSize shiftSize, CvMat* initialGuess);
 
 
 
 // set a label to a label map
-void SetLabel(CvPoint point, CvPoint shiftLabel, IplImage* labelMap);
+void SetLabel(CvPoint point, CvPoint shiftLabel, CvMat* labelMap);
 
 // get a label from a label map
-CvPoint GetLabel(CvPoint point, IplImage* labelMap);
+CvPoint GetLabel(CvPoint point, CvMat* labelMap);

@@ -39,7 +39,7 @@ void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, 
 {
 	printf("Downsampling...");
 	_imageList = new vector<IplImage*>(0);
-	_labelMapList = new vector<IplImage*>(0);
+	_labelMapList = new vector<CvMat*>(0);
 	vector<IplImage*>* imageSList = new vector<IplImage*>(0);
 	vector<CvSize>* outputSizeList = new vector<CvSize>(0);
 	_imageList->push_back(input);
@@ -52,7 +52,7 @@ void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, 
 
 	int levelCount = 0;
 
-	while(level->width >40 && level->height > 40)
+	while(level->width >20 && level->height > 20)
 	{
 		IplImage* level_temp = cvCreateImage(cvSize(level->width/2, level->height/2), input->depth, input->nChannels);
 		IplImage* levelS_temp = cvCreateImage(cvSize(level->width/2, level->height/2), input->depth, input->nChannels);
@@ -74,7 +74,7 @@ void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, 
 	}  
 
 	// dummy initialGuess - just to be released later
-	 _initialGuess = cvCreateImage(cvSize(10,10), IPL_DEPTH_8U, 3);
+	 _initialGuess = cvCreateMat(10,10, CV_32SC2);
 	
 	 _level = levelCount;
 	//int index = levelCount;
@@ -98,17 +98,22 @@ void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, 
 		//	}
 		//}
 		// save result	
-		IplImage* labelMap;
+
+		
+
+		CvMat* labelMap;
 		if(i == levelCount)
 			labelMap = CalculateLabelMap();
 		else
 			labelMap = CalculateLabelMap2();
+	 
+
 
 		_labelMapList->insert(_labelMapList->begin(), labelMap);
 		if(i > 0)
 		{	
-			cvReleaseImage(&_initialGuess);	
-			_initialGuess = cvCreateImage((*outputSizeList)[i-1], IPL_DEPTH_8U, 3);
+			cvReleaseMat(&_initialGuess);	
+			_initialGuess = cvCreateMat((*outputSizeList)[i-1].height, (*outputSizeList)[i-1].width , CV_32SC2);
 			GetInterpolationMap(labelMap, _initialGuess);			
 			//if(i == index)
 			//{
@@ -132,7 +137,7 @@ void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, 
 	}
 
 }
-void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, IplImage* initialGuess, CvSize output, CvSize shiftSize)
+void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, CvMat* initialGuess, CvSize output, CvSize shiftSize)
 {
 		try{
 		_inputSize.width = input->width;
@@ -246,7 +251,7 @@ void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, CvSi
 	
 IplImage* ShiftMapComputer::GetRetargetImage(int level)
 {
- 	IplImage* labelMap = (*_labelMapList)[level];
+ 	CvMat* labelMap = (*_labelMapList)[level];
 	// IplImage* image = cvCreateImage(cvSize(labelMap->width,labelMap->height), IPL_DEPTH_8U, 3);
 	
 	return GetImageFromLabelMap(labelMap, (*_imageList)[level]);	
@@ -305,9 +310,9 @@ IplImage* ShiftMapComputer::CalculateRetargetImage()
 	return output;
 }
 
-IplImage* ShiftMapComputer::CalculateLabelMap()
+CvMat* ShiftMapComputer::CalculateLabelMap()
 {
-	IplImage* output = cvCreateImage(_outputSize, _input->depth, _input->nChannels);
+	CvMat* output = cvCreateMat(_outputSize.height, _outputSize.width, CV_32SC2);
 	int num_pixels = _outputSize.width * _outputSize.height;
 
 	printf("Getting label map... \n");
@@ -317,18 +322,20 @@ IplImage* ShiftMapComputer::CalculateLabelMap()
 		CvPoint point = GetPoint(i, _outputSize);		
 		CvPoint pointLabel = GetShift(label, _shiftSize);
 		
-		// test
-		CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
-		if(IsOutside(mapped, _inputSize))
-			printf("test");
-
+		//// test
+		//if(point.x == 11 && point.y == 0)
+		//	printf("test");
+		//CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
+		//if(IsOutside(mapped, _inputSize))
+		//	printf("test");
+		 
 		SetLabel(point, pointLabel, output);
 	}
 	return output;
 }
-IplImage* ShiftMapComputer::CalculateLabelMap2()
+CvMat* ShiftMapComputer::CalculateLabelMap2()
 {
-	IplImage* output = cvCreateImage(_outputSize, _input->depth, _input->nChannels);
+	CvMat* output = cvCreateMat(_outputSize.height, _outputSize.width, CV_32SC2);
 	int num_pixels = _outputSize.width * _outputSize.height;
 
 	printf("Getting label map... \n");
@@ -341,22 +348,22 @@ IplImage* ShiftMapComputer::CalculateLabelMap2()
 		CvPoint pointLabel = cvPoint(shift.x + guess.x, shift.y + guess.y);	
 
 		// test
-		CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
-		if(IsOutside(mapped, _inputSize))
-			printf("test");
-
+		//CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
+		//if(IsOutside(mapped, _inputSize))
+		//	printf("test");
+		 
 		SetLabel(point, pointLabel, output);
 	}
 	return output;
 }
 
 
-IplImage* ShiftMapComputer::GetLabelMap(int level)
+CvMat* ShiftMapComputer::GetLabelMap(int level)
 {
 	return (*_labelMapList)[level];
 }
 
-void ShiftMapComputer::GetInterpolationMap(IplImage* lowerMap, IplImage* higherMap)
+void ShiftMapComputer::GetInterpolationMap(CvMat* lowerMap, CvMat* higherMap)
 {
 	// check if size is double
 	if(higherMap->width / 2 == lowerMap->width && higherMap->height / 2 == lowerMap->height)
@@ -375,7 +382,7 @@ void ShiftMapComputer::GetInterpolationMap(IplImage* lowerMap, IplImage* higherM
 					lowerPoint.y--;
 				
 				CvPoint label = GetLabel(lowerPoint, lowerMap);
-
+				 
 				SetLabel(cvPoint(i,j), cvPoint(label.x * 2, label.y * 2), higherMap);
 			}
 	}
@@ -385,7 +392,7 @@ void ShiftMapComputer::GetInterpolationMap(IplImage* lowerMap, IplImage* higherM
 	}
 }
 
-IplImage* ShiftMapComputer::GetImageFromLabelMap(IplImage* map, IplImage* image)
+IplImage* ShiftMapComputer::GetImageFromLabelMap(CvMat* map, IplImage* image)
 {
 	IplImage* output = cvCreateImage(cvSize(map->width, map->height), IPL_DEPTH_8U, 3);
 	for(int i = 0; i < map->width; i++)
@@ -398,7 +405,7 @@ IplImage* ShiftMapComputer::GetImageFromLabelMap(IplImage* map, IplImage* image)
 			if(IsOutside(mappedPoint, cvSize(image->width, image->height)))
 				value = cvScalar(0, 0, 255);
 			else
-			  value = cvGet2D(image, j + label.y, i + label.x);
+				value = cvGet2D(image, j + label.y, i + label.x);
 			cvSet2D(output, j, i, value);
 		}
 	return output;

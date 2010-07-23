@@ -50,7 +50,7 @@ CvPoint GetMappedPoint(int pixel, int label, CvSize output, CvSize shiftSize)
 	return result;
 }
 
-CvPoint GetMappedPointInitialGuess(int pixel, int label, CvSize output, CvSize shiftSize, IplImage* initialGuess)
+CvPoint GetMappedPointInitialGuess(int pixel, int label, CvSize output, CvSize shiftSize, CvMat* initialGuess)
 {
 	CvPoint result;
 
@@ -65,13 +65,13 @@ CvPoint GetMappedPointInitialGuess(int pixel, int label, CvSize output, CvSize s
 }
 
 // set a label to a label map
-void SetLabel(CvPoint point, CvPoint shiftLabel, IplImage* labelMap)
-{
-	cvSet2D(labelMap, point.y, point.x, cvScalar(shiftLabel.x, shiftLabel.y));
+void SetLabel(CvPoint point, CvPoint shiftLabel, CvMat* labelMap)
+{	
+	cvSet2D(labelMap, point.y, point.x, cvScalar(shiftLabel.x, shiftLabel.y));  
 }
 
 // get a label from a label map
-CvPoint GetLabel(CvPoint point, IplImage* labelMap)
+CvPoint GetLabel(CvPoint point, CvMat* labelMap)
 {
 	CvPoint shift;
 	CvScalar value = cvGet2D(labelMap, point.y, point.x);
