@@ -26,8 +26,7 @@ struct ForDataFunction
 	// input
 	int inWidth;
 	int inHeight;
-	IplImage* saliency;
-	IplImage* initialGuess;
+	IplImage* saliency; 
 };
 
 struct ForSmoothFunction
@@ -42,7 +41,6 @@ struct ForSmoothFunction
 	int inHeight;
 	IplImage* image;
 	IplImage* gradient;
-	IplImage* initialGuess;
 };
  
 int dataFunctionShiftmap(int pixel, int label, void *extraData);
