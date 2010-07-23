@@ -17,44 +17,27 @@ e.g: 4x4 image
 ********************************************************/
 struct ForDataFunction
 {
-	// output image
-	int outWidth;
-	int outHeight;
-	// shift size
-	int shiftWidth;	
-	int shiftHeight;
-	// input
-	int inWidth;
-	int inHeight;
+	CvSize outputSize;
+	CvSize shiftSize;
+	CvSize inputSize;
 	IplImage* saliency; 
 };
 
 // for hierarchical shift-map
 struct ForDataFunctionH
 {
-	// output image
-	int outWidth;
-	int outHeight;
-	// shift size
-	int shiftWidth;	
-	int shiftHeight;
-	// input
-	int inWidth;
-	int inHeight;
+	CvSize outputSize;
+	CvSize shiftSize;
+	CvSize inputSize;
 	IplImage* saliency; 
 	IplImage* initialGuess;
 };
 
 struct ForSmoothFunction
 {
-	int outWidth;
-	int outHeight;
-	// shift size
-	int shiftWidth;	
-	int shiftHeight;
-	// input
-	int inWidth;
-	int inHeight;
+	CvSize outputSize;
+	CvSize shiftSize;
+	CvSize inputSize;
 	IplImage* image;
 	IplImage* gradient;
 }; 
@@ -62,14 +45,9 @@ struct ForSmoothFunction
 // for hierarchical shift-map
 struct ForSmoothFunctionH
 {
-	int outWidth;
-	int outHeight;
-	// shift size
-	int shiftWidth;	
-	int shiftHeight;
-	// input
-	int inWidth;
-	int inHeight;
+	CvSize outputSize;
+	CvSize shiftSize;
+	CvSize inputSize;
 	IplImage* image;
 	IplImage* gradient;
 	// initial guess

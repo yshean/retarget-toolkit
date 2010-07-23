@@ -31,6 +31,10 @@ void ShiftMapComputer::DownSampling(IplImage* source, IplImage* dst)
 		} 
 }
 
+int  ShiftMapComputer::GetLevelCount()
+{
+	return _level;
+}
 void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, CvSize output)
 {
 	printf("Downsampling...");
@@ -72,6 +76,7 @@ void ShiftMapComputer::ComputeFastShiftMap(IplImage* input, IplImage* saliency, 
 	// dummy initialGuess - just to be released later
 	 _initialGuess = cvCreateImage(cvSize(10,10), IPL_DEPTH_8U, 3);
 	
+	 _level = levelCount;
 	//int index = levelCount;
 	for(int i = levelCount; i >= 0; i--)
 	{
@@ -141,12 +146,9 @@ void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, IplI
 
 		// set up the needed data to pass to function for the data costs
 		ForDataFunctionH dataFn;
-		dataFn.inHeight = _inputSize.height;
-		dataFn.inWidth = _inputSize.width;
-		dataFn.outWidth = _outputSize.width;
-		dataFn.outHeight = _outputSize.height;
-		dataFn.shiftWidth = _shiftSize.width;
-		dataFn.shiftHeight = _shiftSize.height;
+		dataFn.inputSize = _inputSize;
+		dataFn.outputSize = _outputSize;
+		dataFn.shiftSize = _shiftSize;
 		dataFn.saliency = saliency;
 		dataFn.initialGuess = initialGuess;
 
@@ -154,12 +156,9 @@ void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, IplI
 		
 		// smoothness comes from function pointer
 		ForSmoothFunctionH smoothFn;
-		smoothFn.inHeight = _inputSize.height;
-		smoothFn.inWidth = _inputSize.width;
-		smoothFn.outHeight = _outputSize.height;
-		smoothFn.outWidth = _outputSize.width;
-		smoothFn.shiftHeight = _shiftSize.height;
-		smoothFn.shiftWidth = _shiftSize.width;
+		smoothFn.inputSize = _inputSize;
+		smoothFn.outputSize = _outputSize;
+		smoothFn.shiftSize = _shiftSize;
 		smoothFn.image = input;
 		smoothFn.gradient = cvCloneImage(input);
 		smoothFn.initialGuess = initialGuess;
@@ -197,24 +196,18 @@ void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, CvSi
 
 		// set up the needed data to pass to function for the data costs
 		ForDataFunction dataFn;
-		dataFn.inHeight = _inputSize.height;
-		dataFn.inWidth = _inputSize.width;
-		dataFn.outWidth = _outputSize.width;
-		dataFn.outHeight = _outputSize.height;
-		dataFn.shiftWidth = _shiftSize.width;
-		dataFn.shiftHeight = _shiftSize.height;
+		dataFn.inputSize = _inputSize;
+		dataFn.outputSize = _outputSize;
+		dataFn.shiftSize = _shiftSize;
 		dataFn.saliency = saliency;
  
 		_gc->setDataCost(&dataFunctionShiftmap,&dataFn);
 		
 		// smoothness comes from function pointer
 		ForSmoothFunction smoothFn;
-		smoothFn.inHeight = _inputSize.height;
-		smoothFn.inWidth = _inputSize.width;
-		smoothFn.outHeight = _outputSize.height;
-		smoothFn.outWidth = _outputSize.width;
-		smoothFn.shiftHeight = _shiftSize.height;
-		smoothFn.shiftWidth = _shiftSize.width;
+		smoothFn.inputSize = _inputSize;
+		smoothFn.outputSize = _outputSize;
+		smoothFn.shiftSize = _shiftSize;
 		smoothFn.image = input;
 		smoothFn.gradient = cvCloneImage(input);
 		cvSobel(input, smoothFn.gradient, 1, 1);	 
@@ -253,8 +246,8 @@ void ShiftMapComputer::ComputeShiftMap(IplImage* input, IplImage* saliency, CvSi
 	
 IplImage* ShiftMapComputer::GetRetargetImage(int level)
 {
-	IplImage* labelMap = (*_labelMapList)[level];
-	IplImage* image = cvCreateImage(cvSize(labelMap->width,labelMap->height), IPL_DEPTH_8U, 3);
+ 	IplImage* labelMap = (*_labelMapList)[level];
+	// IplImage* image = cvCreateImage(cvSize(labelMap->width,labelMap->height), IPL_DEPTH_8U, 3);
 	
 	return GetImageFromLabelMap(labelMap, (*_imageList)[level]);	
 }
@@ -268,16 +261,13 @@ IplImage* ShiftMapComputer::GetRetargetImageH()
 	for(int i = 0; i < num_pixels; i++)
 	{
 		int label = _gc->whatLabel(i);
-		CvPoint point = GetPoint(i, _outputSize.width, _outputSize.height);
-		CvPoint guess = GetLabel(point, _initialGuess);
-		CvPoint pointLabel = GetMappedPoint(guess, label, _shiftSize.width, _shiftSize.height);
-		//printf("*%i %i %i %i", point.x, point.y, pointLabel.x, pointLabel.y);
-		if(!IsOutside(pointLabel, _inputSize.width, _inputSize.height))
+		CvPoint point = GetPoint(i, _outputSize);		
+		CvPoint pointLabel = GetMappedPointInitialGuess(i, label, _outputSize, _shiftSize, _initialGuess);
+		
+		if(!IsOutside(pointLabel, _inputSize))
 		{
-
 			CvScalar value = cvGet2D(_input, pointLabel.y, pointLabel.x);
-			cvSet2D(output, point.y, point.x, value);
-			//printf("*%i %i %i %i", point.x, point.y, pointLabel.x, pointLabel.y);
+			cvSet2D(output, point.y, point.x, value);		
 		}
 		else
 		{
@@ -288,7 +278,7 @@ IplImage* ShiftMapComputer::GetRetargetImageH()
 	return output;
 }
 
-IplImage* ShiftMapComputer::GetRetargetImage()
+IplImage* ShiftMapComputer::CalculateRetargetImage()
 {
 	IplImage* output = cvCreateImage(_outputSize, _input->depth, _input->nChannels);
 	int num_pixels = _outputSize.width * _outputSize.height;
@@ -297,13 +287,11 @@ IplImage* ShiftMapComputer::GetRetargetImage()
 	for(int i = 0; i < num_pixels; i++)
 	{
 		int label = _gc->whatLabel(i);
-		CvPoint point = GetPoint(i, _outputSize.width, _outputSize.height);
-		//CvPoint guess = GetLabel(point, _initialGuess);
-		CvPoint pointLabel = GetMappedPoint(point, label, _shiftSize.width, _shiftSize.height);
-		//printf("*%i %i %i %i", point.x, point.y, pointLabel.x, pointLabel.y);
-		if(!IsOutside(pointLabel, _inputSize.width, _inputSize.height))
-		{
+		CvPoint point = GetPoint(i, _outputSize);		 
+		CvPoint pointLabel = GetMappedPoint(i, label, _outputSize, _shiftSize);
 
+		if(!IsOutside(pointLabel, _inputSize))
+		{
 			CvScalar value = cvGet2D(_input, pointLabel.y, pointLabel.x);
 			cvSet2D(output, point.y, point.x, value);
 			//printf("*%i %i %i %i", point.x, point.y, pointLabel.x, pointLabel.y);
@@ -325,10 +313,15 @@ IplImage* ShiftMapComputer::CalculateLabelMap()
 	printf("Getting label map... \n");
 	for(int i = 0; i < num_pixels; i++)
 	{
-		int label = _gc->whatLabel(i);		
-		CvPoint point = GetPoint(i, _outputSize.width, _outputSize.height);
-		//CvPoint guess = GetLabel(point, _initialGuess);
-		CvPoint pointLabel = GetMappedPoint(point, label, _shiftSize.width, _shiftSize.height);
+		int label = _gc->whatLabel(i);				
+		CvPoint point = GetPoint(i, _outputSize);		
+		CvPoint pointLabel = GetShift(label, _shiftSize);
+		
+		// test
+		CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
+		if(IsOutside(mapped, _inputSize))
+			printf("test");
+
 		SetLabel(point, pointLabel, output);
 	}
 	return output;
@@ -342,9 +335,16 @@ IplImage* ShiftMapComputer::CalculateLabelMap2()
 	for(int i = 0; i < num_pixels; i++)
 	{
 		int label = _gc->whatLabel(i);		
-		CvPoint point = GetPoint(i, _outputSize.width, _outputSize.height);
-		CvPoint guess = GetLabel(point, _initialGuess);
-		CvPoint pointLabel = GetMappedPoint(guess, label, _shiftSize.width, _shiftSize.height);
+		CvPoint point = GetPoint(i, _outputSize);
+		CvPoint shift = GetShift(label, _shiftSize);
+		CvPoint guess = GetLabel(point, _initialGuess);		
+		CvPoint pointLabel = cvPoint(shift.x + guess.x, shift.y + guess.y);	
+
+		// test
+		CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
+		if(IsOutside(mapped, _inputSize))
+			printf("test");
+
 		SetLabel(point, pointLabel, output);
 	}
 	return output;
@@ -392,7 +392,13 @@ IplImage* ShiftMapComputer::GetImageFromLabelMap(IplImage* map, IplImage* image)
 		for(int j = 0; j < map->height; j++)
 		{
 			CvPoint label = GetLabel(cvPoint(i,j), map);
-			CvScalar value = cvGet2D(image, label.y, label.x);
+			CvPoint mappedPoint = cvPoint(i + label.x, j + label.y);
+			
+			CvScalar value;
+			if(IsOutside(mappedPoint, cvSize(image->width, image->height)))
+				value = cvScalar(0, 0, 255);
+			else
+			  value = cvGet2D(image, j + label.y, i + label.x);
 			cvSet2D(output, j, i, value);
 		}
 	return output;

@@ -12,15 +12,11 @@ int ShifmapDataFunction(CvPoint point, CvPoint shift, IplImage* saliency)
 int dataFunctionShiftmapH(int pixel, int label, void *extraData)
 {
 	
-	ForDataFunctionH *data = (ForDataFunctionH *) extraData;
- 
-	// position of output pixel
-	CvPoint pixelPoint = GetPoint(pixel, data->outWidth, data->outHeight);
-	CvPoint guess = GetLabel(pixelPoint, data->initialGuess);
-	CvPoint origin_label = GetMappedPoint(guess, label, data->shiftWidth, data->shiftHeight);
-
-	if(IsOutside(origin_label, data->inWidth, data->inHeight)) 
-		return 10000;
+	ForDataFunctionH *data = (ForDataFunctionH *) extraData; 
+	CvPoint origin_label = GetMappedPointInitialGuess(pixel, label, data->outputSize, data->shiftSize, data->initialGuess);
+	
+	if(IsOutside(origin_label, data->inputSize)) 
+		return 100000;
 
 	double saliency = 0;
 
@@ -41,16 +37,13 @@ int dataFunctionShiftmapH(int pixel, int label, void *extraData)
 }
 
 int dataFunctionShiftmap(int pixel, int label, void *extraData)
-{
-	
+{	
 	ForDataFunction *data = (ForDataFunction *) extraData;
- 
+	
 	// position of output pixel
-	CvPoint pixelPoint = GetPoint(pixel, data->outWidth, data->outHeight);
-	CvPoint origin_label = GetMappedPoint(pixelPoint, label, data->shiftWidth, data->shiftHeight);
-
-	if(IsOutside(origin_label, data->inWidth, data->inHeight)) 
-		return 10000;
+	CvPoint origin_label = GetMappedPoint(pixel, label, data->outputSize, data->shiftSize);
+	if(IsOutside(origin_label, data->inputSize)) 
+		return 100000;
 
 	double saliency = 0;
 
@@ -64,7 +57,7 @@ int dataFunctionShiftmap(int pixel, int label, void *extraData)
 	//	saliency += 10000;
 
 	CvScalar value = cvGet2D(data->saliency, origin_label.y, origin_label.x);
-	saliency += 10*(value.val[0] + value.val[1] + value.val[2]); 	
+	saliency += (value.val[0] + value.val[1] + value.val[2]); 	
  
 	return saliency ;
  
@@ -74,17 +67,14 @@ int smoothFunctionShiftmapH(int pixel1, int pixel2, int label1, int label2, void
 {  
 	ForSmoothFunctionH *data = (ForSmoothFunctionH *) extraData;
 
-	// position of output pixel
-	CvPoint pixelPoint1 = GetPoint(pixel1, data->outWidth, data->outHeight);
-	CvPoint guess1 = GetLabel(pixelPoint1, data->initialGuess);
-	CvPoint labelPoint1 = GetMappedPoint(guess1, label1, data->shiftWidth, data->shiftHeight);	 
-	// position of output pixel
-	CvPoint pixelPoint2 = GetPoint(pixel2, data->outWidth, data->outHeight);	
-	CvPoint guess2 = GetLabel(pixelPoint2, data->initialGuess);
-	CvPoint labelPoint2 = GetMappedPoint(guess2, label2, data->shiftWidth, data->shiftHeight);
+	CvPoint pixelPoint1 = GetPoint(pixel1, data->outputSize);	
+	CvPoint labelPoint1 = GetMappedPointInitialGuess(pixel1, label1, data->outputSize, data->shiftSize, data->initialGuess);	 
+	
+	CvPoint pixelPoint2 = GetPoint(pixel2, data->outputSize);	
+	CvPoint labelPoint2 = GetMappedPointInitialGuess(pixel2, label2, data->outputSize, data->shiftSize, data->initialGuess);	 
 
-	if(IsOutside(labelPoint1, data->inWidth, data->inHeight) || IsOutside(labelPoint2, data->inWidth, data->inHeight))
-		return 10000; // prevent mapping outside image
+	if(IsOutside(labelPoint1, data->inputSize) || IsOutside(labelPoint2, data->inputSize))
+		return 100000; // prevent mapping outside image
  
 	//return 50;
 	// pre-compute variables:
@@ -107,16 +97,15 @@ int smoothFunctionShiftmapH(int pixel1, int pixel2, int label1, int label2, void
 int smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void* extraData)
 {  
 	ForSmoothFunction *data = (ForSmoothFunction *) extraData;
+	
+	CvPoint pixelPoint1 = GetPoint(pixel1, data->outputSize);	
+	CvPoint labelPoint1 = GetMappedPoint(pixel1, label1, data->outputSize, data->shiftSize);	 
+	CvPoint pixelPoint2 = GetPoint(pixel2, data->outputSize);	
+	CvPoint labelPoint2 = GetMappedPoint(pixel2, label2, data->outputSize, data->shiftSize);	 
+	
 
-	// position of output pixel
-	CvPoint pixelPoint1 = GetPoint(pixel1, data->outWidth, data->outHeight);
-	CvPoint labelPoint1 = GetMappedPoint(pixelPoint1, label1, data->shiftWidth, data->shiftHeight);	 
-	// position of output pixel
-	CvPoint pixelPoint2 = GetPoint(pixel2, data->outWidth, data->outHeight);	
-	CvPoint labelPoint2 = GetMappedPoint(pixelPoint2, label2, data->shiftWidth, data->shiftHeight);
-
-	if(IsOutside(labelPoint1, data->inWidth, data->inHeight) || IsOutside(labelPoint2, data->inWidth, data->inHeight))
-		return 10000; // prevent mapping outside image
+	if(IsOutside(labelPoint1, data->inputSize) || IsOutside(labelPoint2, data->inputSize))
+		return 100000; // prevent mapping outside image
  
 	//return 50;
 	// pre-compute variables:

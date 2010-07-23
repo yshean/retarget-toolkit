@@ -35,10 +35,8 @@ public:
 	// data to analyze performance of algorithm
 	vector<IplImage*>* _imageList;
 	vector<IplImage*>* _labelMapList;
+
 protected:
-	// range of label to search for
-	int _shiftWidth; 
-	int _shiftHeight;
 
 	CvSize _inputSize;
 	CvSize _outputSize;
@@ -46,13 +44,13 @@ protected:
 
 	IplImage* _input;
 	IplImage* _initialGuess; // for hierarchical shift-map
- 
-	GCoptimizationGridGraph* _gc;
- 
-  
+	int _level;
+	GCoptimizationGridGraph* _gc; 
+    
 public:
+	int GetLevelCount();
 	IplImage* GetOriginalImage(int level);
-	IplImage* GetRetargetImage();
+	IplImage* CalculateRetargetImage();
 	IplImage* GetRetargetImageH();
 	// get retarget image in a specifica level
 	IplImage* GetRetargetImage(int level);
