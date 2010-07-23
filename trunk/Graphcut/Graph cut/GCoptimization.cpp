@@ -1,3 +1,4 @@
+
 #include "stdafx.h"
 #ifdef MATLAB_MEX_FILE
 #include <mex.h>
@@ -300,7 +301,7 @@ OLGA_INLINE void GCoptimization::addterm2_checked(Energy* e, VarID i, VarID j, E
 		handleError("Smoothness weight was larger than GCO_MAX_ENERGYTERM; danger of integer overflow.");
 	// Inside energy/maxflow code the submodularity check is performed as an assertion,
 	// but is optimized out. We check it in release builds as well.
-	// @Chau
+	//@Chau
 	//if ( e00+e11 > e01+e10 )
 	//	handleError("Non-submodular expansion term detected; smooth costs must be a metric for expansion");
 	m_beforeExpansionEnergy += e11*w;
@@ -931,17 +932,18 @@ GCoptimization::EnergyType GCoptimization::giveLabelEnergy()
  
 GCoptimization::EnergyType GCoptimization::compute_energy()
 {
-	int energy = 0;
-	int temp;
+	EnergyType energy = 0;
+	EnergyType temp;
 	temp = giveDataEnergy();
-	printf("Data energy: %i ", temp);
 	energy += temp;
+	printf("\nData energy: %d ", temp);
 	temp = giveSmoothEnergy();
-	printf("Smooth energy: %i ", temp);
 	energy += temp;
+	printf("Smooth energy: %d ", temp);
 	temp = giveLabelEnergy();
-	printf("Label energy: %i \n", temp);
 	energy += temp;
+	printf("Label energy: %d ", temp);
+
 	return energy;
 }
 

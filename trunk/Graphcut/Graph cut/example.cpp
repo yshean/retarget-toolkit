@@ -19,7 +19,7 @@
 // For some examples, to demonstrate spatially varying terms we use
 // V(p1,p2,l1,l2) = w_{p1,p2}*[min((l1-l2)*(l1-l2),4)], with 
 // w_{p1,p2} = p1+p2 if |p1-p2| == 1 and w_{p1,p2} = p1*p2 if |p1-p2| is not 1
-#include "stdafx.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -398,40 +398,40 @@ void GeneralGraph_DArraySArraySpatVarying(int width,int height,int num_pixels,in
 }
 ////////////////////////////////////////////////////////////////////////////////
 
-//int main(int argc, char **argv)
-//{
-//	int width = 10;
-//	int height = 5;
-//	int num_pixels = width*height;
-//	int num_labels = 7;
-//
-//
-//	// smoothness and data costs are set up one by one, individually
-//	GridGraph_Individually(width,height,num_pixels,num_labels);
-//
-//	// smoothness and data costs are set up using arrays
-//	GridGraph_DArraySArray(width,height,num_pixels,num_labels);
-//
-//	// smoothness and data costs are set up using functions
-//	GridGraph_DfnSfn(width,height,num_pixels,num_labels);
-//	
-//	// smoothness and data costs are set up using arrays. 
-//	// spatially varying terms are present
-//	GridGraph_DArraySArraySpatVarying(width,height,num_pixels,num_labels);
-//
-//	//Will pretend our graph is 
-//	//general, and set up a neighborhood system
-//	// which actually is a grid
-//	GeneralGraph_DArraySArray(width,height,num_pixels,num_labels);
-//
-//	//Will pretend our graph is general, and set up a neighborhood system
-//	// which actually is a grid. Also uses spatially varying terms
-//	GeneralGraph_DArraySArraySpatVarying(width,height,num_pixels,num_labels);
-//
-//	printf("\n  Finished %d (%d) clock per sec %d",clock()/CLOCKS_PER_SEC,clock(),CLOCKS_PER_SEC);
-//
-//	return 0;
-//}
+int main(int argc, char **argv)
+{
+	int width = 10;
+	int height = 5;
+	int num_pixels = width*height;
+	int num_labels = 7;
+
+
+	// smoothness and data costs are set up one by one, individually
+	GridGraph_Individually(width,height,num_pixels,num_labels);
+
+	// smoothness and data costs are set up using arrays
+	GridGraph_DArraySArray(width,height,num_pixels,num_labels);
+
+	// smoothness and data costs are set up using functions
+	GridGraph_DfnSfn(width,height,num_pixels,num_labels);
+	
+	// smoothness and data costs are set up using arrays. 
+	// spatially varying terms are present
+	GridGraph_DArraySArraySpatVarying(width,height,num_pixels,num_labels);
+
+	//Will pretend our graph is 
+	//general, and set up a neighborhood system
+	// which actually is a grid
+	GeneralGraph_DArraySArray(width,height,num_pixels,num_labels);
+
+	//Will pretend our graph is general, and set up a neighborhood system
+	// which actually is a grid. Also uses spatially varying terms
+	GeneralGraph_DArraySArraySpatVarying(width,height,num_pixels,num_labels);
+
+	printf("\n  Finished %d (%d) clock per sec %d",clock()/CLOCKS_PER_SEC,clock(),CLOCKS_PER_SEC);
+
+	return 0;
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 

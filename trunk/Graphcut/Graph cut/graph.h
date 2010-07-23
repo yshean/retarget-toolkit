@@ -402,7 +402,8 @@ template <typename captype, typename tcaptype, typename flowtype>
 	assert(_i >= 0 && _i < node_num);
 	assert(_j >= 0 && _j < node_num);
 	assert(_i != _j);
-	assert(cap >= 0);
+	//@Chau
+	//assert(cap >= 0);
 	assert(rev_cap >= 0);
 
 	if (arc_last == arc_max) reallocate_arcs();
