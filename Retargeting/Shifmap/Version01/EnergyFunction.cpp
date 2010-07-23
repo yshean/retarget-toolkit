@@ -9,6 +9,37 @@ int ShifmapDataFunction(CvPoint point, CvPoint shift, IplImage* saliency)
 	return value.val[0] + value.val[1] + value.val[2];
 }
 
+int dataFunctionShiftmapH(int pixel, int label, void *extraData)
+{
+	
+	ForDataFunctionH *data = (ForDataFunctionH *) extraData;
+ 
+	// position of output pixel
+	CvPoint pixelPoint = GetPoint(pixel, data->outWidth, data->outHeight);
+	CvPoint guess = GetLabel(pixelPoint, data->initialGuess);
+	CvPoint origin_label = GetMappedPoint(guess, label, data->shiftWidth, data->shiftHeight);
+
+	if(IsOutside(origin_label, data->inWidth, data->inHeight)) 
+		return 10000;
+
+	double saliency = 0;
+
+	// force the 2 left-most & right-most col to be in the output
+	//if(pixelPoint.x == 0 && origin_label.x == 0 && pixelPoint.y == origin_label.y)
+	//	saliency += 100;
+	//else 
+	//if(pixelPoint.x == data->outWidth - 1 && origin_label.x == data->inWidth - 1 && pixelPoint.y == origin_label.y)
+	//	saliency += 0;
+	//else
+	//	saliency += 10000;
+
+	CvScalar value = cvGet2D(data->saliency, origin_label.y, origin_label.x);
+	saliency += value.val[0] + value.val[1] + value.val[2]; 	
+ 
+	return saliency ;
+ 
+}
+
 int dataFunctionShiftmap(int pixel, int label, void *extraData)
 {
 	
@@ -22,53 +53,56 @@ int dataFunctionShiftmap(int pixel, int label, void *extraData)
 		return 10000;
 
 	double saliency = 0;
- 
+
+	// force the 2 left-most & right-most col to be in the output
+	//if(pixelPoint.x == 0 && origin_label.x == 0 && pixelPoint.y == origin_label.y)
+	//	saliency += 100;
+	//else 
+	//if(pixelPoint.x == data->outWidth - 1 && origin_label.x == data->inWidth - 1 && pixelPoint.y == origin_label.y)
+	//	saliency += 0;
+	//else
+	//	saliency += 10000;
+
 	CvScalar value = cvGet2D(data->saliency, origin_label.y, origin_label.x);
-	saliency += value.val[0] + value.val[1] + value.val[2]; 	
+	saliency += 10*(value.val[0] + value.val[1] + value.val[2]); 	
  
 	return saliency ;
  
 }
 
-//double smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void* extraData)
-//{
-//	ForSmoothFunction *data = (ForSmoothFunction *) extraData;
-//
-//	// position of output pixel
-//	CvPoint pixelPoint1 = GetPoint(pixel1, data->outWidth, data->outHeight);
-//	// position of input pixel used to map to output pixel
-//	CvPoint labelPoint1 = GetPoint(label1, data->inWidth, data->inHeight);
-//	// position of output pixel
-//	CvPoint pixelPoint2 = GetPoint(pixel2, data->outWidth, data->outHeight);
-//	// position of input pixel used to map to output pixel
-//	CvPoint labelPoint2 = GetPoint(label2, data->inWidth, data->inHeight);
-//
-//	// just calculate the diff of neighbor in original image
-//	// in this way, if 2 labels are indeed neighbors in original image
-//	// the cost will be zero
-//	double energy = 0;
-//	
-//	// color term
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x, labelPoint1.y + 1), cvPoint(labelPoint2.x, labelPoint2.y + 1), data->image);
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x, labelPoint1.y - 1), cvPoint(labelPoint2.x, labelPoint2.y - 1), data->image);
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x + 1, labelPoint1.y), cvPoint(labelPoint2.x + 1, labelPoint2.y), data->image);
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x - 1, labelPoint1.y), cvPoint(labelPoint2.x - 1, labelPoint2.y), data->image);
-//	
-//	// gradient different term 
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x, labelPoint1.y + 1), cvPoint(labelPoint2.x, labelPoint2.y + 1), data->gradient);
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x, labelPoint1.y - 1), cvPoint(labelPoint2.x, labelPoint2.y - 1), data->gradient);
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x + 1, labelPoint1.y), cvPoint(labelPoint2.x + 1, labelPoint2.y), data->gradient);
-//	energy += SquareColorDifference(cvPoint(labelPoint1.x - 1, labelPoint1.y), cvPoint(labelPoint2.x - 1, labelPoint2.y), data->gradient);
-//	
-//	return energy;
-//}
+int smoothFunctionShiftmapH(int pixel1, int pixel2, int label1, int label2, void* extraData)
+{  
+	ForSmoothFunctionH *data = (ForSmoothFunctionH *) extraData;
 
-//bool IsCorrectMap(CvPoint pixel1, CvPoint pixel2, CvPoint label1, CvPoint label2)
-//{
-//	if(pixel1.x == label1.x && pixel1.y == label1.y && pixel2.x == label2.x && pixel2.y == label2.y)
-//		return true;
-//	return false;
-//}
+	// position of output pixel
+	CvPoint pixelPoint1 = GetPoint(pixel1, data->outWidth, data->outHeight);
+	CvPoint guess1 = GetLabel(pixelPoint1, data->initialGuess);
+	CvPoint labelPoint1 = GetMappedPoint(guess1, label1, data->shiftWidth, data->shiftHeight);	 
+	// position of output pixel
+	CvPoint pixelPoint2 = GetPoint(pixel2, data->outWidth, data->outHeight);	
+	CvPoint guess2 = GetLabel(pixelPoint2, data->initialGuess);
+	CvPoint labelPoint2 = GetMappedPoint(guess2, label2, data->shiftWidth, data->shiftHeight);
+
+	if(IsOutside(labelPoint1, data->inWidth, data->inHeight) || IsOutside(labelPoint2, data->inWidth, data->inHeight))
+		return 10000; // prevent mapping outside image
+ 
+	//return 50;
+	// pre-compute variables:
+	CvPoint neighbor1 = GetNeighbor(pixelPoint1, pixelPoint2, labelPoint1); // neighbor of label1
+	CvPoint neighbor2 = GetNeighbor(pixelPoint2, pixelPoint1, labelPoint2); // neighbor of label2
+
+	int energy = 0;
+
+	energy += SquareColorDifference(labelPoint1, neighbor2, data->image);
+	energy += SquareColorDifference(labelPoint2, neighbor1, data->image);  
+
+	// gradient different term 
+	energy += 2 * SquareColorDifference(labelPoint2, neighbor1, data->gradient);
+	energy += 2 * SquareColorDifference(labelPoint1, neighbor2, data->gradient);
+	
+	return  energy;
+}
+
 
 int smoothFunctionShiftmap(int pixel1, int pixel2, int label1, int label2, void* extraData)
 {  

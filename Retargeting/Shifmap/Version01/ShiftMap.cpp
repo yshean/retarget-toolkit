@@ -18,66 +18,82 @@ int _tmain(int argc, _TCHAR* argv[])
  
 
 	
-	IplImage* input = cvLoadImage("boatman3.jpg");
-	IplImage* saliency = cvLoadImage("boatman3S.JPG");
-  
- 
+	IplImage* input = cvLoadImage("boatman.jpg");
+	IplImage* saliency = cvLoadImage("boatmanCS.JPG");
+  	// reverse the saliency
+	for(int i = 0; i < saliency->width; i++)
+		for(int j = 0; j < saliency->height; j++)
+		{
+			CvScalar value = cvGet2D(saliency, j, i);
+			value.val[0] = 255 - value.val[0];
+			value.val[1] = 255 - value.val[1];
+			value.val[2] = 255 - value.val[2];
+			cvSet2D(saliency, j, i, value);
+		}
+	//cvNamedWindow("Test");
+	//while(1)
+	//{
+	//	cvShowImage("Test", saliency);
+	//	cvWaitKey(100);
+	//}
+	CvSize outputSize = cvSize(150, 180);
  
 	ShiftMapComputer* computer = new ShiftMapComputer();
  
-	computer->ComputeShiftMap(input, saliency, cvSize(40, 54), cvSize(54, 54));
-
-	IplImage* labelMap = computer->GetLabelMap();
-
+	//computer->ComputeShiftMap(input, saliency, cvSize(40, 54), cvSize(54, 54));
+	computer->ComputeFastShiftMap(input, saliency, outputSize);
+	
 	ShiftMapVisualizer* visualizer = new ShiftMapVisualizer();
 
-	IplImage* map = cvCreateImage(cvSize(labelMap->width, labelMap->height), IPL_DEPTH_8U, 3);
-	IplImage* source = cvCreateImage(cvSize(input->width, input->height), IPL_DEPTH_8U, 3);
-	visualizer->Visualize(labelMap, source, map);
+	IplImage* labelMap1 = computer->GetLabelMap(1);
+	IplImage* origin1 = computer->GetOriginalImage(1);	
+	IplImage* map1 = cvCreateImage(cvSize(labelMap1->width, labelMap1->height), IPL_DEPTH_8U, 3);
+	IplImage* source1 = cvCreateImage(cvSize(origin1->width, origin1->height), IPL_DEPTH_8U, 3);	
+	IplImage* output1 = computer->GetRetargetImage(1);
+	visualizer->Visualize(labelMap1, source1, map1);
 
-	// test smooth energy
-	int energy = visualizer->ComputeEnergy(labelMap);
-	printf("energy: %i" ,energy);
-
-	IplImage* output = computer->GetRetargetImage();
- 
+	IplImage* labelMap0 = computer->GetLabelMap(0);
+	IplImage* origin0 = computer->GetOriginalImage(0);	
+	IplImage* map0 = cvCreateImage(cvSize(labelMap0->width, labelMap0->height), IPL_DEPTH_8U, 3);
+	IplImage* source0 = cvCreateImage(cvSize(origin0->width, origin0->height), IPL_DEPTH_8U, 3);	
+	IplImage* output0 = computer->GetRetargetImage(0);
+	visualizer->Visualize(labelMap0, source0, map0);
+	 
+	cvNamedWindow("Source1");
+	//cvNamedWindow("Map1");
+	cvNamedWindow("Result1");	
+	//cvNamedWindow("Source0");
+	//cvNamedWindow("Map0");
+	//cvNamedWindow("Result0");	
 	
-
-	CvSize outputSize;
-	outputSize.width = 50;
-	outputSize.height = 54;
-		
-	// initial guess map to same position
-	// this for the case applying gc to all image
-	// not just few labels
-	//IplImage* initialGuess = cvCreateImage(outputSize, IPL_DEPTH_8U, 3);
-	//for(int i = 0; i < outputSize.width; i++)
-	//	for(int j = 0; j < outputSize.height; j++)
-	//	{
-	//		SetLabel(cvPoint(i,j), cvPoint(i,j), initialGuess);
-	//	}
-
-	//////	computer->ComputeShiftMap(input, saliency, initialGuess, outputSize, cvSize(input->width, input->height));
-	//////IplImage* output = computer->GetRetargetImage();
- 
-	//IplImage* input = cvLoadImage("a.jpg");
-	//IplImage* saliency = cvLoadImage("aS.jpg");
-	//IplImage* output = computer->GetImage(input, saliency, 10, 10);
- 
-	cvNamedWindow("Source");
-	cvNamedWindow("Map");
-	cvNamedWindow("Result");	
-		
- 
-	//computer->ComputeFastShiftMap(input, saliency, outputSize);
-  
- 
+	cvSaveImage("boatman4054.jpg", output0);
+	vector<IplImage*>* result = new vector<IplImage*>(0);
+	for(int i = 0; i < 3;i++)
+	{
+		IplImage* image = computer->GetRetargetImage(i);
+		result->push_back(image);
+	}
+	int index = 2;
 	while(1)
 	{
-		cvShowImage("Source", source);
-		cvShowImage("Map", map);
-		cvShowImage("Result", output);
-		cvWaitKey(100);
+
+		cvShowImage("Source1", (*(computer->_imageList))[index]);
+		cvShowImage("Result1", (*result)[index]);
+		//cvShowImage("Source1", source1);
+		//cvShowImage("Map1", map1);
+		//cvShowImage("Result1", output1);
+		//cvShowImage("Source0", source0);
+		//cvShowImage("Map0", map0);
+		//cvShowImage("Result0", output0);
+
+		int key = cvWaitKey(100);
+		if(key == 32)
+		{
+			if(index == 0)
+				index = 2;
+			else
+				index--;
+		}
 	}
 	return 0;
 
