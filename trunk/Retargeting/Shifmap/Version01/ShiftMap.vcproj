@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\..\Graph cut\Graph cut&quot;"
+				AdditionalIncludeDirectories="&quot;..\..\Graphcut\Graph cut&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -117,7 +117,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;..\..\Graph cut\Graph cut&quot;"
+				AdditionalIncludeDirectories="&quot;..\..\Graphcut\Graph cut&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="2"
@@ -182,31 +182,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\example.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\Graph cut\Graph cut\GCoptimization.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\Graph cut\Graph cut\Graph cut.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\Graph cut\Graph cut\graph.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\Label.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\Graph cut\Graph cut\LinkedBlockList.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\Graph cut\Graph cut\maxflow.cpp"
 				>
 			</File>
 			<File
@@ -215,6 +191,10 @@
 			</File>
 			<File
 				RelativePath=".\ShiftMapComputer.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ShiftMapVisualizer.cpp"
 				>
 			</File>
 			<File
@@ -244,11 +224,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\block.h"
+				RelativePath="..\..\Graphcut\Graph cut\block.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\energy.h"
+				RelativePath="..\..\Graphcut\Graph cut\energy.h"
 				>
 			</File>
 			<File
@@ -256,15 +236,23 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\example.h"
+				RelativePath="..\..\Graphcut\Graph cut\GCoptimization.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\GCoptimization.h"
+				RelativePath="..\..\Graphcut\Graph cut\GCoptimization.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\graph.h"
+				RelativePath="..\..\Graphcut\Graph cut\Graph cut.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Graphcut\Graph cut\graph.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Graphcut\Graph cut\graph.h"
 				>
 			</File>
 			<File
@@ -272,7 +260,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\LinkedBlockList.h"
+				RelativePath="..\..\Graphcut\Graph cut\LinkedBlockList.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Graphcut\Graph cut\LinkedBlockList.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Graphcut\Graph cut\maxflow.cpp"
 				>
 			</File>
 			<File
@@ -280,11 +276,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\stdafx.h"
+				RelativePath=".\ShiftMapVisualizer.h"
 				>
 			</File>
 			<File
 				RelativePath=".\stdafx.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Graph cut\Graph cut\stdafx.h"
 				>
 			</File>
 			<File
