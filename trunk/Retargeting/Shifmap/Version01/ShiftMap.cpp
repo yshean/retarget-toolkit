@@ -18,8 +18,8 @@ int _tmain(int argc, _TCHAR* argv[])
  
 
 	
-	IplImage* input = cvLoadImage("boatman3.jpg");
-	IplImage* saliency = cvLoadImage("boatmanCS2.JPG");
+	IplImage* input = cvLoadImage("boatman.jpg");
+	IplImage* saliency = cvLoadImage("boatmanCS.JPG");
   	// reverse the saliency
 	for(int i = 0; i < saliency->width; i++)
 		for(int j = 0; j < saliency->height; j++)
@@ -36,13 +36,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	//	cvShowImage("Test", saliency);
 	//	cvWaitKey(100);
 	//}
-	CvSize outputSize = cvSize(50,45);
+	CvSize outputSize = cvSize(230, 180);
  
 	ShiftMapComputer* computer = new ShiftMapComputer();
  
 	//computer->ComputeShiftMap(input, saliency, outputSize, outputSize);
 	computer->ComputeFastShiftMap(input, saliency, outputSize);
-	IplImage* labelMap = computer->CalculateLabelMap();
+	CvMat* labelMap = computer->CalculateLabelMap();
 	IplImage* map = cvCreateImage(cvSize(labelMap->width, labelMap->height), IPL_DEPTH_8U, 3);
 	IplImage* source = cvCreateImage(cvSize(input->width, input->height), IPL_DEPTH_8U, 3);
 
@@ -107,7 +107,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		if(key == 32)
 		{
 			if(index == 0)
-				index = 2;
+				index = computer->GetLevelCount();
 			else
 				index--;
 		}

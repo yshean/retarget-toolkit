@@ -30,7 +30,7 @@ struct ForDataFunctionH
 	CvSize shiftSize;
 	CvSize inputSize;
 	IplImage* saliency; 
-	IplImage* initialGuess;
+	CvMat* initialGuess;
 };
 
 struct ForSmoothFunction
@@ -51,7 +51,7 @@ struct ForSmoothFunctionH
 	IplImage* image;
 	IplImage* gradient;
 	// initial guess
-	IplImage* initialGuess;
+	CvMat* initialGuess;
 };
 
 // straight shiftmap
