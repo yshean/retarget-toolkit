@@ -1,118 +1,419 @@
-// ShiftMap.cpp : Defines the entry point for the console application.
-//
+#include "StdAfx.h"
+#include "ShiftMap.h"
 
-#include "stdafx.h"
-#include "Label.h"
-#include "ShiftMapComputer.h"
-#include <cv.h>
-#include <highgui.h>
-#include "example.h"
-#include "ShiftMapVisualizer.h"
-
-int _tmain(int argc, _TCHAR* argv[])
+ShiftMap::ShiftMap( )
 {
-	// GridGraph_DfnSfn(10, 10, 100, 20);
-	
-	
-	
  
+}
 
-	
-	IplImage* input = cvLoadImage("boatman.jpg");
-	IplImage* saliency = cvLoadImage("boatmanCS.JPG");
-  	// reverse the saliency
-	for(int i = 0; i < saliency->width; i++)
-		for(int j = 0; j < saliency->height; j++)
+ShiftMap::~ShiftMap(void)
+{	
+}
+
+
+IplImage* ShiftMap::GetRetargetImage(IplImage* input, IplImage* saliency, CvSize outputSize)
+{
+	ComputeShiftMap(input, saliency, outputSize, outputSize);
+	return CalculateRetargetImage();
+}
+
+void ShiftMap::ClearGC()
+{
+	delete _gc;
+}
+IplImage* ShiftMap::GetOriginalImage(int level)
+{
+	return (*_imageList)[level];
+}
+
+void ShiftMap::DownSampling(IplImage* source, IplImage* dst)
+{ 
+	IplImage* blur = cvCloneImage(source);
+	cvSmooth(source, blur);
+	for(int i = 0; i < dst->width; i++)
+		for(int j = 0; j < dst->height; j++)
 		{
-			CvScalar value = cvGet2D(saliency, j, i);
-			value.val[0] = 255 - value.val[0];
-			value.val[1] = 255 - value.val[1];
-			value.val[2] = 255 - value.val[2];
-			cvSet2D(saliency, j, i, value);
-		}
-	//cvNamedWindow("Test");
-	//while(1)
-	//{
-	//	cvShowImage("Test", saliency);
-	//	cvWaitKey(100);
-	//}
-	CvSize outputSize = cvSize(230, 180);
- 
-	ShiftMapComputer* computer = new ShiftMapComputer();
- 
-	//computer->ComputeShiftMap(input, saliency, outputSize, outputSize);
-	computer->ComputeFastShiftMap(input, saliency, outputSize);
-	CvMat* labelMap = computer->CalculateLabelMap();
-	IplImage* map = cvCreateImage(cvSize(labelMap->width, labelMap->height), IPL_DEPTH_8U, 3);
-	IplImage* source = cvCreateImage(cvSize(input->width, input->height), IPL_DEPTH_8U, 3);
+			CvScalar value = cvGet2D(blur, j*2, i*2);
+			cvSet2D(dst, j, i, value);
+		} 
+}
 
-	/*ShiftMapVisualizer* visualizer = new ShiftMapVisualizer();
-	visualizer->Visualize(labelMap, source, map, cvSize(45,45));*/
-	//IplImage* labelMap1 = computer->GetLabelMap(1);
-	//IplImage* origin1 = computer->GetOriginalImage(1);	
-	//IplImage* map1 = cvCreateImage(cvSize(labelMap1->width, labelMap1->height), IPL_DEPTH_8U, 3);
-	//IplImage* source1 = cvCreateImage(cvSize(origin1->width, origin1->height), IPL_DEPTH_8U, 3);	
-	//IplImage* output1 = computer->GetRetargetImage(1);
-	//visualizer->Visualize(labelMap1, source1, map1);
+int  ShiftMap::GetLevelCount()
+{
+	return _level;
+}
+void ShiftMap::ComputeFastShiftMap(IplImage* input, IplImage* saliency, CvSize output)
+{
+	printf("Downsampling...");
+	_imageList = new vector<IplImage*>(0);
+	_labelMapList = new vector<CvMat*>(0);
+	vector<IplImage*>* imageSList = new vector<IplImage*>(0);
+	vector<CvSize>* outputSizeList = new vector<CvSize>(0);
+	_imageList->push_back(input);
+	imageSList->push_back(saliency);
+	outputSizeList->push_back(output);
 
-	//IplImage* labelMap0 = computer->GetLabelMap(0);
-	//IplImage* origin0 = computer->GetOriginalImage(0);	
-	//IplImage* map0 = cvCreateImage(cvSize(labelMap0->width, labelMap0->height), IPL_DEPTH_8U, 3);
-	//IplImage* source0 = cvCreateImage(cvSize(origin0->width, origin0->height), IPL_DEPTH_8U, 3);	
-	//IplImage* output0 = computer->GetRetargetImage(0);
-	//visualizer->Visualize(labelMap0, source0, map0);
+	IplImage* level = input;
+	IplImage* levelS = saliency;	
+	CvSize levelSize = output;
+
+	int levelCount = 0;
+
+	while(level->width >20 && level->height > 20)
+	{
+		IplImage* level_temp = cvCreateImage(cvSize(level->width/2, level->height/2), input->depth, input->nChannels);
+		IplImage* levelS_temp = cvCreateImage(cvSize(level->width/2, level->height/2), input->depth, input->nChannels);
+		
+		DownSampling(level, level_temp);
+		DownSampling(levelS, levelS_temp);		
+		level = level_temp;
+		levelS = levelS_temp; 
+		levelCount++;
+
+		CvSize output_temp;
+		output_temp.width = levelSize.width / 2;
+		output_temp.height = levelSize.height / 2;
+		levelSize = output_temp;
+		
+		_imageList->push_back(level);
+		imageSList->push_back(levelS);
+		outputSizeList->push_back(levelSize);
+	}  
+
+	// dummy initialGuess - just to be released later
+	 _initialGuess = cvCreateMat(10,10, CV_32SC2);
+	
+	 _level = levelCount;
+	//int index = levelCount;
+	for(int i = levelCount; i >= 0; i--)
+	{
+		if(i == levelCount)		
+			// first level does not require an initialGuess
+			ComputeShiftMap((*_imageList)[i], (*imageSList)[i], (*outputSizeList)[i], cvSize((*_imageList)[i]->width, (*_imageList)[i]->height));
+		else
+			ComputeShiftMap((*_imageList)[i], (*imageSList)[i], _initialGuess, (*outputSizeList)[i], cvSize(3,3));
+		//
+		//if(i == levelCount - 3)
+		//{
+		//	IplImage* image = GetRetargetImage();
+		//	//IplImage* image = (*imageSList)[i];
+		//	cvNamedWindow("test");
+		//	while(1)
+		//	{
+		//		cvShowImage("test", image);
+		//		cvWaitKey(100);
+		//	}
+		//}
+		// save result	
+
+		
+
+		CvMat* labelMap;
+		if(i == levelCount)
+			labelMap = CalculateLabelMap();
+		else
+			labelMap = CalculateLabelMap2();
 	 
-	cvNamedWindow("Source");
-	cvNamedWindow("Map");
-	cvNamedWindow("Result");	
-	//cvNamedWindow("Source0");
-	//cvNamedWindow("Map0");
-	//cvNamedWindow("Result0");	
-	
-	//cvSaveImage("boatman4054.jpg", output0);
-	
-	//IplImage* result = computer->CalculateRetargetImage();
-	////
 
-	//while(1)
-	//{
-	//	cvShowImage("Result", result);
-	//	cvShowImage("Source", source);
-	//	cvShowImage("Map", map);
-	//	cvWaitKey(100);
-	//}
-	//
-	
-	int index = computer->GetLevelCount();
-	vector<IplImage*>* result = new vector<IplImage*>(0);
-	for(int i = 0; i <= index;i++)
-	{
-		IplImage* image = computer->GetRetargetImage(i);
-		result->push_back(image);
+
+		_labelMapList->insert(_labelMapList->begin(), labelMap);
+		if(i > 0)
+		{	
+			cvReleaseMat(&_initialGuess);	
+			_initialGuess = cvCreateMat((*outputSizeList)[i-1].height, (*outputSizeList)[i-1].width , CV_32SC2);
+			GetInterpolationMap(labelMap, _initialGuess);			
+			//if(i == index)
+			//{
+			//	IplImage* image = GetImageFromLabelMap(_initialGuess, (*_imageList)[i-1]);
+			//	//IplImage* image = (*imageList)[0];
+			//	cvNamedWindow("test");
+			//	while(1)
+			//	{
+			//		cvShowImage("test", image);
+			//		int key = cvWaitKey(100);
+			//		if(key == 32)
+			//		{
+			//			index--;
+			//			break;
+			//		}
+			//	}
+			//}			 
+
+			ClearGC();
+		}		
 	}
+
+}
+void ShiftMap::ComputeShiftMap(IplImage* input, IplImage* saliency, CvMat* initialGuess, CvSize output, CvSize shiftSize)
+{
+		try{
+		_inputSize.width = input->width;
+		_inputSize.height = input->height;
+		_outputSize = output;
+		_shiftSize = shiftSize;
+		_input = input; 
+		_initialGuess = initialGuess;
+			
+		_gc = new GCoptimizationGridGraph(_outputSize.width, _outputSize.height, _shiftSize.width * _shiftSize.height);
+
+		// set up the needed data to pass to function for the data costs
+		ForDataFunctionH dataFn;
+		dataFn.inputSize = _inputSize;
+		dataFn.outputSize = _outputSize;
+		dataFn.shiftSize = _shiftSize;
+		dataFn.saliency = saliency;
+		dataFn.initialGuess = initialGuess;
+
+		_gc->setDataCost(&dataFunctionShiftmapH,&dataFn);
+		
+		// smoothness comes from function pointer
+		ForSmoothFunctionH smoothFn;
+		smoothFn.inputSize = _inputSize;
+		smoothFn.outputSize = _outputSize;
+		smoothFn.shiftSize = _shiftSize;
+		smoothFn.image = input;
+		smoothFn.gradient = cvCloneImage(input);
+		smoothFn.initialGuess = initialGuess;
+		cvSobel(input, smoothFn.gradient, 1, 1);	 
+		_gc->setSmoothCost(&smoothFunctionShiftmapH, &smoothFn);
+		
+		printf("\nBefore optimization energy is %d \n", _gc->compute_energy());
+		//gc->swap(20);
+		_gc->expansion(2);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		printf("\nAfter optimization energy is %d \n", _gc->compute_energy()); 	
+
+
+		//cvNamedWindow("test");
+		//while(1)
+		//{
+		//	cvShowImage("test", dataFn._visited);
+		//	cvWaitKey(100);
+		//}
+	}
+	catch (GCException e){
+		e.Report();
+	}
+
+}
+void ShiftMap::ComputeShiftMap(IplImage* input, IplImage* saliency, CvSize output, CvSize shiftSize)
+{
+	try{
+		_inputSize.width = input->width;
+		_inputSize.height = input->height;
+		_outputSize = output;
+		_shiftSize = shiftSize;
+		_input = input; 
+
+		_gc = new GCoptimizationGridGraph(_outputSize.width, _outputSize.height, _shiftSize.width * _shiftSize.height);
+
+		// set up the needed data to pass to function for the data costs
+		ForDataFunction dataFn;
+		dataFn.inputSize = _inputSize;
+		dataFn.outputSize = _outputSize;
+		dataFn.shiftSize = _shiftSize;
+		dataFn.saliency = saliency;
+ 
+		_gc->setDataCost(&dataFunctionShiftmap,&dataFn);
+		
+		// smoothness comes from function pointer
+		ForSmoothFunction smoothFn;
+		smoothFn.inputSize = _inputSize;
+		smoothFn.outputSize = _outputSize;
+		smoothFn.shiftSize = _shiftSize;
+		smoothFn.image = input;
+		smoothFn.gradient = cvCloneImage(input);
+		cvSobel(input, smoothFn.gradient, 1, 1);	 
+		_gc->setSmoothCost(&smoothFunctionShiftmap, &smoothFn);
+		
+		printf("\nBefore optimization energy is %d \n", _gc->compute_energy());
+		//gc->swap(20);
+		_gc->expansion(2);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+		printf("\nAfter optimization energy is %d \n", _gc->compute_energy()); 
+
+		//cvNamedWindow("test");
+		//while(1)
+		//{
+		//	cvShowImage("test", dataFn._visited);
+		//	cvWaitKey(100);
+		//}
+	}
+	catch (GCException e){
+		e.Report();
+	}
+}
+
+//IplImage* ShiftMap::GetLabelMap()
+//{
+//	IplImage* output = cvCreateImage(_outputSize, _input->depth, _input->nChannels);
+//	int num_pixels = _outputSize.width * _outputSize.height;
+//	for(int i = 0; i < num_pixels; i++)
+//	{	
+//		int label = _gc->whatLabel(i);
+//		CvPoint point = GetPoint(i, _outputSize.width, _outputSize.height);
+//		CvPoint pointLabel = GetMappedPoint(point, label, _shiftSize.width, _shiftSize.height);
+//		SetLabel(point, pointLabel, output);
+//	}
+//	return output;
+//}
 	
-	while(1)
+IplImage* ShiftMap::GetRetargetImage(int level)
+{
+ 	CvMat* labelMap = (*_labelMapList)[level];
+	// IplImage* image = cvCreateImage(cvSize(labelMap->width,labelMap->height), IPL_DEPTH_8U, 3);
+	
+	return GetImageFromLabelMap(labelMap, (*_imageList)[level]);	
+}
+
+IplImage* ShiftMap::GetRetargetImageH()
+{
+	IplImage* output = cvCreateImage(_outputSize, _input->depth, _input->nChannels);
+	int num_pixels = _outputSize.width * _outputSize.height;
+
+	printf("Rendering graph-cut result to image... \n");
+	for(int i = 0; i < num_pixels; i++)
 	{
-
-		cvShowImage("Source", (*(computer->_imageList))[index]);
-		cvShowImage("Result", (*result)[index]);
-		//cvShowImage("Source1", source1);
-		//cvShowImage("Map1", map1);
-		//cvShowImage("Result1", output1);
-		//cvShowImage("Source0", source0);
-		//cvShowImage("Map0", map0);
-		//cvShowImage("Result0", output0);
-
-		int key = cvWaitKey(100);
-		if(key == 32)
+		int label = _gc->whatLabel(i);
+		CvPoint point = GetPoint(i, _outputSize);		
+		CvPoint pointLabel = GetMappedPointInitialGuess(i, label, _outputSize, _shiftSize, _initialGuess);
+		
+		if(!IsOutside(pointLabel, _inputSize))
 		{
-			if(index == 0)
-				index = computer->GetLevelCount();
-			else
-				index--;
+			CvScalar value = cvGet2D(_input, pointLabel.y, pointLabel.x);
+			cvSet2D(output, point.y, point.x, value);		
+		}
+		else
+		{
+			printf("warning mapped outside");
+			cvSet2D(output, point.y, point.x, cvScalar(255, 0, 0));
 		}
 	}
-	return 0;
+	return output;
+}
+
+IplImage* ShiftMap::CalculateRetargetImage()
+{
+	IplImage* output = cvCreateImage(_outputSize, _input->depth, _input->nChannels);
+	int num_pixels = _outputSize.width * _outputSize.height;
+
+	printf("Rendering graph-cut result to image... \n");
+	for(int i = 0; i < num_pixels; i++)
+	{
+		int label = _gc->whatLabel(i);
+		CvPoint point = GetPoint(i, _outputSize);		 
+		CvPoint pointLabel = GetMappedPoint(i, label, _outputSize, _shiftSize);
+
+		if(!IsOutside(pointLabel, _inputSize))
+		{
+			CvScalar value = cvGet2D(_input, pointLabel.y, pointLabel.x);
+			cvSet2D(output, point.y, point.x, value);
+			//printf("*%i %i %i %i", point.x, point.y, pointLabel.x, pointLabel.y);
+		}
+		else
+		{
+			printf("warning mapped outside");
+			cvSet2D(output, point.y, point.x, cvScalar(255, 0, 0));
+		}
+	}
+	return output;
+}
+
+CvMat* ShiftMap::CalculateLabelMap()
+{
+	CvMat* output = cvCreateMat(_outputSize.height, _outputSize.width, CV_32SC2);
+	int num_pixels = _outputSize.width * _outputSize.height;
+
+	printf("Getting label map... \n");
+	for(int i = 0; i < num_pixels; i++)
+	{
+		int label = _gc->whatLabel(i);				
+		CvPoint point = GetPoint(i, _outputSize);		
+		CvPoint pointLabel = GetShift(label, _shiftSize);
+		
+		//// test
+		//if(point.x == 11 && point.y == 0)
+		//	printf("test");
+		//CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
+		//if(IsOutside(mapped, _inputSize))
+		//	printf("test");
+		 
+		SetLabel(point, pointLabel, output);
+	}
+	return output;
+}
+CvMat* ShiftMap::CalculateLabelMap2()
+{
+	CvMat* output = cvCreateMat(_outputSize.height, _outputSize.width, CV_32SC2);
+	int num_pixels = _outputSize.width * _outputSize.height;
+
+	printf("Getting label map... \n");
+	for(int i = 0; i < num_pixels; i++)
+	{
+		int label = _gc->whatLabel(i);		
+		CvPoint point = GetPoint(i, _outputSize);
+		CvPoint shift = GetShift(label, _shiftSize);
+		CvPoint guess = GetLabel(point, _initialGuess);		
+		CvPoint pointLabel = cvPoint(shift.x + guess.x, shift.y + guess.y);	
+
+		// test
+		//CvPoint mapped = cvPoint(point.x + pointLabel.x, point.y + pointLabel.y);
+		//if(IsOutside(mapped, _inputSize))
+		//	printf("test");
+		 
+		SetLabel(point, pointLabel, output);
+	}
+	return output;
+}
 
 
+CvMat* ShiftMap::GetLabelMap(int level)
+{
+	return (*_labelMapList)[level];
+}
+
+void ShiftMap::GetInterpolationMap(CvMat* lowerMap, CvMat* higherMap)
+{
+	// check if size is double
+	if(higherMap->width / 2 == lowerMap->width && higherMap->height / 2 == lowerMap->height)
+	{
+		for(int i = 0; i < higherMap->width; i++)
+			for(int j = 0; j < higherMap->height; j++)
+			{
+				CvPoint lowerPoint = cvPoint(i/2, j/2);
+				//printf("test: %i %i\n", lowerPoint.x, lowerPoint.y);
+				
+				// heuristic way to prevent interpolate outside image
+				// ex: higher img: 45 -> downsample to 22 size lower img
+				if(lowerPoint.x == lowerMap->width)
+					lowerPoint.x--;
+				if(lowerPoint.y == lowerMap->height)
+					lowerPoint.y--;
+				
+				CvPoint label = GetLabel(lowerPoint, lowerMap);
+				 
+				SetLabel(cvPoint(i,j), cvPoint(label.x * 2, label.y * 2), higherMap);
+			}
+	}
+	else
+	{
+		printf("not going inside");
+	}
+}
+
+IplImage* ShiftMap::GetImageFromLabelMap(CvMat* map, IplImage* image)
+{
+	IplImage* output = cvCreateImage(cvSize(map->width, map->height), IPL_DEPTH_8U, 3);
+	for(int i = 0; i < map->width; i++)
+		for(int j = 0; j < map->height; j++)
+		{
+			CvPoint label = GetLabel(cvPoint(i,j), map);
+			CvPoint mappedPoint = cvPoint(i + label.x, j + label.y);
+			
+			CvScalar value;
+			if(IsOutside(mappedPoint, cvSize(image->width, image->height)))
+				value = cvScalar(0, 0, 255);
+			else
+				value = cvGet2D(image, j + label.y, i + label.x);
+			cvSet2D(output, j, i, value);
+		}
+	return output;
 }

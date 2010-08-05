@@ -12,7 +12,7 @@ int ShifmapDataFunction(CvPoint point, CvPoint shift, IplImage* saliency)
 int dataFunctionShiftmapH(int pixel, int label, void *extraData)
 {
 	
-	ForDataFunctionH *data = (ForDataFunctionH *) extraData; 
+	ForDataFunctionH *data = (ForDataFunctionH *) extraData; 	
 	CvPoint origin_label = GetMappedPointInitialGuess(pixel, label, data->outputSize, data->shiftSize, data->initialGuess);
 	
 	if(IsOutside(origin_label, data->inputSize)) 
@@ -20,11 +20,12 @@ int dataFunctionShiftmapH(int pixel, int label, void *extraData)
 
 	double saliency = 0;
 
-	// force the 2 left-most & right-most col to be in the output
+	//// force the 2 left-most & right-most col to be in the output
+	//CvPoint pixelPoint = GetPoint(pixel, data->outputSize);
 	//if(pixelPoint.x == 0 && origin_label.x == 0 && pixelPoint.y == origin_label.y)
 	//	saliency += 100;
 	//else 
-	//if(pixelPoint.x == data->outWidth - 1 && origin_label.x == data->inWidth - 1 && pixelPoint.y == origin_label.y)
+	//	if(pixelPoint.x == data->outputSize.width - 1 && origin_label.x == data->inputSize.width - 1 && pixelPoint.y == origin_label.y)
 	//	saliency += 0;
 	//else
 	//	saliency += 10000;
@@ -47,11 +48,12 @@ int dataFunctionShiftmap(int pixel, int label, void *extraData)
 
 	double saliency = 0;
 
-	// force the 2 left-most & right-most col to be in the output
+	//// force the 2 left-most & right-most col to be in the output
+	//CvPoint pixelPoint = GetPoint(pixel, data->outputSize);
 	//if(pixelPoint.x == 0 && origin_label.x == 0 && pixelPoint.y == origin_label.y)
 	//	saliency += 100;
 	//else 
-	//if(pixelPoint.x == data->outWidth - 1 && origin_label.x == data->inWidth - 1 && pixelPoint.y == origin_label.y)
+	//	if(pixelPoint.x == data->outputSize.width - 1 && origin_label.x == data->inputSize.width - 1 && pixelPoint.y == origin_label.y)
 	//	saliency += 0;
 	//else
 	//	saliency += 10000;
