@@ -1,7 +1,7 @@
 #pragma once
 #include "GCoptimization.h"
 #include "EnergyFunctionFeedback.h"
-#include "ShiftmapComputer.h"
+#include "Shiftmap.h"
 
 class FeedbackRetargeting : public ShiftMap
 {
