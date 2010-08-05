@@ -210,6 +210,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ShiftMapHierarchy.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\ShiftMapRun.cpp"
 				>
 			</File>
@@ -321,6 +325,10 @@
 			</File>
 			<File
 				RelativePath=".\Shiftmap3D.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ShiftMapHierarchy.h"
 				>
 			</File>
 			<File
