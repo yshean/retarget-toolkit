@@ -79,3 +79,9 @@ CvPoint GetLabel(CvPoint point, CvMat* labelMap)
 	shift.y = value.val[1];
 	return shift;
 }
+
+
+Point3D GetMappedPoint3D(int pixel, int label, Volume3D output, Volume3D shiftSize)
+{
+	return point3D(0,0,0);
+}

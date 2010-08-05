@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\..\Graphcut\Graph cut&quot;"
+				AdditionalIncludeDirectories="&quot;..\..\Graphcut\Graph cut&quot;;..\..\Video"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -178,7 +178,23 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\Common3D.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\EnergyFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\EnergyFunction3D.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\EnergyFunctionFeedback.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\FeedbackRetargeting.cpp"
 				>
 			</File>
 			<File
@@ -190,7 +206,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ShiftMapComputer.cpp"
+				RelativePath=".\Shiftmap3D.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ShiftMapRun.cpp"
 				>
 			</File>
 			<File
@@ -217,6 +237,10 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath="..\..\Video\VideoSequence.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -228,11 +252,27 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Common3D.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Graphcut\Graph cut\energy.h"
 				>
 			</File>
 			<File
 				RelativePath=".\EnergyFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\EnergyFunction3D.h"
+				>
+			</File>
+			<File
+				RelativePath=".\EnergyFunctionFeedback.h"
+				>
+			</File>
+			<File
+				RelativePath=".\FeedbackRetargeting.h"
 				>
 			</File>
 			<File
@@ -256,6 +296,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ImageRetargeter.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Label.h"
 				>
 			</File>
@@ -272,7 +316,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ShiftMapComputer.h"
+				RelativePath=".\ShiftMap.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Shiftmap3D.h"
 				>
 			</File>
 			<File
@@ -289,6 +337,10 @@
 			</File>
 			<File
 				RelativePath="..\..\Graph cut\Graph cut\targetver.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Video\VideoSequence.h"
 				>
 			</File>
 		</Filter>

@@ -1,7 +1,8 @@
  
 #include <cv.h>
- 
+#include "Common3D.h"
 
+// ========================= ShiftMap 2D =========================
 // Get label index
 int GetLabel(CvPoint point, CvSize imageSize);
 
@@ -27,3 +28,6 @@ void SetLabel(CvPoint point, CvPoint shiftLabel, CvMat* labelMap);
 
 // get a label from a label map
 CvPoint GetLabel(CvPoint point, CvMat* labelMap);
+
+// ========================= ShiftMap 3D =========================
+Point3D GetMappedPoint3D(int pixel, int label, Volume3D output, Volume3D shiftSize);
