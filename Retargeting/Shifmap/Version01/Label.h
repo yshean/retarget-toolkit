@@ -1,4 +1,4 @@
- 
+#pragma once
 #include <cv.h>
 #include "Common3D.h"
 
