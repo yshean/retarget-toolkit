@@ -210,6 +210,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\FillHoleEnergyFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\FillHoleShiftMap.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Label.cpp"
 				>
 			</File>
@@ -308,6 +316,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\FillHoleEnergyFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\FillHoleShiftMap.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Graphcut\Graph cut\GCoptimization.cpp"
 				>
 			</File>
@@ -368,11 +384,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\stdafx.h"
+				RelativePath="..\..\Graph cut\Graph cut\stdafx.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\stdafx.h"
+				RelativePath=".\stdafx.h"
 				>
 			</File>
 			<File

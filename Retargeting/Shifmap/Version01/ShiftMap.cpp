@@ -13,7 +13,8 @@ ShiftMap::~ShiftMap(void)
 
 IplImage* ShiftMap::GetRetargetImage(IplImage* input, IplImage* saliency, CvSize outputSize)
 {
-	ComputeShiftMap(input, saliency, outputSize, outputSize);
+	// ComputeShiftMap(input, saliency, outputSize, outputSize);
+	ComputeShiftMap(input, saliency, outputSize, cvSize(input->width, input->height));
 	return CalculateRetargetImage();
 }
 
@@ -21,11 +22,6 @@ void ShiftMap::ClearGC()
 {
 	delete _gc;
 }
-
-
-
-
-
 
 void ShiftMap::ComputeShiftMap(IplImage* input, IplImage* saliency, CvSize output, CvSize shiftSize)
 {
