@@ -178,6 +178,18 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\ClusterMap.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ClusterMapNeighbor.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ClusterShiftMap.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Common3D.cpp"
 				>
 			</File>
@@ -207,6 +219,10 @@
 			</File>
 			<File
 				RelativePath=".\Shiftmap3D.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ShiftMapCoarse.cpp"
 				>
 			</File>
 			<File
@@ -253,6 +269,18 @@
 			>
 			<File
 				RelativePath="..\..\Graphcut\Graph cut\block.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ClusterMap.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ClusterMapNeighbor.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ClusterShiftMap.h"
 				>
 			</File>
 			<File
@@ -325,6 +353,10 @@
 			</File>
 			<File
 				RelativePath=".\Shiftmap3D.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ShiftMapCoarse.h"
 				>
 			</File>
 			<File
