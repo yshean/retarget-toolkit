@@ -1,6 +1,12 @@
 #include "stdafx.h" 
 #include "Label.h"
-
+CvPoint* CreateCvPoint(int x, int y)
+{
+	CvPoint* point = new CvPoint();
+	point->x = x;
+	point->y = y;
+	return point;
+}
 int GetLabel(CvPoint point, CvSize imageSize)
 {
 	if(point.x < 0 || point.x>= imageSize.width || point.y < 0 || point.y >= imageSize.height)
