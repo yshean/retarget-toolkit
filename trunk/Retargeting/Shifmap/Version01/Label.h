@@ -3,6 +3,8 @@
 #include "Common3D.h"
 
 // ========================= ShiftMap 2D =========================
+CvPoint* CreateCvPoint(int x, int y);
+
 // Get label index
 int GetLabel(CvPoint point, CvSize imageSize);
 

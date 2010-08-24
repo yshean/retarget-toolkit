@@ -218,7 +218,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\HierarchyFHEnergyFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\HierarchyFHShiftMap.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Label.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\MaskShift.cpp"
 				>
 			</File>
 			<File
@@ -344,6 +356,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\HierarchyFHEnergyFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\HierarchyFHShiftMap.h"
+				>
+			</File>
+			<File
 				RelativePath=".\ImageRetargeter.h"
 				>
 			</File>
@@ -357,6 +377,10 @@
 			</File>
 			<File
 				RelativePath="..\..\Graphcut\Graph cut\LinkedBlockList.h"
+				>
+			</File>
+			<File
+				RelativePath=".\MaskShift.h"
 				>
 			</File>
 			<File
