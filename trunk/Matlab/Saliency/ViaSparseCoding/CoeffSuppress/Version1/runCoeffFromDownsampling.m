@@ -9,18 +9,12 @@ addpath(genpath('..\..\..\ImageProcessing'));
 % loading & setting
 image = imread('boatman.jpg');
 
-resized_image = DownSampling(image, 1, 'Gaussian', 3);
+resized_image = DownSampling(image, 2, 'Gaussian', 3);
 patch_size = 8;
 increment = 4;
 
 A = dense_sampling(image, patch_size, increment);
-
-
-
-h = fspecial('gaussian', 10, 10);      
-image_blur = imfilter(image, h);
-D_origin = dense_sampling(image_blur, patch_size, increment);
-
+D_origin = dense_sampling(image, patch_size, increment);
 num_patch = size(A,2);
 
 % init result
@@ -36,23 +30,17 @@ for i = 1:1:num_patch
     D = D_origin;
     
     %% suppress similar patch in the Dictionary
-        D = dense_sampling(resized_image, patch_size, increment);
+        % D = dense_sampling(resized_image, patch_size, increment);
         % change D a little bit Jul 2010
-        cos = D' * p;
-        cos = 1 - cos ./ norm(cos);
-        cos = (cos - min(cos)) ./ (max(cos) - min(cos));
-        for k = 1:1:size(D,1)
-            D(k,:) = D(k,:) .* cos';
-        end
+    D = SuppressDictionary(D, p, 'sigmoid');    
     
     
-    
-    [x temp] = DoSparseCoding(D, p, 'fast_sc', 20);
+    [x temp] = DoSparseCoding(D, p, 'lasso', 20);
          
     result(i) = temp;
 end
 
 fprintf('finished');
 % save
-save('Data\boatmanfast_sc20blur10level4incrementsupressed.mat','result');
+save('Data\car2small.jpgSigmoid20lasso20.mat','result');
  

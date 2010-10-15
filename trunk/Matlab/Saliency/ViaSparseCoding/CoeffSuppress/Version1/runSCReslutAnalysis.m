@@ -9,8 +9,8 @@ addpath(genpath('..\..\..\ImageProcessing'));
 % setting
 patch_size = 8;
 increment = 4;
-load Data\boatmanfast_sc20blur10level4incrementsupressed.mat; % result is loaded
-image = imread('boatman.jpg');
+load Data\car2small.jpgSigmoid20lasso20.mat; % result is loaded
+image = imread('car2small.jpg');
 
 % get number of patch (hardway)
 A = dense_sampling(image, patch_size, increment);
