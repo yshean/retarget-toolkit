@@ -8,9 +8,9 @@ addpath(genpath('..\..\..\ImageProcessing'));
  
 % loading & setting
 load AW.mat
-image = imread('boy.jpg');
+image = imread('2boys.jpg');
 patch_size = 8;
-increment = 2;
+increment = 4;
 
 img = DownSampling(image, 2, 'Gaussian', 5);
 
@@ -47,7 +47,7 @@ for i = 1:1:size(P,2)
 end
 
 % save
-save('boyfast_sc20nocosDownsampling2AW.mat','result');
+save('2boysfast_sc20nocosDownsampling2AW.mat','result');
 
 % analysis
 % avg_coeff = zeros(num_coeff,1);
