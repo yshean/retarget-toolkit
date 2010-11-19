@@ -117,7 +117,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;..\..\Graphcut\Graph cut&quot;"
+				AdditionalIncludeDirectories="&quot;..\..\Graphcut\Graph cut&quot;;..\..\Video"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="2"
@@ -194,6 +194,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ConfigFile.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\DebugTool.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\EnergyFunction.cpp"
 				>
 			</File>
@@ -203,6 +211,10 @@
 			</File>
 			<File
 				RelativePath=".\EnergyFunctionFeedback.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\FeedbackEnergyFunction.cpp"
 				>
 			</File>
 			<File
@@ -218,6 +230,38 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GCAImage.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCAlgorithm.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCEnergyFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCImageRender.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleImage.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleStackEnergy.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleStackHorizontalEnergy.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleStackShiftMap.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\HierarchyFHEnergyFunction.cpp"
 				>
 			</File>
@@ -226,11 +270,63 @@
 				>
 			</File>
 			<File
+				RelativePath=".\HorizontalScaleEnergyFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\HorizontalScaleLabelMapping.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\HorizontalScaleSM.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ImageSource.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Label.cpp"
 				>
 			</File>
 			<File
+				RelativePath=".\LabelMapper.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Mapping2D.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\MappingCubic.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\MaskShift.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\PatchUtils.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\PyramidLabelMapping.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleEnergyFunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleLabelMapping.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleSM.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleStackImageSource.cpp"
 				>
 			</File>
 			<File
@@ -255,6 +351,10 @@
 			</File>
 			<File
 				RelativePath=".\ShiftMapVisualizer.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Similarity.cpp"
 				>
 			</File>
 			<File
@@ -308,6 +408,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ConfigFile.h"
+				>
+			</File>
+			<File
+				RelativePath=".\DebugTool.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Graphcut\Graph cut\energy.h"
 				>
 			</File>
@@ -324,6 +432,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\FeedbackEnergyFunction.h"
+				>
+			</File>
+			<File
 				RelativePath=".\FeedbackRetargeting.h"
 				>
 			</File>
@@ -336,11 +448,43 @@
 				>
 			</File>
 			<File
+				RelativePath=".\GCAImage.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCAlgorithm.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCEnergyFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCImageRender.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Graphcut\Graph cut\GCoptimization.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\Graphcut\Graph cut\GCoptimization.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleImage.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleStackEnergy.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleStackHorizontalEnergy.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GCScaleStackShiftMap.h"
 				>
 			</File>
 			<File
@@ -364,11 +508,31 @@
 				>
 			</File>
 			<File
+				RelativePath=".\HorizontalScaleEnergyFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\HorizontalScaleLabelMapping.h"
+				>
+			</File>
+			<File
+				RelativePath=".\HorizontalScaleSM.h"
+				>
+			</File>
+			<File
 				RelativePath=".\ImageRetargeter.h"
 				>
 			</File>
 			<File
+				RelativePath=".\ImageSource.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Label.h"
+				>
+			</File>
+			<File
+				RelativePath=".\LabelMapper.h"
 				>
 			</File>
 			<File
@@ -380,11 +544,43 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Mapping2D.h"
+				>
+			</File>
+			<File
+				RelativePath=".\MappingCubic.h"
+				>
+			</File>
+			<File
 				RelativePath=".\MaskShift.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\Graphcut\Graph cut\maxflow.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\PatchUtils.h"
+				>
+			</File>
+			<File
+				RelativePath=".\PyramidLabelMapping.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleEnergyFunction.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleLabelMapping.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleSM.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ScaleStackImageSource.h"
 				>
 			</File>
 			<File
@@ -408,11 +604,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\Graph cut\Graph cut\stdafx.h"
+				RelativePath=".\Similarity.h"
 				>
 			</File>
 			<File
 				RelativePath=".\stdafx.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Graph cut\Graph cut\stdafx.h"
 				>
 			</File>
 			<File

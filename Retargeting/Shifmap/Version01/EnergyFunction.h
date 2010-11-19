@@ -1,6 +1,8 @@
 #pragma once
 #include <cv.h>
 #include "Label.h"
+ 
+
 /********************************************************
 Implementation of Shift-map algorithm (Peleg ICCV2009)
 
