@@ -18,3 +18,8 @@ Volume3D volume3D(int width, int height, int depth)
 	volume.depth = depth;
 	return volume;
 }
+
+Point3D GetNeighbor(Point3D pixel1, Point3D pixel2, Point3D label)
+{
+	return point3D(label.x - pixel1.x + pixel2.x, label.y - pixel1.y + pixel2.y, label.z);
+}
