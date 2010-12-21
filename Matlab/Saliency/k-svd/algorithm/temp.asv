@@ -1,0 +1,14 @@
+% testing
+width = 20;
+height = 20;
+saliency = zeros(height, width);
+patch_size = 8;
+
+for x= 1:1:height - patch_size + 1
+    for y = 1:1:width - patch_size + 1
+       value = 10 / overlap_number(y, x,patch_size, , 20, 4);
+        saliency(x:x+patch_size-1, y:y+patch_size-1) = saliency(x:x+patch_size-1, y:y+patch_size-1) + value;
+    end
+end
+
+imshow(saliency, [] );
