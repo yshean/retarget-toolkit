@@ -5,19 +5,23 @@
 % addpath('..\..\..\PatchTool');
 % 
 image = imread('boatman.jpg');
-% image = img;
-img_1 = imresize(image, 0.5);
-% imshow(img_w);
-img_2 = imresize(img_1, 0.5);
+img_bw = rgb2gray(image);
+
 patch_size = 8;
-patch_increment = 2;
+patch_increment = 4;
 
-patches1 = dense_sampling(image, patch_size, patch_increment);
-patches2 = dense_sampling(img_1, patch_size, patch_increment);
-patches3 = dense_sampling(img_2, patch_size, patch_increment);
+[patches1 count1 count2 count3] = gatherPatches(image, patch_size, patch_increment);
+patches1 = normcols(patches1);
 
-patches = [patches1 patches2 patches3];
-%patches = normcols(patches);
+h = fspecial('Sobel');
+img_bw = imfilter(img_bw, h); 
+
+patches2 = gatherPatches(img_bw, patch_size, patch_increment);
+patches2 = normcols(patches2);
+ 
+
+%patches = [patches1; patches2];
+patches = patches1;
 for i = 1:1:size(patches,2)
     m = mean(patches(:,i));
     patches(:,i) = patches(:,i) - m;
@@ -26,8 +30,8 @@ end
 params.codemode = 'sparsity';
 params.data = patches;
 params.Edata = 0.2;
-params.Tdata = 3;
-params.dictsize = 20;
+params.Tdata = 5;
+params.dictsize = 100;
 params.iternum = 30;
 params.memusage = 'high';
 
@@ -42,8 +46,16 @@ avg = avg / size(gamma,2);
 
 myEnergy = GetEnergy(gamma);
 
+
+% how excited each code
+% weight = zeros(size(gamma,1), 1);
+% for i = 1:1:size(gamma,2)
+%     weight(:,1) = weight(:,1) + abs(gamma(:,i));
+% end
+% plot(weight);
+
 saliency = zeros(size(image,1), size(image,2));
-for i = 1:1:size(patches1, 2)
+for i = 1:1:count1
     diff_vec = D * avg - D * gamma(:,i);
 %     value = 0;
 %     for k = 1:1:size(gamma,1)
@@ -52,15 +64,20 @@ for i = 1:1:size(patches1, 2)
 %         end
 %     end
     %value = sum(gamma(:,1));
-    value = diff_vec' * diff_vec;
+    % value = diff_vec' * diff_vec;
+    value = weight' * abs(gamma(:,1));
+    % value = (avg - gamma(:,1))' * (avg - gamma(:,1));
     %value = 10;
     % value = myEnergy(i);
     
     [y x] = patch_position(i, patch_size, patch_increment, size(image));    
     for m = x:1:x+patch_size-1
-        for n = y:1:y+patch_size-1
+        for n = y:1:y+patch_size-1 
+            if m == 108
+                m = 1;
+            end
             count = overlap_number(n, m, patch_size, size(image, 2), size(image,1), patch_increment);
-            saliency(m, n) = saliency(m, n) + value / count;
+            saliency(m,n) = saliency(m,n) + value / count;
         end
     end     
 end
