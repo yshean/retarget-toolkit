@@ -181,7 +181,7 @@ int ScaleEnergyFunction::GetSmoothCostOrigin(int labelId1, int labelId2, int nod
 	CvPoint point2 = _mapping2D->GetMappedPoint(nodeId2);
 
 	int energy = 0; 
-
+	 
 	DoublePoint mappedPoint1 = _labelMapping->GetMappedPoint(labelId1, point1);
 	DoublePoint mappedPoint2 = _labelMapping->GetMappedPoint(labelId2, point2);
 	
@@ -198,7 +198,7 @@ int ScaleEnergyFunction::GetSmoothCostOrigin(int labelId1, int labelId2, int nod
 	energy += GetColorDifference(mappedPoint2, mappedNeighbor1, _image);
 	energy += GetColorDifference(mappedPoint1, mappedNeighbor2, _gradient);
 	energy += GetColorDifference(mappedPoint2, mappedNeighbor1, _gradient);
-
+	
 	return energy;
 }
 
@@ -221,6 +221,7 @@ int ScaleEnergyFunction::GetDataCostOrigin(int labelId, int nodeId, int penaltyC
 		return penaltyCost;
 
 	CvScalar saliency = GetInterpolatedValue(mappedPoint, _saliency);
+	 
 	return saliency.val[0] + saliency.val[1] + saliency.val[2];
 }
 int ScaleEnergyFunction::GetDataCostPreferLargerImage(int labelId, int nodeId, int penaltyCost)
@@ -247,38 +248,37 @@ int ScaleEnergyFunction::GetDataCostPreferLargerImage(int labelId, int nodeId, i
 	return (saliency.val[0] + saliency.val[1] + saliency.val[2]) * scale;
 }
 
-int ScaleEnergyFunction::GetDistortionCostPatch(vector<CvScalar*>* points, CvPoint point, IplImage* image, int patchsize)
+int ScaleEnergyFunction::GetDistortionCostPatch(vector<CvScalar>* points, CvPoint point, IplImage* image, int patchsize)
 {
 	int distortion = 0;
 	for(int i = 0; i < patchsize; i++)
 		for(int j = 0; j < patchsize; j++)
 		{
-			CvScalar* value = (*points)[i * patchsize + j];
+			CvScalar value = (*points)[i * patchsize + j];
 			CvScalar value2;
 			if(point.x + i < 0 || point.x + i > _inputSize.width - 1
 				|| point.y + j < 0 || point.y + j > _inputSize.height - 1)
 				value2 = cvScalar(0,0,0);
 			else
 				value2 = cvGet2D(image, point.y + j, point.x + i);
-			distortion += SquareDifference(*value, value2);
+			distortion += SquareDifference(value, value2);
 		}
 	return distortion;
 }
 
-int ScaleEnergyFunction::GetDistortionCost(CvPoint point, IplImage* image, int label, int patch_size, double scale)
+int ScaleEnergyFunction::GetDistortionCost(CvPoint point, IplImage* image, int label, int patch_size, double scaleX, double scaleY)
 {
-	vector<CvScalar*>* scaled_points = new vector<CvScalar*>(patch_size * patch_size);
+	vector<CvScalar>* scaled_points = new vector<CvScalar>(patch_size * patch_size);
 	for(int i = 0; i < patch_size; i++)
 		for(int j = 0; j < patch_size; j++)
 		{
-			DoublePoint currPoint = _labelMapping->GetMappedPoint(label, cvPoint(point.x + i, point.y + j));	
-			CvScalar* value = new CvScalar();
-			*value = GetInterpolatedValue(currPoint, image);
-			(*scaled_points)[i * patch_size + j] = value;
+			DoublePoint currPoint = _labelMapping->GetMappedPoint(label, cvPoint(point.x + i, point.y + j));				
+			
+			(*scaled_points)[i * patch_size + j] = GetInterpolatedValue(currPoint, image);			
 		}
 	
 		
-	int scaled_patch_size = patch_size / scale;
+	int scaled_patch_size = patch_size / scaleX * scaleY;
 	
 	DoublePoint mappedPoint = _labelMapping->GetMappedPoint(label, point);
 	int x = (int)mappedPoint.x;
@@ -293,6 +293,9 @@ int ScaleEnergyFunction::GetDistortionCost(CvPoint point, IplImage* image, int l
 			if(distortion < minDistortion)
 				minDistortion = distortion;
 		}
+
+		//scaled_points->clear();
+		delete scaled_points;
 
 	return minDistortion;
 }
@@ -310,19 +313,20 @@ int ScaleEnergyFunction::GetDataCostAreaCost(int labelId, int nodeId, int penalt
 
 
 	if(!IsSatisfiedBoundary(point.x, mappedPoint.x, _inputSize.width, _outputSize.width))
-		return penaltyCost;
+		return penaltyCost * 2;
 	if(!IsSatisfiedBoundary(point.y, mappedPoint.y, _inputSize.height, _outputSize.height))
-		return penaltyCost;
+		return penaltyCost * 2;
 
 	CvScalar saliency = GetInterpolatedValue(mappedPoint, _saliency);
-	
-	
-	double scale = _labelMapping->GetScale(labelId);
-		
-	int distortionCost = GetDistortionCost(point, _image, labelId, 3, scale);
-	int areaCost = 255 * scale;
+		 
+	int scaleId = _labelMapping->GetScaleId(labelId);
+	double scaleX = _labelMapping->GetScaleX(scaleId);
+	double scaleY = _labelMapping->GetScaleY(scaleId);
+	int distortionCost = GetDistortionCost(point, _image, labelId, 3, scaleX, scaleY);
+	int areaCost = 255 * scaleX * scaleY;
 
 	int energy = (_distortionWeight * distortionCost + _areaWeight *  areaCost) / _smoothWeight;
+	//printf("investigate: %i %i \n", nodeId, labelId);
 	return energy;
 	// return (saliency.val[0] + saliency.val[1] + saliency.val[2]) * scale;
 }
@@ -414,7 +418,7 @@ int ScaleEnergyFunction::GetDataCostReverseThreshold(int labelId, int nodeId, in
 
 int ScaleEnergyFunction::GetDataCost(int labelId, int nodeId)
 {
-	int penaltyCost = 500000;
+	int penaltyCost = 5000000;
 
 	switch(_dataCostType)
 	{
@@ -437,11 +441,54 @@ int ScaleEnergyFunction::GetSmoothCostThreshold(int labelId1, int labelId2, int 
 		energy = 0;
 	return energy;
 }
+
+
+
+int ScaleEnergyFunction::GetSmoothCostWarpOnly(int labelId1, int labelId2, int nodeId1, int nodeId2, int penaltyCost, int pixelDistance)
+{
+	CvPoint point1 = _mapping2D->GetMappedPoint(nodeId1);
+	CvPoint point2 = _mapping2D->GetMappedPoint(nodeId2);
+
+	int energy = 0; 
+
+	DoublePoint mappedPoint1 = _labelMapping->GetMappedPoint(labelId1, point1);
+	DoublePoint mappedPoint2 = _labelMapping->GetMappedPoint(labelId2, point2);
+	
+	if(!IsInside(mappedPoint1, _inputSize) || !IsInside(mappedPoint2, _inputSize))
+		return penaltyCost;
+
+
+	DoublePoint mappedNeighbor1 = _labelMapping->GetMappedPoint(labelId1, point2);
+	DoublePoint mappedNeighbor2 = _labelMapping->GetMappedPoint(labelId2, point1);
+
+	if(!IsInside(mappedNeighbor1, _inputSize) || !IsInside(mappedNeighbor2, _inputSize))
+		return penaltyCost;
+
+	if(_labelMapping->GetScaleId(labelId1) == _labelMapping->GetScaleId(labelId2))
+	{
+		if(labelId1 != labelId2)
+		{
+			return penaltyCost;
+		}
+	}
+	
+
+	energy += GetColorDifference(mappedPoint1, mappedNeighbor2, _image);
+	energy += GetColorDifference(mappedPoint2, mappedNeighbor1, _image);
+	energy += GetColorDifference(mappedPoint1, mappedNeighbor2, _gradient);
+	energy += GetColorDifference(mappedPoint2, mappedNeighbor1, _gradient);
+
+
+
+	return energy;
+}
+
 int ScaleEnergyFunction::GetSmoothCost(int labelId1, int labelId2, int nodeId1, int nodeId2)
 {
-	int penaltyCost = 500000;
+	int penaltyCost = 50000;
 	//return GetSmoothCostThreshold(labelId1, labelId2, nodeId1, nodeId2, penaltyCost, _smoothThreshold);
 	return GetSmoothCostOrigin(labelId1, labelId2, nodeId1, nodeId2, penaltyCost);
+	// return GetSmoothCostWarpOnly(labelId1, labelId2, nodeId1, nodeId2, penaltyCost, 2);
 	// return GetSmoothCostPatch(labelId1, labelId2, nodeId1, nodeId2, penaltyCost, _smoothPatchSize);
 	// return GetSmoothCostPreventCrossing(labelId1, labelId2, nodeId1, nodeId2, penaltyCost, 100);
 	//return GetSmoothCostPreventCrossingPatch(labelId1, labelId2, nodeId1, nodeId2, penaltyCost, 100, _smoothPatchSize);

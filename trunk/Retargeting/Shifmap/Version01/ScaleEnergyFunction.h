@@ -64,6 +64,9 @@ public:
 protected:
 	virtual int GetSmoothCostThreshold(int labelId1, int labelId2, int nodeId1, int nodeId2, int penaltyCost, int smoothThreshold);
 
+	// pixel distance: max distance neighbor can have
+	virtual int GetSmoothCostWarpOnly(int labelId1, int labelId2, int nodeI1, int nodeId2, int penaltyCost, int pixelDistance);
+	
 	// smooth cost between patch
 	virtual int GetSmoothCostPatch(int labelId1, int labelId2, int nodeId1, int nodeId2, int penaltyCost, int patchsize);
 		
@@ -83,10 +86,10 @@ protected:
 
 	//========================================
 	// helper getdistortioncost
-	int GetDistortionCostPatch(vector<CvScalar*>* points, CvPoint point, IplImage* image, int patchsize);
+	int GetDistortionCostPatch(vector<CvScalar>* points, CvPoint point, IplImage* image, int patchsize);
 
 	// helper area cost data function
-	int GetDistortionCost(CvPoint point, IplImage* image, int label, int patch_size, double scale);
+	int GetDistortionCost(CvPoint point, IplImage* image, int label, int patch_size, double scaleX, double scaleY);
 
 	// combine area cost and distortion cost
 	virtual int GetDataCostAreaCost(int labelId, int nodeId, int penaltyCost);

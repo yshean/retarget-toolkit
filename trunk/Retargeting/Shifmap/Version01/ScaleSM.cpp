@@ -134,6 +134,7 @@ IplImage* ScaleSM::RenderRetargetImage()
 		}
 		else
 		{
+			// printf("test % f %f ", mappedPoint.x, mappedPoint.y);
 			CvScalar value = GetInterpolatedValue(mappedPoint, _input);
 			cvSet2D(image, point.y, point.x, value);			
 		}		

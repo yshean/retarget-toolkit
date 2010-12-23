@@ -16,7 +16,7 @@ void FeedbackEnergyFunction::SetTargetSample(IplImage* image)
 
 int FeedbackEnergyFunction::GetDataCost(int labelId, int nodeId)
 {
-	int penaltyCost = 100000;
+	int penaltyCost = 50000;
 	return GetFeedBackDataCost(labelId, nodeId, penaltyCost);
 }
 
