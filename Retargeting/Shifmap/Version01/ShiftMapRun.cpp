@@ -18,6 +18,7 @@
 #include "HorizontalScaleSM.h"
 #include "ScaleSM.h"
 #include "FeedbackEnergyFunction.h"
+#include "WarpEnergyFunction.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -175,6 +176,15 @@ char* GenerateImageName(AlgoSetting setting)
 	char* filename = new char[200];
 	strcpy(filename, (char*)result.c_str());
 	return filename;
+}
+char* GenerateVisualizedImageName(AlgoSetting setting)
+{
+	string result = GenerateName(setting);
+	result += "-Vi.jpg";
+	char* filename = new char[200];
+	strcpy(filename, (char*)result.c_str());
+	return filename;
+
 }
 char* GenerateFileName(AlgoSetting setting)
 {
@@ -772,8 +782,8 @@ void TestMultipleScaleAutoResize(char* commandFileName)
 	ScaleStackImageSource* imageSource = CreateScaleStackFromList(inputList);
 	ScaleStackImageSource* saliencySource;
 	if(noSaliency)
-		//saliencySource = CreateScaleStackFromList(CreateZeroSaliencyList(inputList));
-		saliencySource = CreateScaleStackFromList(CreateAdaptiveSaliencyList(inputList));
+		saliencySource = CreateScaleStackFromList(CreateZeroSaliencyList(inputList));
+		//saliencySource = CreateScaleStackFromList(CreateAdaptiveSaliencyList(inputList));
 
 	GCScaleStackShiftMap* shiftMap = new GCScaleStackShiftMap();
 	shiftMap->ComputeOptimalRetargetMapping(imageSource, saliencySource, cvSize(width, height));
@@ -1150,19 +1160,37 @@ void TestAreaRetargeting(char* commandFileName)
 	mapping2D->InitializeMapping(setting.outputSize.width, setting.outputSize.height);
 	mapping2D->IsShift(false);
 
-	IplImage* saliency = cvCloneImage(setting.input);	
-	for(int i = 0; i < saliency->width; i++)
-		for(int j = 0; j < saliency->height; j++)
-		{
-			cvSet2D(saliency, j, i, cvScalar(0,0,0));
-		}
+	IplImage* saliency;
+	if(setting.saliency ==0)
+	{
+		saliency = cvCloneImage(setting.input);	
+		for(int i = 0; i < saliency->width; i++)
+			for(int j = 0; j < saliency->height; j++)
+			{
+				cvSet2D(saliency, j, i, cvScalar(0,0,0));
+			}
+	}
+	else
+	{
+		saliency = setting.saliency;
+		for(int i = 0; i < saliency->width; i++)
+			for(int j = 0; j < saliency->height; j++)
+			{
+				CvScalar value = cvGet2D(saliency, j, i);
+				for(int k = 0; k < 4; k++)
+				{
+					value.val[k] = 255 - value.val[k];
+				}
+				cvSet2D(saliency, j, i, value);
+			}
+	}
 
 	ScaleEnergyFunction* energyFunction = new ScaleEnergyFunction();
 	energyFunction->SetInput(setting.input, gradient, setting.saliency);
 	energyFunction->SetRetargetSize(cvSize(setting.input->width, setting.input->height), setting.outputSize);
 	energyFunction->SetLabelMapping(labelMapping);
 	energyFunction->SetMapping2D(mapping2D);
-	energyFunction->SetupAreaCost(1000, 100, 100);
+	// energyFunction->SetupAreaCost(10, 20, 200);
   
 	
 
@@ -1194,18 +1222,425 @@ void TestAreaRetargeting(char* commandFileName)
 
 	DisplayImage(rtimage, "Test");
   	DisplayImage(viimage, "Test2");
-	//cvSaveImage(output, image);
+	cvSaveImage(output, rtimage);
+	 
+}
+
+IplImage* GetRetargetImage(char* commandFileName)
+{
+	AlgoSetting setting = GetAlgoSetting(commandFileName);
+	char* output = GenerateImageName(setting);
+	char* settingoutput = GenerateFileName(setting);
+	WriteSetting(setting);
+	ScaleSM* shiftMap = new ScaleSM();	 
 	
+	if(strcmp(setting.smoothCost, "threshold") == 0)
+		shiftMap->SetSmoothThreshold(setting.smoothThreshold);
+	 
+	shiftMap = new ScaleSM();
+	shiftMap->SetScaleSetting(setting.scaleCount, setting.scaleX, setting.scaleY);
+	IplImage* gradient = cvCloneImage(setting.input);			
+	cvSobel(setting.input, gradient, 1, 1);	
+
+	// new code 19 Nov for warp 
+	vector<double>* scaleListX = new vector<double>();
+	vector<double>* scaleListY = new vector<double>();
+	for(int i = 0; i < setting.scaleCount; i++)
+	{
+		double scaleX = 1 - i * setting.scaleX;
+		double scaleY = 1 - i * setting.scaleY;
+		scaleListX->push_back(scaleX);
+		scaleListY->push_back(scaleY);
+	}
+	
+	ScaleLabelMapping* labelMapping = new ScaleLabelMapping();	
+	//labelMapping->InitScaleRange(cvSize(setting.input->width, setting.input->height),
+	//	setting.outputSize, setting.scaleCount, setting.scaleX, setting.scaleY);	 
+	labelMapping->InitWarpScaleRange(cvSize(setting.input->width, setting.input->height),
+		setting.outputSize, scaleListX, scaleListY);
+
+	Mapping2D* mapping2D = new Mapping2D();
+	mapping2D->InitializeMapping(setting.outputSize.width, setting.outputSize.height);
+	mapping2D->IsShift(false);
+
+	//IplImage* saliency;
+	//if(setting.saliency ==0)
+	//{
+	//	saliency = cvCloneImage(setting.input);	
+	//	for(int i = 0; i < saliency->width; i++)
+	//		for(int j = 0; j < saliency->height; j++)
+	//		{
+	//			cvSet2D(saliency, j, i, cvScalar(0,0,0));
+	//		}
+	//}
+	//else
+	//{
+	//	saliency = setting.saliency;
+	//	for(int i = 0; i < saliency->width; i++)
+	//		for(int j = 0; j < saliency->height; j++)
+	//		{
+	//			CvScalar value = cvGet2D(saliency, j, i);
+	//			for(int k = 0; k < 4; k++)
+	//			{
+	//				value.val[k] = 255 - value.val[k];
+	//			}
+	//			cvSet2D(saliency, j, i, value);
+	//		}
+	//}
+
+	// ScaleEnergyFunction* energyFunction = new ScaleEnergyFunction();
+	WarpEnergyFunction* energyFunction = new WarpEnergyFunction();
+	energyFunction->SetInput(setting.input, gradient, setting.saliency);
+	energyFunction->SetRetargetSize(cvSize(setting.input->width, setting.input->height), setting.outputSize);
+	energyFunction->SetLabelMapping(labelMapping);
+	energyFunction->SetMapping2D(mapping2D);
+	energyFunction->IntializeDistortionMeasure();
+	// energyFunction->SetupAreaCost(10, 20, 200);
+  
+	
+
+	shiftMap->SetEnergyFunction(energyFunction);
+	shiftMap->SetLabelMapping(labelMapping);
+	shiftMap->SetMapping2D(mapping2D);
+	shiftMap->InitGraphCut(setting.input, setting.saliency, 
+		setting.outputSize);	
+	shiftMap->ComputeGraphCut();
+	//
+	//// shiftMap->ComputeOptimalRetargetMapping(setting.input, setting.saliency, 
+	////	cvSize(setting.outputSize.width, setting.outputSize.height));
+	//
+	IplImage* rtimage = shiftMap->RenderRetargetImage();
+	IplImage* viimage = shiftMap->RenderStackMapVisualisation();
+	//IplImage* visualizedImage = shiftMap->RenderStackMapVisualisation();
+	//DisplayImage(fbimage, "Test");
+	//IplImage* image1 = cvLoadImage("1.jpg");
+	//IplImage* image2 = cvLoadImage("2.jpg");
+	//IplImage* image1 = cvCloneImage(fbimage);
+	//for(int i = 0; i < image1->width; i++)
+	//	for(int j = 0; j < image1->height; j++)
+	//	{
+	//		CvScalar value1 = cvGet2D(fbimage, j, i);
+	//		CvScalar value2 = cvGet2D(setting.input, j, i);
+	//		int diff = SquareDifference(value1, value2);
+	//		cvSet2D(image1, j, i, cvScalar(diff));
+	//	}
+
+	//DisplayImage(rtimage, "Test");
+ // 	DisplayImage(viimage, "Test2");
+	cvSaveImage(output, rtimage);
+	return rtimage;
+}
+
+void TestScaleFeedbackCost(char* commandFileName)
+{
+
+	AlgoSetting setting = GetAlgoSetting(commandFileName);
+	char* output = GenerateImageName(setting);
+	char* settingoutput = GenerateFileName(setting);
+	WriteSetting(setting);
+	ScaleSM* shiftMap = new ScaleSM();	 
+	
+	if(strcmp(setting.smoothCost, "threshold") == 0)
+		shiftMap->SetSmoothThreshold(setting.smoothThreshold);
+
+
+	//IplImage* resize = GetRetargetImage("command.txt");
+	IplImage* resize = cvCreateImage(cvSize(setting.input->width * 0.6, setting.input->height), 
+		setting.input->depth, setting.input->nChannels);
+	cvResize(setting.input, resize);
+
+	shiftMap = new ScaleSM();
+	shiftMap->SetScaleSetting(setting.scaleCount, setting.scaleX, setting.scaleY);
+	IplImage* gradient = cvCloneImage(resize);			
+	cvSobel(resize, gradient, 1, 1);	
+
+	// new code 19 Nov for warp 
+	vector<double>* scaleListX = new vector<double>();
+	vector<double>* scaleListY = new vector<double>();
+	scaleListX->push_back(1);
+	scaleListY->push_back(1);
+	//for(int i = 0; i < setting.scaleCount; i++)
+	//{
+	//	double scaleX = 1 - i * setting.scaleX;
+	//	double scaleY = 1 - i * setting.scaleY;
+	//	scaleListX->push_back(scaleX);
+	//	scaleListY->push_back(scaleY);
+	//}
+	
+	
+	ScaleLabelMapping* labelMapping = new ScaleLabelMapping();	
+	//labelMapping->InitScaleRange(cvSize(resize->width, resize->height), cvSize(setting.input->width, 
+	//	setting.input->height), 1, 1, 1);
+	//labelMapping->InitScaleRange(cvSize(setting.input->width, setting.input->height),
+	//	setting.outputSize, setting.scaleCount, setting.scaleX, setting.scaleY);	 
+	labelMapping->InitWarpScaleRange(cvSize(resize->width, resize->height), cvSize(setting.input->width, 
+		setting.input->height), scaleListX, scaleListY);
+
+	Mapping2D* mapping2D = new Mapping2D();
+	mapping2D->InitializeMapping(setting.input->width, setting.input->height);
+	mapping2D->IsShift(false);
+
+	
+
+	// ScaleEnergyFunction* energyFunction = new ScaleEnergyFunction();
+	FeedbackEnergyFunction* energyFunction = new FeedbackEnergyFunction();	
+	energyFunction->SetInput(resize, gradient, setting.saliency);
+	energyFunction->SetRetargetSize(cvSize(resize->width, resize->height), 
+		cvSize(setting.input->width, setting.input->height));
+	energyFunction->SetLabelMapping(labelMapping);
+	energyFunction->SetMapping2D(mapping2D);
+	energyFunction->SetTargetSample(setting.input);
+	// energyFunction->SetupAreaCost(10, 20, 200);
+  
+	
+
+	shiftMap->SetEnergyFunction(energyFunction);
+	shiftMap->SetLabelMapping(labelMapping);
+	shiftMap->SetMapping2D(mapping2D);
+	shiftMap->InitGraphCut(resize, setting.saliency, 
+		cvSize(setting.input->width, setting.input->height));	
+	shiftMap->ComputeGraphCut();
+	//
+	//// shiftMap->ComputeOptimalRetargetMapping(setting.input, setting.saliency, 
+	////	cvSize(setting.outputSize.width, setting.outputSize.height));
+	//
+	IplImage* rtimage = shiftMap->RenderRetargetImage();
+
+	IplImage* diff = cvCloneImage(rtimage);
+
+	double sumErr = 0;
+	for(int i = 0; i < diff->width; i++)
+		for(int j = 0; j < diff->height; j++)
+		{
+			CvScalar value1 = cvGet2D(rtimage, j, i);
+			CvScalar value2 = cvGet2D(setting.input, j, i);
+			int value = SquareDifference(value1, value2);
+			sumErr += value;
+			cvSet2D(diff, j, i, cvScalar(value));
+		}
+	IplImage* viimage = shiftMap->RenderStackMapVisualisation();
+	//IplImage* visualizedImage = shiftMap->RenderStackMapVisualisation();
+	//DisplayImage(fbimage, "Test");
+	//IplImage* image1 = cvLoadImage("1.jpg");
+	//IplImage* image2 = cvLoadImage("2.jpg");
+	//IplImage* image1 = cvCloneImage(fbimage);
+	//for(int i = 0; i < image1->width; i++)
+	//	for(int j = 0; j < image1->height; j++)
+	//	{
+	//		CvScalar value1 = cvGet2D(fbimage, j, i);
+	//		CvScalar value2 = cvGet2D(setting.input, j, i);
+	//		int diff = SquareDifference(value1, value2);
+	//		cvSet2D(image1, j, i, cvScalar(diff));
+	//	}
+
+	DisplayImage(diff, "diff");
+	DisplayImage(rtimage, "Test");
+  	DisplayImage(viimage, "Test2");
+	cvSaveImage(output, rtimage);
+}
+void TestScaleDistortionRetargeting(char* commandFileName)
+{
+
+	AlgoSetting setting = GetAlgoSetting(commandFileName);
+	
+	 
+	char* settingoutput = GenerateFileName(setting);
+	WriteSetting(setting);
+	ScaleSM* shiftMap = new ScaleSM();	 
+	
+	if(strcmp(setting.smoothCost, "threshold") == 0)
+		shiftMap->SetSmoothThreshold(setting.smoothThreshold);
+	 
+	shiftMap = new ScaleSM();
+	shiftMap->SetScaleSetting(setting.scaleCount, setting.scaleX, setting.scaleY);
+	IplImage* gradient = cvCloneImage(setting.input);			
+	cvSobel(setting.input, gradient, 1, 1);	
+
+	// new code 19 Nov for warp 
+	vector<double>* scaleListX = new vector<double>();
+	vector<double>* scaleListY = new vector<double>();
+	for(int i = 0; i < setting.scaleCount; i++)
+	{
+		double scaleX = 1 - i * setting.scaleX;
+		double scaleY = 1 - i * setting.scaleY;
+		scaleListX->push_back(scaleX);
+		scaleListY->push_back(scaleY);
+	}
+	
+	ScaleLabelMapping* labelMapping = new ScaleLabelMapping();	
+	
+	//labelMapping->InitScaleRange(cvSize(setting.input->width, setting.input->height),
+	//	setting.outputSize, setting.scaleCount, setting.scaleX, setting.scaleY);	 
+	labelMapping->InitWarpScaleRange(cvSize(setting.input->width, setting.input->height),
+		setting.outputSize, scaleListX, scaleListY);
+
+	Mapping2D* mapping2D = new Mapping2D();
+	mapping2D->InitializeMapping(setting.outputSize.width, setting.outputSize.height);
+	mapping2D->IsShift(false);
+
+	//IplImage* saliency;
+	//if(setting.saliency ==0)
+	//{
+	//	saliency = cvCloneImage(setting.input);	
+	//	for(int i = 0; i < saliency->width; i++)
+	//		for(int j = 0; j < saliency->height; j++)
+	//		{
+	//			cvSet2D(saliency, j, i, cvScalar(0,0,0));
+	//		}
+	//}
+	//else
+	//{
+	//	saliency = setting.saliency;
+	//	for(int i = 0; i < saliency->width; i++)
+	//		for(int j = 0; j < saliency->height; j++)
+	//		{
+	//			CvScalar value = cvGet2D(saliency, j, i);
+	//			for(int k = 0; k < 4; k++)
+	//			{
+	//				value.val[k] = 255 - value.val[k];
+	//			}
+	//			cvSet2D(saliency, j, i, value);
+	//		}
+	//}
+
+	// ScaleEnergyFunction* energyFunction = new ScaleEnergyFunction();
+	WarpEnergyFunction* energyFunction = new WarpEnergyFunction();
+	energyFunction->SetInput(setting.input, gradient, setting.saliency);
+	energyFunction->SetRetargetSize(cvSize(setting.input->width, setting.input->height), setting.outputSize);
+	energyFunction->SetLabelMapping(labelMapping);
+	energyFunction->SetMapping2D(mapping2D);
+	
+	//energyFunction->InitializeDistortionMeasure(setting.saliency);
+	energyFunction->IntializeDistortionMeasure();
+	// energyFunction->InitializeImportanceMap();
+	// energyFunction->SetupAreaCost(10, 20, 200);
+  
+	
+
+	shiftMap->SetEnergyFunction(energyFunction);
+	shiftMap->SetLabelMapping(labelMapping);
+	shiftMap->SetMapping2D(mapping2D);
+	shiftMap->InitGraphCut(setting.input, setting.saliency, 
+		setting.outputSize);	
+	shiftMap->ComputeGraphCut();
+	//
+	//// shiftMap->ComputeOptimalRetargetMapping(setting.input, setting.saliency, 
+	////	cvSize(setting.outputSize.width, setting.outputSize.height));
+	//
+	IplImage* rtimage = shiftMap->RenderRetargetImage();
+	IplImage* viimage = shiftMap->RenderStackMapVisualisation();
+	//IplImage* visualizedImage = shiftMap->RenderStackMapVisualisation();
+	//DisplayImage(fbimage, "Test");
+	//IplImage* image1 = cvLoadImage("1.jpg");
+	//IplImage* image2 = cvLoadImage("2.jpg");
+	//IplImage* image1 = cvCloneImage(fbimage);
+	//for(int i = 0; i < image1->width; i++)
+	//	for(int j = 0; j < image1->height; j++)
+	//	{
+	//		CvScalar value1 = cvGet2D(fbimage, j, i);
+	//		CvScalar value2 = cvGet2D(setting.input, j, i);
+	//		int diff = SquareDifference(value1, value2);
+	//		cvSet2D(image1, j, i, cvScalar(diff));
+	//	}
+
+	DisplayImage(rtimage, "Test");
+  	DisplayImage(viimage, "Test2");
+	char* output = GenerateImageName(setting);
+	cvSaveImage(output, rtimage);
+	output = GenerateVisualizedImageName(setting);
+	cvSaveImage(output, viimage);
+}
+
+void TestScaleDistortionWarp(char* commandFileName)
+{
+	AlgoSetting setting = GetAlgoSetting(commandFileName);
+	char* output = GenerateImageName(setting);
+	char* settingoutput = GenerateFileName(setting);
+	WriteSetting(setting);
+
+	WarpEnergyFunction* func = new WarpEnergyFunction();
+
+	
+	CvMat* result_mat = cvCreateMat(setting.input->height, setting.input->width,CV_32FC1);
+	int scale_count = 9;
+
+	// reset result_mat
+	for(int i = 0; i < result_mat->cols; i++)
+		for(int j = 0; j < result_mat->rows; j++)
+		{
+			cvSet2D(result_mat, j, i, cvScalar(0));
+		}
+
+	for(int a = 4; a <= scale_count; a++)
+	{
+		CvMat* mat = func->GetDistortionMat(setting.input, 1 - a * 0.1, 1);
+		CvMat* temp_mat = cvCreateMat(setting.input->height, setting.input->width,CV_32FC1);
+		cvResize(mat, temp_mat);		
+		
+		for(int i = 0; i < temp_mat->cols; i++)
+			for(int j = 0; j < temp_mat->rows; j++)
+			{
+				CvScalar value = cvGet2D(temp_mat, j, i);
+				CvScalar temp = cvGet2D(result_mat, j, i);
+				 
+				for(int k = 0; k < 4; k++)
+				{
+					value.val[k] /= scale_count;
+				}
+				 
+				for(int k = 0; k < 4; k++)
+				{
+					temp.val[k] += value.val[k];
+				}
+				 
+				cvSet2D(result_mat, j, i, temp);
+			}
+		
+	}
+
+	int max = 0;
+	int min = 10000000;
+	for(int i = 0; i < result_mat->cols; i++)
+		for(int j = 0; j < result_mat->rows; j++)
+		{
+			CvScalar temp = cvGet2D(result_mat, j, i);
+			if(temp.val[0] < min)
+				min = temp.val[0];
+			if(temp.val[0] > max)
+				max = temp.val[0];
+		}
+	for(int i = 0; i < result_mat->cols; i++)
+		for(int j = 0; j < result_mat->rows; j++)
+		{
+			CvScalar temp = cvGet2D(result_mat, j, i);
+			temp.val[0] = (temp.val[0] - min) * 255 / max;
+			cvSet2D(result_mat, j, i, temp);
+		}
+
+	IplImage* avg_img = cvCloneImage(setting.input);
+	for(int i = 0; i < avg_img->width; i++)
+		for(int j = 0; j < avg_img->height; j++)
+		{
+			CvScalar temp = cvGet2D(result_mat, j ,i);
+			cvSet2D(avg_img, j , i, temp);
+		}
+
+	cvSaveImage("test.jpg", avg_img);
+
 }
 int main(int argc, char* argv[])
-{
+{	
 	// ConfigFile config( "example.txt" );
+	//TestScaleDistortionWarp("command.txt");
+	//GetRetargetImage("command.txt");
+	//TestScaleFeedbackCost("command.txt");
+	TestScaleDistortionRetargeting("command.txt");
 	//TestMultipleScaleAutoResize("command.txt");
 	 //TestMultipleScaleHorizontalResize("command.txt");
 	// TestScaleShiftMapConfig("command.txt");
 	//TestRelaxSmoothCost("command.txt");
 	// TestFeedbackRetargeting("command.txt");
-	TestAreaRetargeting("command.txt");
+	// TestAreaRetargeting("command.txt");
 	//IplImage* image = cvLoadImage("building.jpg");
 
 	//IplImage* result =  GetScaleSimilar(image, 0.5);	

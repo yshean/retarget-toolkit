@@ -1,0 +1,48 @@
+# Author: Hoang Minh Chau
+# This is the configuration file for Shiftmap
+# List of command name:
+# 'file': filename as input
+# 'width': retarget width
+# 'height': retarget height
+# saliency: 1 or 0
+# saliencyList: list of saliency files
+# comment: extra comment to add to output file
+
+# files: list of filename start by '@' and end by '%'
+folder = Source Image
+
+#file = ppl.jpg
+# saliencyfile = ppl-sal-SSD.jpg
+#width = 350			# retarget width
+#height = 268			# retarget height
+
+
+#file = 0_0_899.jpg
+#file = funnyppl150-156.jpg
+# saliencyfile = funnyppl150-156-Sal-Manual.jpg
+# targetSample = funnyppl150-156.jpg
+width = 140
+height = 156
+
+#file = 0_0_899.jpg
+#saliencyfile = 0_0_899S.jpg
+#width = 140
+#height = 150
+
+file = ppl2.JPG
+width = 180
+height = 134
+
+SmoothCost = threshold
+DataCost = origin
+SMType = scale
+smoothThreshold = 0
+
+saliency = 0			# using no saliency
+
+scale = 0.1
+scaleCount = 3
+scaleX = 0.1
+scaleY = 0
+
+

@@ -33,6 +33,7 @@ void ScaleLabelMapping::InitWarpScaleRange(int inputWidth, int outputWidth, vect
 	double min = 10000;
 	double max = 0;
 	int len = scaleList->size();
+	_scaleCount = len;
 	for(int i = 0; i < len; i++)
 	{
 		if((*scaleList)[i] < min)
@@ -52,6 +53,8 @@ void ScaleLabelMapping::InitWarpScaleRange(int inputWidth, int outputWidth, vect
 	for(int i = 0; i < length; i++)
 	{
 		double currentScale = (*scaleList)[i];
+		//int minShift = -60;
+		//int maxShift = 60;
 		int minShift = - outputWidth + (outputWidth - 1) / largestScale * currentScale + 1;
 		int maxShift = - outputWidth + (outputWidth - 1)/ smallestScale * currentScale + 1;
 
@@ -60,9 +63,13 @@ void ScaleLabelMapping::InitWarpScaleRange(int inputWidth, int outputWidth, vect
 			maxShift = - outputWidth + currentWidth;
 	 
 
-		int range = maxShift - minShift + 1;
-		labelCountLevel->push_back(range);
-		labelMinLevel->push_back(minShift);
+		int range = abs(maxShift - minShift) + 1;
+		labelCountLevel->push_back(range); 
+		if(minShift < maxShift)
+			labelMinLevel->push_back(minShift);
+		else
+			labelMinLevel->push_back(maxShift);
+ 
 	}
 }
 void ScaleLabelMapping::InitScaleRange(CvSize inputSize, CvSize outputSize, int scaleCount, double scaleStepX, double scaleStepY)
@@ -87,6 +94,15 @@ void ScaleLabelMapping::InitScaleRange(CvSize inputSize, CvSize outputSize, int 
 		_labelCountLevel->push_back(labelCount);
 	} 
 }
+double ScaleLabelMapping::GetScaleX(int scaleId)
+{
+	return (*_scaleListX)[scaleId];
+}
+double ScaleLabelMapping::GetScaleY(int scaleId)
+{
+	return (*_scaleListY)[scaleId];
+}
+
 void ScaleLabelMapping::InitWarpScaleRange(CvSize inputSize, CvSize outputSize, vector<double>* scaleListX, vector<double>* scaleListY)
 {
 	_scaleListX = scaleListX;
@@ -129,6 +145,8 @@ int ScaleLabelMapping::GetScaleCount()
 double ScaleLabelMapping::GetScale(int label)
 {
 	int scaleId = GetScaleId(label);
+	if(scaleId > 0)
+		printf("test");
 	return (1 - scaleId * _scaleStepX) * (1 - scaleId * _scaleStepY);
 }
 
@@ -227,7 +245,7 @@ DoublePoint ScaleLabelMapping::GetMappedWarpPoint(int labelId, CvPoint point, ve
 
 	int shiftIdX = shiftId % labelCountX;
 	int shiftIdY = shiftId / labelCountX;
-
+ 
 	shiftIdX += (*_labelMinLevelX)[scaleId];
 	shiftIdY += (*_labelMinLevelY)[scaleId];
 
@@ -244,6 +262,43 @@ DoublePoint ScaleLabelMapping::GetMappedPoint(int labelId, CvPoint point)
 {
 	// return GetMappedScalePoint(labelId, point);
 	return GetMappedWarpPoint(labelId, point, _scaleListX, _scaleListY);
+}
+
+CvPoint ScaleLabelMapping::GetMappedPointInt(int labelId, CvPoint point)
+{
+	int scaleId;
+	int shiftId;
+
+	int labelIdTemp = labelId;
+	int scaleCount = _scaleListX->size();
+	
+	for(int i = 0; i < _scaleCount; i++)
+	{
+		int labelCount = (*_labelCountLevel)[i];
+		if(labelId > labelCount - 1)
+		{
+			labelId = labelId - labelCount;
+		}
+		else
+		{
+			scaleId = i;
+			shiftId = labelId;
+			break;
+		}
+	}
+	
+	int labelCountX = (*_labelCountLevelX)[scaleId];
+
+	int shiftIdX = shiftId % labelCountX;
+	int shiftIdY = shiftId / labelCountX;
+ 
+	shiftIdX += (*_labelMinLevelX)[scaleId];
+	shiftIdY += (*_labelMinLevelY)[scaleId];
+	
+	CvPoint result;
+	result.x = point.x + shiftIdX;
+	result.y = point.y + shiftIdY;
+	return result;
 }
 
 double ScaleLabelMapping::GetMappedPoint(int label, int x, int scaleStep, int scaleCount, int inputSize, int outputSize, vector<int>* labelCountLevel)
