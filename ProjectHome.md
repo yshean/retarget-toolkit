@@ -1,0 +1,1 @@
+This toolkit implement latest media retargeting algorithm.
